@@ -39,6 +39,14 @@ interface GoogleAuthContextType {
 
 const GoogleAuthContext = createContext<GoogleAuthContextType | undefined>(undefined);
 
+// LocalStorage keys
+const STORAGE_KEYS = {
+  USER: 'google_user',
+  ACCESS_TOKEN: 'google_access_token',
+  TOKEN_EXPIRY: 'google_token_expiry',
+  CALENDAR_EVENTS: 'google_calendar_events',
+};
+
 export function GoogleAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<GoogleUser | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<GoogleCalendarEvent[]>([]);
@@ -47,6 +55,60 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
   const [isGoogleLoaded, setIsGoogleLoaded] = useState(false);
   const tokenClientRef = useRef<any>(null);
   const accessTokenRef = useRef<string | null>(null);
+
+  // Restore session from localStorage on mount
+  useEffect(() => {
+    const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
+    const savedToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
+    const savedExpiry = localStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRY);
+    const savedEvents = localStorage.getItem(STORAGE_KEYS.CALENDAR_EVENTS);
+
+    if (savedUser && savedToken && savedExpiry) {
+      const expiryTime = parseInt(savedExpiry, 10);
+      const now = Date.now();
+
+      // Check if token is still valid (with 5-minute buffer)
+      if (now < expiryTime - 5 * 60 * 1000) {
+        setUser(JSON.parse(savedUser));
+        accessTokenRef.current = savedToken;
+        
+        if (savedEvents) {
+          setCalendarEvents(JSON.parse(savedEvents));
+        }
+        
+        console.log('Session restored from localStorage');
+      } else {
+        // Token expired, clear storage
+        clearStoredSession();
+        console.log('Stored token expired, cleared session');
+      }
+    }
+  }, []);
+
+  // Persist user session to localStorage
+  useEffect(() => {
+    if (user && accessTokenRef.current) {
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+      localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessTokenRef.current);
+      // Google access tokens typically expire in 1 hour
+      const expiryTime = Date.now() + 60 * 60 * 1000;
+      localStorage.setItem(STORAGE_KEYS.TOKEN_EXPIRY, expiryTime.toString());
+    }
+  }, [user]);
+
+  // Persist calendar events to localStorage
+  useEffect(() => {
+    if (calendarEvents.length > 0) {
+      localStorage.setItem(STORAGE_KEYS.CALENDAR_EVENTS, JSON.stringify(calendarEvents));
+    }
+  }, [calendarEvents]);
+
+  const clearStoredSession = () => {
+    localStorage.removeItem(STORAGE_KEYS.USER);
+    localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.TOKEN_EXPIRY);
+    localStorage.removeItem(STORAGE_KEYS.CALENDAR_EVENTS);
+  };
 
   useEffect(() => {
     // Wait for Google script to load
@@ -207,6 +269,7 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setCalendarEvents([]);
     accessTokenRef.current = null;
+    clearStoredSession();
   };
 
   const loadCalendarEvents = () => {
