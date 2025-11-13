@@ -2,6 +2,7 @@ import { User, CalendarEvent, TimeSlot } from '../types';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Button } from './ui/button';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { EventBlock } from './EventBlock';
 
 interface CalendarViewProps {
   users: User[];
@@ -127,25 +128,14 @@ export function CalendarView({
                     >
                       {hasEvents && (
                         <div className="space-y-1 h-full">
-                          {allDayEvents.map((event) => {
-                            const userColor = getUserColor(event.userId);
-                            const isCurrentUser = event.userId === currentUserId;
-                            const displayText = isCurrentUser && event.title ? event.title : 'Busy';
-
-                            return (
-                              <div
-                                key={event.id}
-                                className="rounded p-2 text-white text-sm relative overflow-hidden flex items-center justify-center"
-                                style={{
-                                  backgroundColor: userColor,
-                                  opacity: 0.9,
-                                }}
-                                title={isCurrentUser && event.title ? event.title : undefined}
-                              >
-                                <span className="truncate">{displayText}</span>
-                              </div>
-                            );
-                          })}
+                          {allDayEvents.map((event) => (
+                            <EventBlock
+                              key={event.id}
+                              event={event}
+                              userColor={getUserColor(event.userId)}
+                              isCurrentUser={event.userId === currentUserId}
+                            />
+                          ))}
                         </div>
                       )}
                     </div>
@@ -175,25 +165,14 @@ export function CalendarView({
                       >
                         {hasEvents && (
                           <div className="space-y-1 h-full">
-                            {slotEvents.map((event) => {
-                              const userColor = getUserColor(event.userId);
-                              const isCurrentUser = event.userId === currentUserId;
-                              const displayText = isCurrentUser && event.title ? event.title : 'Busy';
-
-                              return (
-                                <div
-                                  key={event.id}
-                                  className="rounded p-2 text-white text-sm relative overflow-hidden flex items-center justify-center"
-                                  style={{
-                                    backgroundColor: userColor,
-                                    opacity: 0.9,
-                                  }}
-                                  title={isCurrentUser && event.title ? event.title : undefined}
-                                >
-                                  <span className="truncate">{displayText}</span>
-                                </div>
-                              );
-                            })}
+                            {slotEvents.map((event) => (
+                              <EventBlock
+                                key={event.id}
+                                event={event}
+                                userColor={getUserColor(event.userId)}
+                                isCurrentUser={event.userId === currentUserId}
+                              />
+                            ))}
                           </div>
                         )}
                       </div>

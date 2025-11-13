@@ -12,10 +12,14 @@
     "build:server": "cd server && npm run build",
     "install:all": "cd client && npm install && cd ../server && npm install"
   },
-  "keywords": ["calendar", "react", "typescript"],
+  "keywords": [
+    "calendar",
+    "react",
+    "typescript"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^9.2.1"
   }
 }

@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import type { User, CalendarEvent } from '@shared/types';
 
 dotenv.config();
 
@@ -22,7 +23,7 @@ app.get('/api/health', (req, res) => {
 
 // Root endpoint
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'Shared Calendar API',
     status: 'running'
   });
