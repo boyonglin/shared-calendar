@@ -4,6 +4,7 @@ import { UserList } from './components/UserList';
 import { InviteDialog } from './components/InviteDialog';
 import { User, CalendarEvent, TimeSlot } from './types';
 import { GoogleAuthProvider, useGoogleAuth } from './contexts/GoogleAuthContext';
+import { CalendarProviderWrapper, useCalendar } from './contexts/CalendarContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,7 +50,8 @@ const mockEvents: CalendarEvent[] = [
 ];
 
 function AppContent() {
-  const { user, calendarEvents, isLoadingEvents, isGoogleLoaded, signOut, loadCalendarEvents } = useGoogleAuth();
+  const { user, isGoogleLoaded, signOut } = useGoogleAuth();
+  const { events: calendarEvents, isLoading: isLoadingEvents, refreshEvents } = useCalendar();
 
   // Create current user from Google account
   const currentUser: User | null = user ? {
@@ -69,22 +71,24 @@ function AppContent() {
   });
 
   // Convert Google Calendar events to our CalendarEvent format
-  const googleCalendarEvents: CalendarEvent[] = calendarEvents.map(event => {
-    // All-day events use 'date' instead of 'dateTime'
-    const isAllDay = !!event.start?.date && !event.start?.dateTime;
-    const startStr = event.start?.dateTime || event.start?.date;
-    const endStr = event.end?.dateTime || event.end?.date;
-    return {
-      id: event.id,
-      userId: '1', // Current user's events
-      start: startStr ? new Date(startStr) : new Date(),
-      end: endStr ? new Date(endStr) : new Date(),
-      title: event.summary || '(No title)',
-      isAllDay: isAllDay,
-    };
-  });
+  // Note: CalendarContext now returns CalendarEvent[], so we might not need conversion if the provider handles it.
+  // But if the provider returns raw events, we need to check. 
+  // Our CalendarProvider interface returns CalendarEvent[], so we can use them directly.
+  const googleCalendarEvents = calendarEvents;
 
   // Combine Google events with mock events
+  // If using MockCalendarProvider, it returns mock events.
+  // If using GoogleCalendarProvider, it returns Google events.
+  // So we just use googleCalendarEvents (which are now just events from the provider).
+  // However, the original code combined them. 
+  // If we want to keep the "mock events" always visible even when logged in (as per original code logic?),
+  // the original code was: const allEvents = [...googleCalendarEvents, ...mockEvents];
+  // But wait, mockEvents were defined at the top level.
+  // If I am logged in, I probably only want my Google events + maybe the other users' mock events?
+  // The original code had mockEvents for users 2, 3, 4.
+  // And googleCalendarEvents for user 1 (current user).
+  // So yes, we should combine them.
+
   const allEvents = [...googleCalendarEvents, ...mockEvents];
   const allUsers = currentUser ? [currentUser, ...mockUsers] : mockUsers;
 
@@ -152,7 +156,7 @@ function AppContent() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuItem
-                      onClick={() => loadCalendarEvents()}
+                      onClick={() => refreshEvents()}
                       className="cursor-pointer"
                       disabled={isLoadingEvents}
                     >
@@ -213,7 +217,9 @@ function AppContent() {
 export default function App() {
   return (
     <GoogleAuthProvider>
-      <AppContent />
+      <CalendarProviderWrapper>
+        <AppContent />
+      </CalendarProviderWrapper>
     </GoogleAuthProvider>
   );
 }

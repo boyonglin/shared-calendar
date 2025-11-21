@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { GoogleUser, GoogleCalendarEvent, GoogleAuthContextType } from '../types/google';
+import { GoogleUser, GoogleAuthContextType } from '../types/google';
 import { clearStoredSession } from '../utils/googleStorage';
 import { GoogleSignInButton } from '../components/GoogleSignInButton';
 
@@ -7,10 +7,12 @@ const GoogleAuthContext = createContext<GoogleAuthContextType | undefined>(undef
 
 export function GoogleAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<GoogleUser | null>(null);
-  const [calendarEvents, setCalendarEvents] = useState<GoogleCalendarEvent[]>([]);
-  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(true); // No longer waiting for Google script
-  const [isGoogleLoaded, setIsGoogleLoaded] = useState(true); // Not needed for server flow
+  // const [calendarEvents, setCalendarEvents] = useState<GoogleCalendarEvent[]>([]);
+  // const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+  // const [isInitialized, setIsInitialized] = useState(true); // No longer waiting for Google script
+  // const [isGoogleLoaded, setIsGoogleLoaded] = useState(true); // Not needed for server flow
+  const isInitialized = true;
+  const isGoogleLoaded = true;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -27,7 +29,8 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
         .then(data => {
           setUser(data);
           // Also fetch events
-          loadCalendarEvents(userId);
+          // Also fetch events
+          // loadCalendarEvents(userId); // Moved to CalendarContext
         })
         .catch(err => console.error('Failed to fetch user:', err));
     }
@@ -40,37 +43,22 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = () => {
     setUser(null);
-    setCalendarEvents([]);
+    // setCalendarEvents([]);
     clearStoredSession();
   };
 
-  const loadCalendarEvents = async (userId?: string) => {
-    const targetUserId = userId || user?.profile.sub; // Assuming sub is the ID
-    if (!targetUserId) return;
-
-    setIsLoadingEvents(true);
-    try {
-      const res = await fetch(`http://localhost:3001/api/calendar/${targetUserId}/events`);
-      if (!res.ok) throw new Error('Failed to fetch events');
-      const events = await res.json();
-      setCalendarEvents(events);
-    } catch (error) {
-      console.error('Error loading calendar events:', error);
-    } finally {
-      setIsLoadingEvents(false);
-    }
-  };
+  // Event fetching logic moved to CalendarContext
 
   return (
     <GoogleAuthContext.Provider
       value={{
         user,
-        calendarEvents,
-        isLoadingEvents,
+        // calendarEvents,
+        // isLoadingEvents,
         isGoogleLoaded,
         signIn: handleSignIn,
         signOut,
-        loadCalendarEvents
+        // loadCalendarEvents
       }}
     >
       <GoogleSignInButton
