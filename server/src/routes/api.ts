@@ -47,8 +47,8 @@ router.get(
       // Get all calendar accounts for this user (could be multiple providers)
       // For now, we'll get all accounts since we don't have a proper user table
       // In production, you'd link calendar_accounts to a users table
-      const stmt = db.prepare('SELECT user_id, provider FROM calendar_accounts');
-      const accounts = stmt.all() as CalendarAccount[];
+      const stmt = db.prepare('SELECT user_id, provider FROM calendar_accounts WHERE user_id = ?');
+      const accounts = stmt.all(req.params.primaryUserId) as CalendarAccount[];
 
       if (accounts.length === 0) {
         res.json([]);
@@ -73,7 +73,7 @@ router.get(
           if (events && Array.isArray(events)) {
             const taggedEvents = events.map((event) => ({
               ...event,
-              userId: '1', // Map all to current user (userId '1' in frontend)
+              userId: account.user_id, // Map to actual account user_id
             }));
 
             allEvents.push(...taggedEvents);

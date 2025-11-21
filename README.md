@@ -25,22 +25,6 @@ This project uses [Pixi](https://prefix.dev/) for environment management and tas
 - **Lint Code**: `pixi run lint`
 - **Format Code**: `pixi run format`
 
-### Project Structure
-
-- `client/`: React frontend
-- `server/`: Express backend
-- `shared/`: Shared types and utilities
-
-# Configure server/.env with your Google Credentials
-# GOOGLE_CLIENT_ID=...
-# GOOGLE_CLIENT_SECRET=...
-
-# Start dev servers
-npm run dev
-# → Client: http://localhost:5173
-# → Server: http://localhost:3001
-```
-
 ## Google OAuth Setup
 
 1. [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials
