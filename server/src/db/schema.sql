@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS calendar_accounts (
   provider TEXT NOT NULL CHECK(provider IN ('google', 'icloud', 'outlook')),
   external_email TEXT NOT NULL,
   access_token TEXT NOT NULL,
-  refresh_token TEXT NOT NULL,
+  refresh_token TEXT,
   metadata TEXT, -- JSON string for extra data
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP

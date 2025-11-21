@@ -2,18 +2,21 @@ import { DAVClient } from 'tsdav';
 import { db } from '../db';
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
+import * as ical from 'node-ical';
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default-key-must-be-32-bytes-long!'; // Fallback for dev
+// Validate encryption key exists and is exactly 32 bytes
+if (!process.env.ENCRYPTION_KEY) {
+  throw new Error('ENCRYPTION_KEY environment variable is required');
+}
+
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 const IV_LENGTH = 16;
 
-// Ensure key is 32 bytes
+// Validate encryption key is exactly 32 bytes
 const getEncryptionKey = () => {
   const key = Buffer.from(ENCRYPTION_KEY);
   if (key.length !== 32) {
-    // Pad or truncate to 32 bytes if needed for dev fallback
-    const newKey = Buffer.alloc(32);
-    key.copy(newKey);
-    return newKey;
+    throw new Error(`ENCRYPTION_KEY must be exactly 32 bytes, got ${key.length} bytes`);
   }
   return key;
 };
@@ -66,7 +69,7 @@ export const icloudAuthService = {
       const stmt = db.prepare(`
                 INSERT INTO calendar_accounts (
                     user_id, provider, external_email, access_token, refresh_token, metadata, updated_at
-                ) VALUES (?, 'icloud', ?, ?, '', ?, CURRENT_TIMESTAMP)
+                ) VALUES (?, 'icloud', ?, ?, NULL, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(user_id) DO UPDATE SET
                     access_token = excluded.access_token,
                     updated_at = CURRENT_TIMESTAMP
@@ -143,7 +146,6 @@ export const icloudAuthService = {
         for (const obj of objects) {
           if (obj.data) {
             // obj.data contains the iCal string, parse it with node-ical
-            const ical = require('node-ical');
             const parsed = ical.parseICS(obj.data);
 
             for (const key in parsed) {

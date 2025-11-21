@@ -7,7 +7,7 @@ import { calendarApi, RawCalendarEvent } from './api/calendar';
  * (Google, iCloud, etc.) for the authenticated user.
  */
 export class UnifiedCalendarProvider implements CalendarProvider {
-  constructor(private userId: string) { }
+  constructor(private userId: string) {}
 
   async getEvents(start: Date, end: Date): Promise<CalendarEvent[]> {
     try {
