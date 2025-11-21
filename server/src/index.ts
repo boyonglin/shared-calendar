@@ -1,13 +1,14 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import type { User, CalendarEvent } from '@shared/types';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+
+import authRoutes from './routes/auth';
+import apiRoutes from './routes/api';
 
 // Middleware
 app.use(cors({
@@ -15,6 +16,9 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+
+app.use('/api/auth', authRoutes);
+app.use('/api', apiRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -29,6 +33,9 @@ app.get('/', (req, res) => {
   });
 });
 
+import { initDatabase } from './db';
+
 app.listen(PORT, () => {
+  initDatabase();
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
