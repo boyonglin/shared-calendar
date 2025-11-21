@@ -139,12 +139,13 @@ export const googleAuthService = {
     // Use provided dates or default to now + 4 weeks
     const now = new Date();
     const defaultTimeMin = now.toISOString();
-    const defaultTimeMax = new Date(now.setDate(now.getDate() + 28)).toISOString();
+    const defaultTimeMax = new Date(now.getTime());
+    defaultTimeMax.setDate(defaultTimeMax.getDate() + 28);
 
     const res = await calendar.events.list({
       calendarId: 'primary',
       timeMin: timeMin?.toISOString() || defaultTimeMin,
-      timeMax: timeMax?.toISOString() || defaultTimeMax,
+      timeMax: timeMax?.toISOString() || defaultTimeMax.toISOString(),
       singleEvents: true,
       orderBy: 'startTime',
     });

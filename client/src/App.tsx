@@ -126,10 +126,10 @@ const mockEvents: CalendarEvent[] = [
   },
 ];
 
-function AppContent({ 
-  weekStart, 
-  setWeekStart 
-}: { 
+function AppContent({
+  weekStart,
+  setWeekStart,
+}: {
   weekStart: Date;
   setWeekStart: (date: Date) => void;
 }) {
@@ -303,10 +303,10 @@ export default function App() {
   );
 }
 
-function AppContentWithWeek({ 
-  weekStart, 
-  setWeekStart 
-}: { 
+function AppContentWithWeek({
+  weekStart,
+  setWeekStart,
+}: {
   weekStart: Date;
   setWeekStart: (date: Date) => void;
 }) {

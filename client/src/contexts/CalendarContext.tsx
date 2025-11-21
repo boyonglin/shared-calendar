@@ -42,12 +42,12 @@ export function CalendarProviderWrapper({
       // Calculate date range based on weekStart prop or use default range
       let start: Date;
       let end: Date;
-      
+
       if (weekStart) {
         // Fetch events for the current week + 2 weeks before and 2 weeks after for better UX
         start = new Date(weekStart);
         start.setDate(start.getDate() - 14); // 2 weeks before
-        
+
         end = new Date(weekStart);
         end.setDate(end.getDate() + 28); // 4 weeks after (current week + 3 more)
       } else {

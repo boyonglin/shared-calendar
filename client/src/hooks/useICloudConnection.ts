@@ -20,7 +20,9 @@ export interface UseICloudConnectionProps {
  * Custom hook for managing iCloud calendar connection
  * @param refreshEvents - Function to refresh calendar events from context
  */
-export function useICloudConnection({ refreshEvents }: UseICloudConnectionProps): UseICloudConnectionReturn {
+export function useICloudConnection({
+  refreshEvents,
+}: UseICloudConnectionProps): UseICloudConnectionReturn {
   const [showICloudModal, setShowICloudModal] = useState(false);
   const [iCloudStatus, setICloudStatus] = useState<ICloudStatus>({ connected: false });
   const [showICloudSubmenu, setShowICloudSubmenu] = useState(false);
