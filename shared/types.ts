@@ -18,3 +18,13 @@ export interface TimeSlot {
   date: Date;
   hour: number;
 }
+
+export interface CalendarAccount {
+  id: number;
+  userId: string;
+  provider: 'google' | 'icloud' | 'outlook';
+  externalEmail: string;
+  metadata?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}

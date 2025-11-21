@@ -13,3 +13,9 @@ credentials.json
 
 # Cache
 .vite/
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+*.sqlite

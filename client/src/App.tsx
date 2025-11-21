@@ -152,7 +152,7 @@ function AppContent() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuItem
-                      onClick={loadCalendarEvents}
+                      onClick={() => loadCalendarEvents()}
                       className="cursor-pointer"
                       disabled={isLoadingEvents}
                     >
