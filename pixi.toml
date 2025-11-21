@@ -1,0 +1,31 @@
+[workspace]
+authors = ["Bo-Yong <poerevan9@gmail.com>"]
+channels = ["conda-forge"]
+name = "shared-calendar"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+# Composite tasks
+install = { depends-on = ["install-client", "install-server"] }
+dev = { depends-on = ["dev-client", "dev-server"] }
+build = { depends-on = ["build-client", "build-server"] }
+lint = { depends-on = ["lint-client", "lint-server"] }
+format = { depends-on = ["format-client", "format-server"] }
+
+# Client tasks
+install-client = { cmd = "npm install", cwd = "client" }
+dev-client = { cmd = "npm run dev", cwd = "client" }
+build-client = { cmd = "npm run build", cwd = "client" }
+lint-client = { cmd = "npm run lint", cwd = "client" }
+format-client = { cmd = "npm run format", cwd = "client" }
+
+# Server tasks
+install-server = { cmd = "npm install", cwd = "server" }
+dev-server = { cmd = "npm run dev", cwd = "server" }
+build-server = { cmd = "npm run build", cwd = "server" }
+lint-server = { cmd = "npm run lint", cwd = "server" }
+format-server = { cmd = "npm run format", cwd = "server" }
+
+[dependencies]
+nodejs = ">=24.9.0,<24.10"

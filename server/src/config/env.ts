@@ -23,7 +23,7 @@ export function validateEnv(): Env {
     return envSchema.parse(process.env);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const missingVars = error.errors.map((err) => `  - ${err.path.join('.')}: ${err.message}`);
+      const missingVars = (error as any).errors.map((err: any) => `  - ${err.path.join('.')}: ${err.message}`);
       console.error('❌ Environment variable validation failed:\n' + missingVars.join('\n'));
       throw new Error('Invalid environment variables. Check your .env file.');
     }

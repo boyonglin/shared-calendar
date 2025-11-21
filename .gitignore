@@ -1,8 +1,6 @@
 # Dependencies
 node_modules/
 
-# Environment variables
-.env
 
 # Build outputs
 client/build/
@@ -19,3 +17,13 @@ credentials.json
 *.db-shm
 *.db-wal
 *.sqlite
+
+# pixi environments
+.pixi/
+!.pixi/config.toml
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+!.env.example

@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { googleAuthService } from '../services/googleAuth';
 import { icloudAuthService } from '../services/icloudAuth';
 import { validateICloudCredentials } from '../middleware/validation';
@@ -6,12 +6,12 @@ import { env } from '../config/env';
 
 const router = express.Router();
 
-router.get('/google', (req, res) => {
+router.get('/google', (req: Request, res: Response) => {
   const url = googleAuthService.getAuthUrl();
   res.redirect(url);
 });
 
-router.get('/google/callback', async (req, res) => {
+router.get('/google/callback', async (req: Request, res: Response) => {
   const { code } = req.query;
 
   if (!code || typeof code !== 'string') {
@@ -35,7 +35,7 @@ router.get('/google/callback', async (req, res) => {
   }
 });
 
-router.post('/icloud', validateICloudCredentials, async (req, res) => {
+router.post('/icloud', validateICloudCredentials, async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   try {

@@ -9,18 +9,27 @@ A calendar sharing application with Google Calendar and iCloud Calendar integrat
 - **Auth**: Server-side OAuth via Google APIs (with Refresh Token support)
 - **Security**: Helmet, Rate Limiting, Input Validation, Environment Variable Validation
 
-## Quick Start
+## Development with Pixi
 
-```bash
-# Install root dependencies (concurrently, etc.)
-npm install
+This project uses [Pixi](https://prefix.dev/) for environment management and task execution.
 
-# Install client & server dependencies
-npm run install:all
+### Prerequisites
 
-# Set up Environment Variables
-cp client/.env.example client/.env
-cp server/.env.example server/.env
+- [Pixi](https://prefix.dev/) installed.
+
+### Commands
+
+- **Install Dependencies**: `pixi run install`
+- **Build for Production**: `pixi run build`
+- **Start Development Server**: `pixi run dev`
+- **Lint Code**: `pixi run lint`
+- **Format Code**: `pixi run format`
+
+### Project Structure
+
+- `client/`: React frontend
+- `server/`: Express backend
+- `shared/`: Shared types and utilities
 
 # Configure server/.env with your Google Credentials
 # GOOGLE_CLIENT_ID=...
