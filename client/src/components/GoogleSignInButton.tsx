@@ -11,7 +11,11 @@ interface GoogleSignInButtonProps {
  * Google Sign-In button component
  * Renders a custom button that triggers the OAuth flow
  */
-export function GoogleSignInButton({ isInitialized, isSignedIn, onSignIn }: GoogleSignInButtonProps) {
+export function GoogleSignInButton({
+  isInitialized,
+  isSignedIn,
+  onSignIn,
+}: GoogleSignInButtonProps) {
   useEffect(() => {
     if (!isInitialized || isSignedIn || !window.google) return;
 
@@ -23,7 +27,8 @@ export function GoogleSignInButton({ isInitialized, isSignedIn, onSignIn }: Goog
 
     // Create a custom button that triggers OAuth flow
     const button = document.createElement('button');
-    button.className = 'inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2';
+    button.className =
+      'inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2';
     button.innerHTML = `
       <svg xmlns="http://www.w3.org/2000/svg" width="${GOOGLE_ICON_SIZE}" height="${GOOGLE_ICON_SIZE}" viewBox="0 0 ${GOOGLE_ICON_VIEWBOX_SIZE} ${GOOGLE_ICON_VIEWBOX_SIZE}">
         <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>

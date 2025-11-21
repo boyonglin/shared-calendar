@@ -43,12 +43,9 @@ export interface StoredSession {
 
 export interface GoogleAuthContextType {
   user: GoogleUser | null;
-  calendarEvents: GoogleCalendarEvent[];
-  isLoadingEvents: boolean;
   isGoogleLoaded: boolean;
   signIn: () => void;
   signOut: () => void;
-  loadCalendarEvents: () => void;
 }
 
 // ============================================================================

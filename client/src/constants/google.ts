@@ -35,6 +35,7 @@ export const STORAGE_KEYS = {
 } as const;
 
 // Google OAuth configuration
-export const GOOGLE_OAUTH_SCOPE = 'openid profile email https://www.googleapis.com/auth/calendar.readonly';
+export const GOOGLE_OAUTH_SCOPE =
+  'openid profile email https://www.googleapis.com/auth/calendar.readonly';
 export const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
 export const GOOGLE_CALENDAR_API_BASE = 'https://www.googleapis.com/calendar/v3';

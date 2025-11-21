@@ -1,59 +1,82 @@
 # Shared Calendar
 
-This is a calendar sharing application with Google Calendar integration for viewing team availability and scheduling meetings.
+A calendar sharing application with Google Calendar and iCloud Calendar integration for viewing team availability and scheduling meetings.
 
 ## Stack
 
 - **Frontend**: React + TypeScript + Vite + Tailwind + shadcn/ui
-- **Backend**: Node.js + Express (minimal - health check only)
-- **Auth**: Client-side OAuth via Google Identity Services
+- **Backend**: Node.js + Express + SQLite (Better-SQLite3)
+- **Auth**: Server-side OAuth via Google APIs (with Refresh Token support)
+- **Security**: Helmet, Rate Limiting, Input Validation, Environment Variable Validation
 
-## Quick Start
+## Development with Pixi
 
-```bash
-# Install root dependencies (concurrently, etc.)
-npm install
+This project uses [Pixi](https://prefix.dev/) for environment management and task execution.
 
-# Install client & server dependencies
-npm run install:all
+### Prerequisites
 
-# Set up Google OAuth (client only)
-cp client/.env.example client/.env
-# Add your GOOGLE_CLIENT_ID to client/.env
+- [Pixi](https://prefix.dev/) installed.
 
-# Start dev servers
-npm run dev
-# → Client: http://localhost:5173
-# → Server: http://localhost:3001
-```
+### Commands
+
+- **Install Dependencies**: `pixi run install`
+- **Build for Production**: `pixi run build`
+- **Start Development Server**: `pixi run dev`
+- **Lint Code**: `pixi run lint`
+- **Format Code**: `pixi run format`
 
 ## Google OAuth Setup
 
 1. [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials
 2. Create **OAuth 2.0 Client ID** (Web application)
-   - Add **Authorized JavaScript origins**: `http://localhost:5173`
-   - Authorized redirect URIs can be left blank for client-side Google Identity button
+   - **Authorized JavaScript origins**: `http://localhost:5173`
+   - **Authorized redirect URIs**: `http://localhost:3001/api/auth/google/callback`
 3. Enable **Google Calendar API** in APIs & Services
 4. Configure OAuth consent screen
-   - Add your account as a test user while in testing mode
-   - For scopes beyond basic profile (e.g., Calendar API), additional verification may be required for sensitive scopes
-5. Copy **Client ID** → `client/.env` as `VITE_GOOGLE_CLIENT_ID`
+   - Add your account as a test user
+   - Required scopes: `.../auth/userinfo.profile`, `.../auth/userinfo.email`, `.../auth/calendar.readonly`, `.../auth/calendar.events`
+5. Copy **Client ID** and **Client Secret** → `server/.env`
 
-**Note**: This app uses client-side OAuth via Google Identity Services. The ID token provides basic profile information. For full Google Calendar API access with refresh tokens, a server-side component would be needed to securely store credentials.
+**Note**: This app uses server-side OAuth to securely store refresh tokens in a local SQLite database (`server/shared-calendar.db`). This allows the app to maintain access to your calendar even after the session expires.
+
+## iCloud Calendar Setup
+
+1. Go to [Apple ID Account Settings](https://appleid.apple.com/)
+2. Sign in with your Apple ID
+3. Navigate to **Security** → **App-Specific Passwords**
+4. Generate a new app-specific password for this application
+5. Use your iCloud email and the generated password when connecting in the app
+
+**Important**: Use an app-specific password, not your regular Apple ID password.
 
 ## Project Structure
 
 ```
 /client         Frontend (React + Vite)
-/server         Backend (Express - minimal)
+/server         Backend (Express + SQLite)
+  /src
+    /config       Environment configuration with Zod validation
+    /middleware   Security & validation middleware
+    /routes       API routes (auth, calendar)
+    /services     Calendar providers (Google, iCloud)
 /shared         Shared TypeScript types
 ```
 
 ## Features
 
 ✅ Google Calendar OAuth & integration  
-✅ View your calendar events  
+✅ iCloud Calendar integration (via CalDAV)  
+✅ View events from multiple calendar accounts  
+✅ Filter calendar view by team members  
 🚧 Create calendar invites  
 🚧 Multi-user calendar sharing  
-🚧 Multi-platform calendar integrations  
 🚧 Cross-timezone event synchronization
+
+## Security Features
+
+- **Helmet**: Content Security Policy, XSS protection
+- **Rate Limiting**: API endpoint protection (100 req/15min, auth: 50 req/15min)
+- **Input Validation**: express-validator on all API endpoints
+- **Environment Validation**: Zod schema validation on startup
+- **Password Encryption**: AES-256-CBC encryption for iCloud credentials
+- **Error Boundaries**: Graceful error handling in React

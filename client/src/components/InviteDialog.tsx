@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
@@ -16,7 +23,13 @@ interface InviteDialogProps {
   onSendInvite: (title: string, description: string, attendees: string[]) => void;
 }
 
-export function InviteDialog({ isOpen, timeSlot, users, onClose, onSendInvite }: InviteDialogProps) {
+export function InviteDialog({
+  isOpen,
+  timeSlot,
+  users,
+  onClose,
+  onSendInvite,
+}: InviteDialogProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [selectedAttendees, setSelectedAttendees] = useState<string[]>([]);
@@ -30,10 +43,8 @@ export function InviteDialog({ isOpen, timeSlot, users, onClose, onSendInvite }:
   }, [isOpen]);
 
   const handleAttendeeToggle = (userId: string) => {
-    setSelectedAttendees(prev =>
-      prev.includes(userId)
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId]
+    setSelectedAttendees((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
     );
   };
 
@@ -132,8 +143,8 @@ export function InviteDialog({ isOpen, timeSlot, users, onClose, onSendInvite }:
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-blue-800 text-sm">
-              <strong>Note:</strong> In production, this will send calendar invites via Google Calendar, 
-              Outlook, or other integrated calendar platforms.
+              <strong>Note:</strong> In production, this will send calendar invites via Google
+              Calendar, Outlook, or other integrated calendar platforms.
             </p>
           </div>
         </div>

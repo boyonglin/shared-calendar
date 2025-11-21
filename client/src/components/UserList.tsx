@@ -36,9 +36,7 @@ export function UserList({ users, selectedUsers, currentUserId, onUserToggle }: 
               <div className="flex-1">
                 <div className="text-gray-900">
                   {user.name}
-                  {user.id === currentUserId && (
-                    <span className="text-gray-500 ml-1">(You)</span>
-                  )}
+                  {user.id === currentUserId && <span className="text-gray-500 ml-1">(You)</span>}
                 </div>
                 <div className="text-gray-500 text-sm">{user.email}</div>
               </div>
