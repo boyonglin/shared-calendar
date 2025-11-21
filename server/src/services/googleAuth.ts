@@ -68,9 +68,9 @@ export const googleAuthService = {
       userId,
       userInfo.email,
       tokens.access_token,
-      tokens.refresh_token || null, // This might fail if it's null and we don't have an old one, but schema says NOT NULL.
-      // We need to ensure we get a refresh token or handle this.
-      // For now, let's assume 'prompt: consent' works.
+      tokens.refresh_token || null,
+      // Schema allows NULL (required for iCloud), but we prefer having one for Google.
+      // We force 'prompt: consent' to try and get one.
       metadata,
     );
 

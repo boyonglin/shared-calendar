@@ -14,9 +14,15 @@ const IV_LENGTH = 16;
 
 // Validate encryption key is exactly 32 bytes
 const getEncryptionKey = () => {
+  // If the key is a hex string (64 characters), decode it
+  if (ENCRYPTION_KEY.length === 64 && /^[0-9a-fA-F]+$/.test(ENCRYPTION_KEY)) {
+    return Buffer.from(ENCRYPTION_KEY, 'hex');
+  }
+
+  // Otherwise treat as raw string (legacy support)
   const key = Buffer.from(ENCRYPTION_KEY);
   if (key.length !== 32) {
-    throw new Error(`ENCRYPTION_KEY must be exactly 32 bytes, got ${key.length} bytes`);
+    throw new Error(`ENCRYPTION_KEY must be exactly 32 bytes (or 64 hex characters), got ${key.length} bytes`);
   }
   return key;
 };
