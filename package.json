@@ -1,16 +1,18 @@
 {
   "name": "shared-calendar",
   "version": "1.0.0",
+  "type": "module",
   "description": "Shared calendar application - monorepo",
   "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
-    "dev:client": "cd client && npm run dev",
-    "dev:server": "cd server && npm run dev",
-    "build": "npm run build:client && npm run build:server",
-    "build:client": "cd client && npm run build",
-    "build:server": "cd server && npm run build",
-    "install:all": "cd client && npm install && cd ../server && npm install"
+    "dev": "concurrently -k -n \"CLIENT,SERVER\" -c \"cyan.bold,green.bold\" \"npm run dev --workspace=client\" \"npm run dev --workspace=server\"",
+    "build": "npm run build --workspaces",
+    "lint": "eslint .",
+    "format": "prettier --write ."
   },
   "keywords": [
     "calendar",
@@ -20,6 +22,15 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "concurrently": "^9.2.1"
-  }
+    "@typescript-eslint/eslint-plugin": "^8.47.0",
+    "@typescript-eslint/parser": "^8.47.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "prettier": "^3.6.2"
+  },
+  "dependencies": {}
 }
