@@ -12,6 +12,7 @@ export interface GoogleProfile {
 export interface GoogleUser {
   idToken: string;
   profile: GoogleProfile;
+  provider?: string;
 }
 
 export interface GoogleCalendarEvent {
@@ -43,12 +44,9 @@ export interface StoredSession {
 
 export interface GoogleAuthContextType {
   user: GoogleUser | null;
-  calendarEvents: GoogleCalendarEvent[];
-  isLoadingEvents: boolean;
   isGoogleLoaded: boolean;
   signIn: () => void;
   signOut: () => void;
-  loadCalendarEvents: () => void;
 }
 
 // ============================================================================
@@ -60,13 +58,13 @@ declare global {
     google?: {
       accounts: {
         id: {
-          initialize: (config: any) => void;
+          initialize: (config: unknown) => void;
           prompt: () => void;
-          renderButton: (element: HTMLElement, options: any) => void;
+          renderButton: (element: HTMLElement, options: unknown) => void;
           disableAutoSelect: () => void;
         };
         oauth2: {
-          initTokenClient: (config: any) => any;
+          initTokenClient: (config: unknown) => unknown;
         };
       };
     };

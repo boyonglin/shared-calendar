@@ -1,5 +1,13 @@
-import { GoogleUser, GoogleCalendarEvent, StoredSession } from '../types/google';
-import { STORAGE_KEYS, TOKEN_EXPIRY_BUFFER_MS, TOKEN_EXPIRY_DURATION_MS } from '../constants/google';
+import type {
+  GoogleUser,
+  GoogleCalendarEvent,
+  StoredSession,
+} from "../types/google";
+import {
+  STORAGE_KEYS,
+  TOKEN_EXPIRY_BUFFER_MS,
+  TOKEN_EXPIRY_DURATION_MS,
+} from "../constants/google";
 
 /**
  * Restore Google session from localStorage
