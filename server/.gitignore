@@ -1,0 +1,5 @@
+
+# SQLite database files (contain sensitive user data)
+*.db
+*.db-shm
+*.db-wal
