@@ -4,6 +4,7 @@ import { UserList } from "./components/UserList";
 import { InviteDialog } from "./components/InviteDialog";
 import { ICloudConnectModal } from "./components/ICloudConnectModal";
 import { UserProfileDropdown } from "./components/UserProfileDropdown";
+import { GoogleSignInButton } from "./components/GoogleSignInButton";
 import type { User, CalendarEvent, TimeSlot } from "./types";
 import {
   GoogleAuthProvider,
@@ -170,7 +171,7 @@ function AppContent({
   weekStart: Date;
   setWeekStart: (date: Date) => void;
 }) {
-  const { user, isGoogleLoaded, signOut } = useGoogleAuth();
+  const { user, signIn, signOut } = useGoogleAuth();
   const {
     events: calendarEvents,
     isLoading: isLoadingEvents,
@@ -226,24 +227,11 @@ function AppContent({
   }, [user]);
 
   // Convert Google Calendar events to our CalendarEvent format
-  // Note: CalendarContext now returns CalendarEvent[], so we might not need conversion if the provider handles it.
-  // But if the provider returns raw events, we need to check.
   // Our CalendarProvider interface returns CalendarEvent[], so we can use them directly.
   const googleCalendarEvents = calendarEvents;
 
   // Combine Google events with mock events
-  // If using MockCalendarProvider, it returns mock events.
-  // If using GoogleCalendarProvider, it returns Google events.
-  // So we just use googleCalendarEvents (which are now just events from the provider).
-  // However, the original code combined them.
-  // If we want to keep the "mock events" always visible even when logged in (as per original code logic?),
-  // the original code was: const allEvents = [...googleCalendarEvents, ...mockEvents];
-  // But wait, mockEvents were defined at the top level.
-  // If I am logged in, I probably only want my Google events + maybe the other users' mock events?
-  // The original code had mockEvents for users 2, 3, 4.
-  // And googleCalendarEvents for user 1 (current user).
-  // So yes, we should combine them.
-
+  // We combine the provider events (current user) with the mock events (other users)
   const allEvents = [...googleCalendarEvents, ...mockEvents];
   const allUsers = currentUser ? [currentUser, ...mockUsers] : mockUsers;
 
@@ -293,17 +281,7 @@ function AppContent({
             </div>
             <div className="flex items-center gap-3">
               {!user ? (
-                <div
-                  id="g_id_onload_signin"
-                  className="flex justify-center min-h-[40px]"
-                >
-                  {!isGoogleLoaded && (
-                    <div className="flex items-center gap-2 text-gray-500">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                      <span className="text-sm">Loading...</span>
-                    </div>
-                  )}
-                </div>
+                <GoogleSignInButton onSignIn={signIn} />
               ) : (
                 currentUser && (
                   <UserProfileDropdown
@@ -376,21 +354,11 @@ export default function App() {
   return (
     <GoogleAuthProvider>
       <CalendarProviderWrapper weekStart={currentWeekStart}>
-        <AppContentWithWeek
+        <AppContent
           weekStart={currentWeekStart}
           setWeekStart={setCurrentWeekStart}
         />
       </CalendarProviderWrapper>
     </GoogleAuthProvider>
   );
-}
-
-function AppContentWithWeek({
-  weekStart,
-  setWeekStart,
-}: {
-  weekStart: Date;
-  setWeekStart: (date: Date) => void;
-}) {
-  return <AppContent weekStart={weekStart} setWeekStart={setWeekStart} />;
 }

@@ -42,7 +42,6 @@ router.get(
   validatePrimaryUserId,
   async (req: Request, res: Response) => {
     try {
-      // const primaryUserId = req.params.primaryUserId;
       const timeMin = req.query.timeMin
         ? new Date(req.query.timeMin as string)
         : undefined;
@@ -54,9 +53,9 @@ router.get(
       // For now, we'll get all accounts since we don't have a proper user table
       // In production, you'd link calendar_accounts to a users table
       const stmt = db.prepare(
-        "SELECT user_id, provider FROM calendar_accounts",
+        "SELECT user_id, provider FROM calendar_accounts WHERE user_id = ?",
       );
-      const accounts = stmt.all() as CalendarAccount[];
+      const accounts = stmt.all(req.params.primaryUserId) as CalendarAccount[];
 
       if (accounts.length === 0) {
         res.json([]);

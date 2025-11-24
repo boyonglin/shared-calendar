@@ -6,7 +6,6 @@ import {
   restoreSession,
   saveUserSession,
 } from "../utils/googleStorage";
-import { GoogleSignInButton } from "../components/GoogleSignInButton";
 import { authApi } from "@/services/api/auth";
 import { API_BASE_URL } from "@/config/api";
 
@@ -19,12 +18,6 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
     const storedSession = restoreSession();
     return storedSession ? storedSession.user : null;
   });
-  // const [calendarEvents, setCalendarEvents] = useState<GoogleCalendarEvent[]>([]);
-  // const [isLoadingEvents, setIsLoadingEvents] = useState(false);
-  // const [isInitialized, setIsInitialized] = useState(true); // No longer waiting for Google script
-  // const [isGoogleLoaded, setIsGoogleLoaded] = useState(true); // Not needed for server flow
-  const isInitialized = true;
-  const isGoogleLoaded = true;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -70,7 +63,6 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = () => {
     setUser(null);
-    // setCalendarEvents([]);
     clearStoredSession();
   };
 
@@ -80,19 +72,10 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
     <GoogleAuthContext.Provider
       value={{
         user,
-        // calendarEvents,
-        // isLoadingEvents,
-        isGoogleLoaded,
         signIn: handleSignIn,
         signOut,
-        // loadCalendarEvents
       }}
     >
-      <GoogleSignInButton
-        isInitialized={isInitialized}
-        isSignedIn={!!user}
-        onSignIn={handleSignIn}
-      />
       {children}
     </GoogleAuthContext.Provider>
   );
