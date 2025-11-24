@@ -1,6 +1,6 @@
-import { User } from '../types';
-import { Checkbox } from './ui/checkbox';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import type { User } from "../types";
+import { Checkbox } from "./ui/checkbox";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 interface UserListProps {
   users: User[];
@@ -9,7 +9,12 @@ interface UserListProps {
   onUserToggle: (userId: string) => void;
 }
 
-export function UserList({ users, selectedUsers, currentUserId, onUserToggle }: UserListProps) {
+export function UserList({
+  users,
+  selectedUsers,
+  currentUserId,
+  onUserToggle,
+}: UserListProps) {
   return (
     <Card>
       <CardHeader>

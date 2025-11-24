@@ -1,4 +1,4 @@
-import { CalendarEvent } from '../types';
+import type { CalendarEvent } from "../types";
 
 interface EventBlockProps {
   event: CalendarEvent;
@@ -6,8 +6,12 @@ interface EventBlockProps {
   isCurrentUser: boolean;
 }
 
-export function EventBlock({ event, userColor, isCurrentUser }: EventBlockProps) {
-  const displayText = isCurrentUser && event.title ? event.title : 'Busy';
+export function EventBlock({
+  event,
+  userColor,
+  isCurrentUser,
+}: EventBlockProps) {
+  const displayText = isCurrentUser && event.title ? event.title : "Busy";
 
   return (
     <div

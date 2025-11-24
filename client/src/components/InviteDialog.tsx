@@ -1,39 +1,59 @@
-import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
-import { Checkbox } from './ui/checkbox';
-import { Label } from './ui/label';
-import { TimeSlot, User } from '../types';
-import { Calendar, Clock } from 'lucide-react';
+import { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { Checkbox } from "./ui/checkbox";
+import { Label } from "./ui/label";
+import type { TimeSlot, User } from "../types";
+import { Calendar, Clock } from "lucide-react";
 
 interface InviteDialogProps {
   isOpen: boolean;
   timeSlot: TimeSlot | null;
   users: User[];
   onClose: () => void;
-  onSendInvite: (title: string, description: string, attendees: string[]) => void;
+  onSendInvite: (
+    title: string,
+    description: string,
+    attendees: string[],
+  ) => void;
 }
 
-export function InviteDialog({ isOpen, timeSlot, users, onClose, onSendInvite }: InviteDialogProps) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+export function InviteDialog({
+  isOpen,
+  timeSlot,
+  users,
+  onClose,
+  onSendInvite,
+}: InviteDialogProps) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [selectedAttendees, setSelectedAttendees] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isOpen) {
-      setTitle('');
-      setDescription('');
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTitle("");
+
+      setDescription("");
+
       setSelectedAttendees([]);
     }
   }, [isOpen]);
 
   const handleAttendeeToggle = (userId: string) => {
-    setSelectedAttendees(prev =>
+    setSelectedAttendees((prev) =>
       prev.includes(userId)
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId]
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId],
     );
   };
 
@@ -43,15 +63,15 @@ export function InviteDialog({ isOpen, timeSlot, users, onClose, onSendInvite }:
   };
 
   const formatDateTime = () => {
-    if (!timeSlot) return '';
+    if (!timeSlot) return "";
     const { date, hour } = timeSlot;
-    const dateStr = date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
+    const dateStr = date.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
     });
-    const timeStr = `${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? 'PM' : 'AM'}`;
+    const timeStr = `${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? "PM" : "AM"}`;
     return `${dateStr} at ${timeStr}`;
   };
 
@@ -132,8 +152,9 @@ export function InviteDialog({ isOpen, timeSlot, users, onClose, onSendInvite }:
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-blue-800 text-sm">
-              <strong>Note:</strong> In production, this will send calendar invites via Google Calendar, 
-              Outlook, or other integrated calendar platforms.
+              <strong>Note:</strong> In production, this will send calendar
+              invites via Google Calendar, Outlook, or other integrated calendar
+              platforms.
             </p>
           </div>
         </div>

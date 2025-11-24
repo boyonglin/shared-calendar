@@ -1,8 +1,8 @@
-import { User, CalendarEvent, TimeSlot } from '../types';
-import { Card, CardContent, CardHeader } from './ui/card';
-import { Button } from './ui/button';
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
-import { EventBlock } from './EventBlock';
+import type { User, CalendarEvent, TimeSlot } from "../types";
+import { Card, CardContent, CardHeader } from "./ui/card";
+import { Button } from "./ui/button";
+import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { EventBlock } from "./EventBlock";
 
 interface CalendarViewProps {
   users: User[];
@@ -10,7 +10,7 @@ interface CalendarViewProps {
   currentUserId: string;
   weekStart: Date;
   onTimeSlotSelect: (slot: TimeSlot) => void;
-  onWeekChange: (direction: 'prev' | 'next') => void;
+  onWeekChange: (direction: "prev" | "next") => void;
 }
 
 export function CalendarView({
@@ -29,7 +29,7 @@ export function CalendarView({
   });
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
   const formatWeekRange = () => {
@@ -39,7 +39,7 @@ export function CalendarView({
   };
 
   const getDayName = (date: Date) => {
-    return date.toLocaleDateString('en-US', { weekday: 'short' });
+    return date.toLocaleDateString("en-US", { weekday: "short" });
   };
 
   const isEventInSlot = (event: CalendarEvent, date: Date, hour: number) => {
@@ -57,11 +57,11 @@ export function CalendarView({
   };
 
   const getEventsInSlot = (date: Date, hour: number) => {
-    return events.filter(event => isEventInSlot(event, date, hour));
+    return events.filter((event) => isEventInSlot(event, date, hour));
   };
 
   const getAllDayEventsForDate = (date: Date) => {
-    return events.filter(event => {
+    return events.filter((event) => {
       if (!event.isAllDay) return false;
 
       const eventDate = new Date(event.start);
@@ -70,7 +70,7 @@ export function CalendarView({
   };
 
   const getUserColor = (userId: string) => {
-    return users.find(u => u.id === userId)?.color || '#gray-400';
+    return users.find((u) => u.id === userId)?.color || "#gray-400";
   };
 
   const handleSlotClick = (date: Date, hour: number) => {
@@ -86,10 +86,18 @@ export function CalendarView({
             <span className="text-gray-900">{formatWeekRange()}</span>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => onWeekChange('prev')}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onWeekChange("prev")}
+            >
               <ChevronLeft className="w-4 h-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={() => onWeekChange('next')}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onWeekChange("next")}
+            >
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
@@ -147,10 +155,14 @@ export function CalendarView({
             {/* Time slots */}
             <div className="border-l border-r border-b border-gray-200">
               {hours.map((hour) => (
-                <div key={hour} className="grid grid-cols-8 gap-px bg-gray-200 min-h-[80px]">
+                <div
+                  key={hour}
+                  className="grid grid-cols-8 gap-px bg-gray-200 min-h-[80px]"
+                >
                   <div className="bg-white p-3 flex items-start">
                     <span className="text-gray-600 text-sm">
-                      {hour > 12 ? hour - 12 : hour}:00 {hour >= 12 ? 'PM' : 'AM'}
+                      {hour > 12 ? hour - 12 : hour}:00{" "}
+                      {hour >= 12 ? "PM" : "AM"}
                     </span>
                   </div>
                   {weekDays.map((day, dayIndex) => {
