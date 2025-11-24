@@ -1,31 +1,43 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import type { User, CalendarEvent } from '@shared/types';
-
-dotenv.config();
+import "dotenv/config"; // Load environment variables before other imports
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import authRoutes from "./routes/auth";
+import apiRoutes from "./routes/api";
+import { env } from "./config/env";
+import "./db"; // Initialize database
 
 const app = express();
-const PORT = process.env.PORT || 3001;
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+const PORT = env.PORT;
+const CLIENT_URL = env.CLIENT_URL;
 
-// Middleware
-app.use(cors({
-  origin: CLIENT_URL,
-  credentials: true
-}));
+// Security middleware
+app.use(helmet());
+
+// CORS middleware
+app.use(
+  cors({
+    origin: CLIENT_URL,
+    credentials: true,
+  }),
+);
+
 app.use(express.json());
 
+// Routes
+app.use("/api/auth", authRoutes);
+app.use("/api", apiRoutes);
+
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
 // Root endpoint
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.json({
-    message: 'Shared Calendar API',
-    status: 'running'
+    message: "Shared Calendar API",
+    status: "running",
   });
 });
 
