@@ -11,6 +11,8 @@ interface CalendarViewProps {
   weekStart: Date;
   onTimeSlotSelect: (slot: TimeSlot) => void;
   onWeekChange: (direction: "prev" | "next") => void;
+  startHour?: number;
+  endHour?: number;
 }
 
 export function CalendarView({
@@ -20,8 +22,17 @@ export function CalendarView({
   weekStart,
   onTimeSlotSelect,
   onWeekChange,
+  startHour = 6,
+  endHour = 22,
 }: CalendarViewProps) {
-  const hours = Array.from({ length: 12 }, (_, i) => i + 8); // 8 AM to 7 PM
+  // Validate hour range
+  const validStartHour = Math.max(0, Math.min(23, startHour));
+  const validEndHour = Math.max(validStartHour, Math.min(23, endHour));
+
+  const hours = Array.from(
+    { length: validEndHour - validStartHour + 1 },
+    (_, i) => i + validStartHour,
+  );
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const date = new Date(weekStart);
     date.setDate(date.getDate() + i);
@@ -91,7 +102,7 @@ export function CalendarView({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-gray-600" />
+            <Calendar className="w-5 h-5 text-gray-600 mr-1" />
             <span className="text-gray-900">{formatWeekRange()}</span>
           </div>
           <div className="flex gap-2">

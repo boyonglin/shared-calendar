@@ -42,7 +42,11 @@ export const validatePrimaryUserId = [
 
 // Validation rules for creating an event
 export const validateCreateEvent = [
-  body("title").notEmpty().withMessage("Title is required"),
+  body("title")
+    .notEmpty()
+    .withMessage("Title is required")
+    .isLength({ max: 200 })
+    .withMessage("Title must be at most 200 characters"),
   body("start")
     .isISO8601({ strict: false })
     .withMessage("Start time must be a valid ISO 8601 date"),
@@ -60,5 +64,51 @@ export const validateCreateEvent = [
       }
       return true;
     }),
+  validate,
+];
+
+// Validation rules for drafting an invitation
+export const validateDraftInvitation = [
+  body("title")
+    .notEmpty()
+    .withMessage("Title is required")
+    .isLength({ max: 200 })
+    .withMessage("Title must be at most 200 characters"),
+  body("start")
+    .isISO8601({ strict: false })
+    .withMessage("Start time must be a valid ISO 8601 date"),
+  body("end")
+    .isISO8601({ strict: false })
+    .withMessage("End time must be a valid ISO 8601 date")
+    .custom((end, { req }) => {
+      const start = req.body.start;
+      if (!start) return true;
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) return true;
+      if (endDate <= startDate) {
+        throw new Error("End time must be after start time");
+      }
+      return true;
+    }),
+  body("geminiApiKey").optional(),
+  body("description")
+    .optional()
+    .isLength({ max: 2000 })
+    .withMessage("Description must be at most 2000 characters"),
+  body("attendees")
+    .optional()
+    .isArray()
+    .withMessage("Attendees must be an array")
+    .custom((attendees) => {
+      if (attendees && attendees.length > 50) {
+        throw new Error("Attendees must be an array with at most 50 items");
+      }
+      return true;
+    }),
+  body("tone")
+    .optional()
+    .isIn(["professional", "casual", "friendly"])
+    .withMessage("Tone must be one of: professional, casual, friendly"),
   validate,
 ];

@@ -13,3 +13,4 @@ credentials.json
 
 # Cache
 .vite/
+.history/
