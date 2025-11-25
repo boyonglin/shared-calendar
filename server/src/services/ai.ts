@@ -19,11 +19,31 @@ function getGenAI(customApiKey?: string): GoogleGenerativeAI | null {
   return defaultGenAI;
 }
 
+// Patterns that could be used for prompt injection attacks
+const INJECTION_PATTERNS = [
+  /ignore\s+(all\s+)?previous\s+instructions?/gi,
+  /ignore\s+(all\s+)?prior\s+instructions?/gi,
+  /disregard\s+(all\s+)?previous/gi,
+  /forget\s+(all\s+)?previous/gi,
+  /you\s+are\s+now/gi,
+  /new\s+instructions?:/gi,
+  /system\s*:/gi,
+  /\[system\]/gi,
+  /\[assistant\]/gi,
+  /\[user\]/gi,
+];
+
 function sanitizeInput(input: string, maxLength = MAX_INPUT_LENGTH): string {
-  return input
+  let sanitized = input
     .replace(/[`${}]/g, "") // Remove characters that could be used for injection
-    .trim()
-    .slice(0, maxLength);
+    .trim();
+
+  // Remove common prompt injection patterns
+  for (const pattern of INJECTION_PATTERNS) {
+    sanitized = sanitized.replace(pattern, "");
+  }
+
+  return sanitized.slice(0, maxLength);
 }
 
 interface EventDetails {
@@ -50,7 +70,7 @@ export const aiService = {
       );
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const safeTitle = sanitizeInput(eventDetails.title, MAX_TITLE_LENGTH);
     const safeDescription = eventDetails.description

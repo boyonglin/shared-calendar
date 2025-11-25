@@ -25,9 +25,13 @@ export function CalendarView({
   startHour = 6,
   endHour = 22,
 }: CalendarViewProps) {
+  // Validate hour range
+  const validStartHour = Math.max(0, Math.min(23, startHour));
+  const validEndHour = Math.max(validStartHour, Math.min(23, endHour));
+
   const hours = Array.from(
-    { length: Math.max(0, endHour - startHour + 1) },
-    (_, i) => i + startHour,
+    { length: validEndHour - validStartHour + 1 },
+    (_, i) => i + validStartHour,
   );
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const date = new Date(weekStart);

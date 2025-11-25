@@ -27,15 +27,27 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [removed, setRemoved] = useState(false);
+  const [initialKey, setInitialKey] = useState<string | null>(null);
 
-  // Read from localStorage when rendering (not in effect)
-  const storedKey = removed
-    ? null
-    : localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY);
-  const hasExistingKey = !!storedKey;
+  // Read stored key on each render to get current state
+  const storedKey = localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY);
+
+  // Track key state accounting for removal action
+  const effectiveStoredKey = removed ? null : storedKey;
+  const effectiveHasExistingKey = !!effectiveStoredKey;
+
+  // Initialize apiKey when dialog opens
+  if (isOpen && initialKey === null) {
+    const key = storedKey || "";
+    setApiKey(key);
+    setInitialKey(key);
+  }
+
+  // Check if key has been modified
+  const hasModifiedKey = apiKey.trim() !== (effectiveStoredKey || "");
 
   const handleSave = () => {
-    const keyToSave = apiKey.trim() || storedKey;
+    const keyToSave = apiKey.trim();
     if (!keyToSave) {
       toast.error("Please enter a valid API key");
       return;
@@ -43,6 +55,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
     localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, keyToSave);
     setRemoved(false);
+    setInitialKey(null);
     toast.success("Gemini API key saved successfully");
     onClose();
   };
@@ -55,9 +68,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   const handleClose = () => {
-    setRemoved(false);
     setApiKey("");
     setShowApiKey(false);
+    setRemoved(false);
+    setInitialKey(null);
     onClose();
   };
 
@@ -95,11 +109,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   id="gemini-api-key"
                   type={showApiKey ? "text" : "password"}
                   placeholder="Enter your Gemini API key"
-                  value={apiKey || (showApiKey && storedKey ? storedKey : "")}
+                  value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   className="pr-10"
                 />
-                {(apiKey || hasExistingKey) && (
+                {(apiKey || effectiveHasExistingKey) && (
                   <button
                     type="button"
                     onClick={() => setShowApiKey(!showApiKey)}
@@ -114,13 +128,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   </button>
                 )}
               </div>
-              {hasExistingKey && !showApiKey && storedKey && (
+              {effectiveHasExistingKey && !showApiKey && effectiveStoredKey && (
                 <p className="text-xs text-green-600 flex items-center gap-1">
                   <Check className="w-3 h-3" />
-                  API key configured: {maskApiKey(storedKey)}
+                  API key configured: {maskApiKey(effectiveStoredKey)}
                 </p>
               )}
-              {!hasExistingKey && (
+              {!effectiveHasExistingKey && (
                 <p className="text-xs text-gray-500">
                   Don&apos;t have an API key?{" "}
                   <a
@@ -139,15 +153,17 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
             <p className="text-amber-800 text-sm">
-              <strong>Note:</strong> Your API key is stored locally in your
-              browser and is only sent when generating AI drafts.
+              <strong>Security Notice:</strong> Your API key is stored in your
+              browser&apos;s localStorage, which may be accessible to scripts on
+              this page. Only use this feature on trusted devices. The key is
+              only sent when generating AI drafts.
             </p>
           </div>
         </div>
 
         <div className="flex gap-3 justify-between">
           <div>
-            {hasExistingKey && (
+            {effectiveHasExistingKey && (
               <Button
                 type="button"
                 variant="ghost"
@@ -165,7 +181,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!apiKey.trim() && !hasExistingKey}
+              disabled={!apiKey.trim() || !hasModifiedKey}
             >
               Save
             </Button>

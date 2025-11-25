@@ -81,37 +81,41 @@ export function InviteDialog({
     onSendInvite(title, description, selectedAttendees, parseInt(duration, 10));
   };
 
+  // Helper to show API key error with settings link
+  const showApiKeyError = (message: string) => {
+    toast.error(
+      <div className="flex flex-col gap-1">
+        <span>{message}</span>
+        {onOpenSettings && (
+          <button
+            onClick={onOpenSettings}
+            className="text-left text-blue-500 hover:underline flex items-center gap-1 text-sm"
+          >
+            Add your API key in Settings
+          </button>
+        )}
+      </div>,
+      { duration: 5000 },
+    );
+  };
+
   const handleAIDraft = async () => {
     if (!title.trim()) {
       toast.error("Please enter a title first");
       return;
     }
 
-    // Helper to show API key error with settings link
-    const showApiKeyError = (message: string) => {
-      toast.error(
-        <div className="flex flex-col gap-1">
-          <span>{message}</span>
-          {onOpenSettings && (
-            <button
-              onClick={onOpenSettings}
-              className="text-left text-blue-500 hover:underline flex items-center gap-1 text-sm"
-            >
-              Add your API key in Settings
-            </button>
-          )}
-        </div>,
-        { duration: 5000 },
-      );
-    };
+    // Check timeSlot first before API key
+    if (!timeSlot) {
+      toast.error("No time slot selected");
+      return;
+    }
 
     // Check if API key is configured
     if (!getGeminiApiKey()) {
       showApiKeyError("Gemini API key not configured");
       return;
     }
-
-    if (!timeSlot) return;
 
     setIsGenerating(true);
     try {
@@ -234,7 +238,10 @@ export function InviteDialog({
                   }
                   disabled={isGenerating}
                 >
-                  <SelectTrigger className="h-7 text-xs w-[110px]">
+                  <SelectTrigger
+                    className="h-7 text-xs w-[110px]"
+                    aria-label="Select tone for AI draft"
+                  >
                     <SelectValue placeholder="Tone" />
                   </SelectTrigger>
                   <SelectContent>
