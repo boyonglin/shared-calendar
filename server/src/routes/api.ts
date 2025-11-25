@@ -340,8 +340,9 @@ router.delete(
 // Generate AI invitation draft
 router.post(
   "/ai/draft-invitation",
+  authenticateUser,
   validateDraftInvitation,
-  async (req: Request, res: Response) => {
+  async (req: AuthRequest, res: Response) => {
     try {
       const {
         title,
