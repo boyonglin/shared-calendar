@@ -91,15 +91,21 @@ export const validateDraftInvitation = [
       }
       return true;
     }),
-  body("geminiApiKey").notEmpty().withMessage("Gemini API key is required"),
+  body("geminiApiKey").optional(),
   body("description")
     .optional()
     .isLength({ max: 2000 })
     .withMessage("Description must be at most 2000 characters"),
   body("attendees")
     .optional()
-    .isArray({ max: 50 })
-    .withMessage("Attendees must be an array with at most 50 items"),
+    .isArray()
+    .withMessage("Attendees must be an array")
+    .custom((attendees) => {
+      if (attendees && attendees.length > 50) {
+        throw new Error("Attendees must be an array with at most 50 items");
+      }
+      return true;
+    }),
   body("tone")
     .optional()
     .isIn(["professional", "casual", "friendly"])
