@@ -14,15 +14,7 @@ export const authenticateUser = (
   res: Response,
   next: NextFunction,
 ): void => {
-  // Check for token in Authorization header first, then fall back to cookie
-  const authHeader = req.headers.authorization;
-  let token: string | undefined;
-
-  if (authHeader) {
-    token = authHeader.split(" ")[1]; // Bearer <token>
-  } else if (req.cookies?.token) {
-    token = req.cookies.token;
-  }
+  const token = req.cookies?.token;
 
   if (!token) {
     res.status(401).json({ error: "No token provided" });
@@ -37,7 +29,6 @@ export const authenticateUser = (
     (req as AuthRequest).user = decoded;
     next();
   } catch (error) {
-    console.error("JWT verification error:", error);
     if (error instanceof jwt.TokenExpiredError) {
       res.status(401).json({ error: "Token expired" });
     } else if (error instanceof jwt.JsonWebTokenError) {

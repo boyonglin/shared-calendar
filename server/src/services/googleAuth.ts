@@ -17,31 +17,30 @@ const oauth2Client = new google.auth.OAuth2(
   REDIRECT_URI,
 );
 
-// Track the current user ID for token refresh callbacks
-// NOTE: This shared oauth2Client instance with a module-level currentTokenUserId variable
-// creates a potential race condition in multi-user concurrent scenarios. For production
-// deployments with high concurrency, consider creating OAuth2 client instances per request
-// or implementing a user-specific client pool. For most use cases, this implementation
-// is sufficient as token refresh operations complete quickly.
-let currentTokenUserId: string | null = null;
+function createOAuth2ClientForUser(
+  userId: string,
+  credentials: { access_token: string; refresh_token?: string },
+) {
+  const client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+  client.setCredentials(credentials);
 
-// Set up token refresh handler ONCE to avoid memory leaks
-oauth2Client.on("tokens", (tokens) => {
-  if (!currentTokenUserId) return;
-  
-  if (tokens.access_token) {
-    const updateStmt = db.prepare(
-      "UPDATE calendar_accounts SET access_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
-    );
-    updateStmt.run(tokens.access_token, currentTokenUserId);
-  }
-  if (tokens.refresh_token) {
-    const updateStmt = db.prepare(
-      "UPDATE calendar_accounts SET refresh_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
-    );
-    updateStmt.run(tokens.refresh_token, currentTokenUserId);
-  }
-});
+  client.on("tokens", (tokens) => {
+    if (tokens.access_token) {
+      const updateStmt = db.prepare(
+        "UPDATE calendar_accounts SET access_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+      );
+      updateStmt.run(tokens.access_token, userId);
+    }
+    if (tokens.refresh_token) {
+      const updateStmt = db.prepare(
+        "UPDATE calendar_accounts SET refresh_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+      );
+      updateStmt.run(tokens.refresh_token, userId);
+    }
+  });
+
+  return client;
+}
 
 export const googleAuthService = {
   getAuthUrl: () => {
@@ -157,15 +156,12 @@ export const googleAuthService = {
       throw new Error("User not found");
     }
 
-    oauth2Client.setCredentials({
+    const userClient = createOAuth2ClientForUser(userId, {
       access_token: account.access_token,
       refresh_token: account.refresh_token,
     });
 
-    // Set the current user ID for token refresh callback
-    currentTokenUserId = userId;
-
-    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+    const calendar = google.calendar({ version: "v3", auth: userClient });
 
     // Use provided dates or default to now + 4 weeks
     const now = new Date();
@@ -209,15 +205,12 @@ export const googleAuthService = {
       account = dbAccount;
     }
 
-    oauth2Client.setCredentials({
+    const userClient = createOAuth2ClientForUser(userId, {
       access_token: account.access_token,
       refresh_token: account.refresh_token,
     });
 
-    // Set the current user ID for token refresh callback
-    currentTokenUserId = userId;
-
-    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+    const calendar = google.calendar({ version: "v3", auth: userClient });
 
     const res = await calendar.events.insert({
       calendarId: "primary",

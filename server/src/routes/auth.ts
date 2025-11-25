@@ -39,17 +39,10 @@ router.get("/google/callback", async (req: Request, res: Response) => {
       sameSite: "lax",
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
-    res.redirect(
-      `${env.CLIENT_URL}?auth=success&userId=${result.user.id}`,
-    );
+    res.redirect(`${env.CLIENT_URL}?auth=success&userId=${result.user.id}`);
   } catch (error) {
     console.error("Auth error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res
-      .status(500)
-      .send(
-        `Authentication failed: ${message}\n\nCheck server console for details.`,
-      );
+    res.redirect(`${env.CLIENT_URL}?auth=error`);
   }
 });
 
@@ -61,6 +54,12 @@ router.post(
 
     try {
       const result = await icloudAuthService.verifyCredentials(email, password);
+      if (!result?.user?.id) {
+        res
+          .status(500)
+          .json({ error: "Invalid response from iCloud authentication" });
+        return;
+      }
       const token = jwt.sign(
         { userId: result.user.id, email: result.user.email },
         env.JWT_SECRET,

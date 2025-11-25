@@ -228,14 +228,10 @@ router.post(
           .json({ error: "Provider not supported for event creation yet" });
       }
     } catch (error) {
-      console.error("Error creating event:", error);
-      if (error && typeof error === "object" && "response" in error) {
-        console.error(
-          "Google API Error Response:",
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (error as any).response.data,
-        );
-      }
+      console.error(
+        "Error creating event:",
+        error instanceof Error ? error.message : "Unknown error",
+      );
       res.status(500).json({
         error: "Failed to create event",
       });
