@@ -18,6 +18,9 @@ const envSchema = z.object({
   // OneCal Configuration (for Outlook Calendar integration)
   ONECAL_APP_ID: z.string().optional(),
   ONECAL_API_KEY: z.string().optional(),
+
+  // Security
+  JWT_SECRET: z.string().default("dev-secret-do-not-use-in-prod"),
 });
 
 export type Env = z.infer<typeof envSchema>;
