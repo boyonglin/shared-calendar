@@ -12,7 +12,7 @@ import { MockCalendarProvider } from "@/services/MockCalendarProvider";
 import { UnifiedCalendarProvider } from "@/services/UnifiedCalendarProvider";
 import { useGoogleAuth } from "./GoogleAuthContext";
 
-interface CalendarContextType {
+export interface CalendarContextType {
   events: CalendarEvent[];
   isLoading: boolean;
   refreshEvents: () => Promise<void>;
@@ -26,7 +26,7 @@ interface CalendarContextType {
   }) => Promise<void>;
 }
 
-const CalendarContext = createContext<CalendarContextType | undefined>(
+export const CalendarContext = createContext<CalendarContextType | undefined>(
   undefined,
 );
 
@@ -140,6 +140,15 @@ export function CalendarProviderWrapper({
   // Refresh events when refreshEvents callback changes (which happens when provider or weekStart changes)
   useEffect(() => {
     refreshEvents();
+  }, [refreshEvents]);
+
+  // Auto-refresh events every 30 seconds
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      refreshEvents();
+    }, 30000);
+
+    return () => window.clearInterval(intervalId);
   }, [refreshEvents]);
 
   return (

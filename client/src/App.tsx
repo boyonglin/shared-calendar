@@ -297,6 +297,7 @@ function AppContent({
 
       setSelectedTimeSlot(null);
       toast.success("Event created successfully");
+      await refreshEvents();
     } catch (error) {
       console.error("Failed to create event:", error);
       const message = error instanceof Error ? error.message : "Unknown error";
