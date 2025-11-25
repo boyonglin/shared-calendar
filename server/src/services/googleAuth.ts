@@ -17,6 +17,27 @@ const oauth2Client = new google.auth.OAuth2(
   REDIRECT_URI,
 );
 
+// Track the current user ID for token refresh callbacks
+let currentTokenUserId: string | null = null;
+
+// Set up token refresh handler ONCE to avoid memory leaks
+oauth2Client.on("tokens", (tokens) => {
+  if (!currentTokenUserId) return;
+  
+  if (tokens.access_token) {
+    const updateStmt = db.prepare(
+      "UPDATE calendar_accounts SET access_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+    );
+    updateStmt.run(tokens.access_token, currentTokenUserId);
+  }
+  if (tokens.refresh_token) {
+    const updateStmt = db.prepare(
+      "UPDATE calendar_accounts SET refresh_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+    );
+    updateStmt.run(tokens.refresh_token, currentTokenUserId);
+  }
+});
+
 export const googleAuthService = {
   getAuthUrl: () => {
     const scopes = [
@@ -136,22 +157,8 @@ export const googleAuthService = {
       refresh_token: account.refresh_token,
     });
 
-    // Check if token needs refresh (googleapis handles this automatically if refresh_token is present)
-    // But we need to save the new token if it changes
-    oauth2Client.on("tokens", (tokens) => {
-      if (tokens.access_token) {
-        const updateStmt = db.prepare(
-          "UPDATE calendar_accounts SET access_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
-        );
-        updateStmt.run(tokens.access_token, userId);
-      }
-      if (tokens.refresh_token) {
-        const updateStmt = db.prepare(
-          "UPDATE calendar_accounts SET refresh_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
-        );
-        updateStmt.run(tokens.refresh_token, userId);
-      }
-    });
+    // Set the current user ID for token refresh callback
+    currentTokenUserId = userId;
 
     const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
@@ -202,21 +209,8 @@ export const googleAuthService = {
       refresh_token: account.refresh_token,
     });
 
-    // Handle automatic token refresh and persist updated tokens to the database
-    oauth2Client.on("tokens", (tokens) => {
-      if (tokens.access_token) {
-        const updateStmt = db.prepare(
-          "UPDATE calendar_accounts SET access_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
-        );
-        updateStmt.run(tokens.access_token, userId);
-      }
-      if (tokens.refresh_token) {
-        const updateStmt = db.prepare(
-          "UPDATE calendar_accounts SET refresh_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
-        );
-        updateStmt.run(tokens.refresh_token, userId);
-      }
-    });
+    // Set the current user ID for token refresh callback
+    currentTokenUserId = userId;
 
     const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
