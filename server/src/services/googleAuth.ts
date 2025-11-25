@@ -17,6 +17,31 @@ const oauth2Client = new google.auth.OAuth2(
   REDIRECT_URI,
 );
 
+function createOAuth2ClientForUser(
+  userId: string,
+  credentials: { access_token: string; refresh_token?: string },
+) {
+  const client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
+  client.setCredentials(credentials);
+
+  client.on("tokens", (tokens) => {
+    if (tokens.access_token) {
+      const updateStmt = db.prepare(
+        "UPDATE calendar_accounts SET access_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+      );
+      updateStmt.run(tokens.access_token, userId);
+    }
+    if (tokens.refresh_token) {
+      const updateStmt = db.prepare(
+        "UPDATE calendar_accounts SET refresh_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+      );
+      updateStmt.run(tokens.refresh_token, userId);
+    }
+  });
+
+  return client;
+}
+
 export const googleAuthService = {
   getAuthUrl: () => {
     const scopes = [
@@ -131,29 +156,12 @@ export const googleAuthService = {
       throw new Error("User not found");
     }
 
-    oauth2Client.setCredentials({
+    const userClient = createOAuth2ClientForUser(userId, {
       access_token: account.access_token,
       refresh_token: account.refresh_token,
     });
 
-    // Check if token needs refresh (googleapis handles this automatically if refresh_token is present)
-    // But we need to save the new token if it changes
-    oauth2Client.on("tokens", (tokens) => {
-      if (tokens.access_token) {
-        const updateStmt = db.prepare(
-          "UPDATE calendar_accounts SET access_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
-        );
-        updateStmt.run(tokens.access_token, userId);
-      }
-      if (tokens.refresh_token) {
-        const updateStmt = db.prepare(
-          "UPDATE calendar_accounts SET refresh_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
-        );
-        updateStmt.run(tokens.refresh_token, userId);
-      }
-    });
-
-    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+    const calendar = google.calendar({ version: "v3", auth: userClient });
 
     // Use provided dates or default to now + 4 weeks
     const now = new Date();
@@ -170,5 +178,46 @@ export const googleAuthService = {
     });
 
     return res.data.items;
+  },
+
+  createEvent: async (
+    userId: string,
+    eventData: {
+      summary: string;
+      description?: string;
+      start: { dateTime?: string; date?: string };
+      end: { dateTime?: string; date?: string };
+      attendees?: { email: string }[];
+    },
+    account?: { access_token: string; refresh_token?: string },
+  ) => {
+    if (!account) {
+      const stmt = db.prepare(
+        "SELECT * FROM calendar_accounts WHERE user_id = ?",
+      );
+      const dbAccount = stmt.get(userId) as
+        | { user_id: string; access_token: string; refresh_token?: string }
+        | undefined;
+
+      if (!dbAccount) {
+        throw new Error("User not found");
+      }
+      account = dbAccount;
+    }
+
+    const userClient = createOAuth2ClientForUser(userId, {
+      access_token: account.access_token,
+      refresh_token: account.refresh_token,
+    });
+
+    const calendar = google.calendar({ version: "v3", auth: userClient });
+
+    const res = await calendar.events.insert({
+      calendarId: "primary",
+      requestBody: eventData,
+      sendUpdates: "all",
+    });
+
+    return res.data;
   },
 };

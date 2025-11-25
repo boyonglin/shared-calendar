@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import express from "express";
+import jwt from "jsonwebtoken";
 import { googleAuthService } from "../services/googleAuth";
 import { icloudAuthService } from "../services/icloudAuth";
 import { onecalAuthService } from "../services/onecalAuth";
@@ -24,19 +25,24 @@ router.get("/google/callback", async (req: Request, res: Response) => {
   try {
     const result = await googleAuthService.handleCallback(code);
 
-    // Redirect back to client with success
-    // In a real app, we'd probably set a session cookie here
-    // For now, we'll redirect to the client app with a query param indicating success
-    // The client can then fetch the user status
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: result.user.id, email: result.user.email },
+      env.JWT_SECRET,
+      { expiresIn: "30d" },
+    );
+
+    // Set JWT as HTTP-only cookie and redirect back to client with success
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
     res.redirect(`${env.CLIENT_URL}?auth=success&userId=${result.user.id}`);
   } catch (error) {
     console.error("Auth error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res
-      .status(500)
-      .send(
-        `Authentication failed: ${message}\n\nCheck server console for details.`,
-      );
+    res.redirect(`${env.CLIENT_URL}?auth=error`);
   }
 });
 
@@ -48,7 +54,18 @@ router.post(
 
     try {
       const result = await icloudAuthService.verifyCredentials(email, password);
-      res.json(result);
+      if (!result?.user?.id) {
+        res
+          .status(500)
+          .json({ error: "Invalid response from iCloud authentication" });
+        return;
+      }
+      const token = jwt.sign(
+        { userId: result.user.id, email: result.user.email },
+        env.JWT_SECRET,
+        { expiresIn: "30d" },
+      );
+      res.json({ ...result, token });
     } catch (error) {
       console.error("iCloud auth error:", error);
       const message =

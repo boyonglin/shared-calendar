@@ -4,6 +4,10 @@ import { UserList } from "./components/UserList";
 import { InviteDialog } from "./components/InviteDialog";
 import { ICloudConnectModal } from "./components/ICloudConnectModal";
 import { UserProfileDropdown } from "./components/UserProfileDropdown";
+import { GoogleSignInButton } from "./components/GoogleSignInButton";
+import { Toaster } from "./components/ui/sonner";
+import { toast } from "sonner";
+import { addDays, addMinutes, startOfDay, setHours } from "date-fns";
 import type { User, CalendarEvent, TimeSlot } from "./types";
 import {
   GoogleAuthProvider,
@@ -170,11 +174,12 @@ function AppContent({
   weekStart: Date;
   setWeekStart: (date: Date) => void;
 }) {
-  const { user, isGoogleLoaded, signOut } = useGoogleAuth();
+  const { user, signIn, signOut } = useGoogleAuth();
   const {
     events: calendarEvents,
     isLoading: isLoadingEvents,
     refreshEvents,
+    createEvent,
   } = useCalendar();
   const iCloudConnection = useICloudConnection({ refreshEvents });
   const outlookConnection = useOutlookConnection({ refreshEvents });
@@ -226,24 +231,11 @@ function AppContent({
   }, [user]);
 
   // Convert Google Calendar events to our CalendarEvent format
-  // Note: CalendarContext now returns CalendarEvent[], so we might not need conversion if the provider handles it.
-  // But if the provider returns raw events, we need to check.
   // Our CalendarProvider interface returns CalendarEvent[], so we can use them directly.
   const googleCalendarEvents = calendarEvents;
 
   // Combine Google events with mock events
-  // If using MockCalendarProvider, it returns mock events.
-  // If using GoogleCalendarProvider, it returns Google events.
-  // So we just use googleCalendarEvents (which are now just events from the provider).
-  // However, the original code combined them.
-  // If we want to keep the "mock events" always visible even when logged in (as per original code logic?),
-  // the original code was: const allEvents = [...googleCalendarEvents, ...mockEvents];
-  // But wait, mockEvents were defined at the top level.
-  // If I am logged in, I probably only want my Google events + maybe the other users' mock events?
-  // The original code had mockEvents for users 2, 3, 4.
-  // And googleCalendarEvents for user 1 (current user).
-  // So yes, we should combine them.
-
+  // We combine the provider events (current user) with the mock events (other users)
   const allEvents = [...googleCalendarEvents, ...mockEvents];
   const allUsers = currentUser ? [currentUser, ...mockUsers] : mockUsers;
 
@@ -257,27 +249,65 @@ function AppContent({
 
   const handleTimeSlotSelect = (slot: TimeSlot) => {
     if (!currentUser) {
-      alert("Please sign in to create calendar invites");
+      toast.warning("Please sign in to create calendar invites");
       return;
     }
     setSelectedTimeSlot(slot);
   };
 
-  const handleSendInvite = (
+  const handleSendInvite = async (
     title: string,
     description: string,
     attendees: string[],
+    duration: number,
   ) => {
-    // In a real app, this would integrate with calendar APIs
-    console.log("Sending invite:", { title, description, attendees });
-    setSelectedTimeSlot(null);
+    if (!selectedTimeSlot || !currentUser) return;
+
+    let start: Date;
+    let end: Date;
+
+    if (selectedTimeSlot.isAllDay) {
+      // For all-day events, use the exact date without timezone conversion
+      start = startOfDay(selectedTimeSlot.date);
+      // End date should be the next day for Google Calendar format
+      end = addDays(start, 1);
+    } else {
+      // For timed events, use the hour and add duration
+      start = setHours(
+        startOfDay(selectedTimeSlot.date),
+        selectedTimeSlot.hour,
+      );
+      end = addMinutes(start, duration);
+    }
+
+    // Map attendee IDs to emails
+    const attendeeEmails = attendees
+      .map((id) => allUsers.find((u) => u.id === id)?.email)
+      .filter((email): email is string => !!email);
+
+    try {
+      await createEvent({
+        title,
+        description,
+        start,
+        end,
+        attendees: attendeeEmails,
+        isAllDay: selectedTimeSlot.isAllDay,
+      });
+
+      setSelectedTimeSlot(null);
+      toast.success("Event created successfully");
+      await refreshEvents();
+    } catch (error) {
+      console.error("Failed to create event:", error);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Failed to create event: ${message}`);
+    }
   };
 
   const handleWeekChange = (direction: "prev" | "next") => {
-    const newDate = new Date(weekStart);
-    newDate.setDate(newDate.getDate() + (direction === "next" ? 7 : -7));
-    newDate.setHours(0, 0, 0, 0);
-    setWeekStart(newDate);
+    const newDate = addDays(weekStart, direction === "next" ? 7 : -7);
+    setWeekStart(startOfDay(newDate));
   };
 
   return (
@@ -293,17 +323,7 @@ function AppContent({
             </div>
             <div className="flex items-center gap-3">
               {!user ? (
-                <div
-                  id="g_id_onload_signin"
-                  className="flex justify-center min-h-[40px]"
-                >
-                  {!isGoogleLoaded && (
-                    <div className="flex items-center gap-2 text-gray-500">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                      <span className="text-sm">Loading...</span>
-                    </div>
-                  )}
-                </div>
+                <GoogleSignInButton onSignIn={signIn} />
               ) : (
                 currentUser && (
                   <UserProfileDropdown
@@ -358,6 +378,7 @@ function AppContent({
         onClose={() => iCloudConnection.setShowICloudModal(false)}
         onSuccess={iCloudConnection.handleICloudConnectSuccess}
       />
+      <Toaster />
     </div>
   );
 }
@@ -376,21 +397,11 @@ export default function App() {
   return (
     <GoogleAuthProvider>
       <CalendarProviderWrapper weekStart={currentWeekStart}>
-        <AppContentWithWeek
+        <AppContent
           weekStart={currentWeekStart}
           setWeekStart={setCurrentWeekStart}
         />
       </CalendarProviderWrapper>
     </GoogleAuthProvider>
   );
-}
-
-function AppContentWithWeek({
-  weekStart,
-  setWeekStart,
-}: {
-  weekStart: Date;
-  setWeekStart: (date: Date) => void;
-}) {
-  return <AppContent weekStart={weekStart} setWeekStart={setWeekStart} />;
 }

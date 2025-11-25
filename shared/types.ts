@@ -17,4 +17,5 @@ export interface CalendarEvent {
 export interface TimeSlot {
   date: Date;
   hour: number;
+  isAllDay?: boolean;
 }

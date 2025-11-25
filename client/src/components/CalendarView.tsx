@@ -77,6 +77,15 @@ export function CalendarView({
     onTimeSlotSelect({ date, hour });
   };
 
+  const handleAllDayClick = (date: Date) => {
+    onTimeSlotSelect({ date, hour: 0, isAllDay: true });
+  };
+
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -112,7 +121,12 @@ export function CalendarView({
                 <span className="text-gray-600">Time</span>
               </div>
               {weekDays.map((day, index) => (
-                <div key={index} className="bg-white p-3 text-center">
+                <div
+                  key={index}
+                  className={`p-3 text-center ${
+                    isToday(day) ? "bg-gray-100" : "bg-white"
+                  }`}
+                >
                   <div className="text-gray-900">{getDayName(day)}</div>
                   <div className="text-gray-600 text-sm">{formatDate(day)}</div>
                 </div>
@@ -132,7 +146,10 @@ export function CalendarView({
                   return (
                     <div
                       key={dayIndex}
-                      className="bg-white p-1 cursor-pointer hover:bg-gray-50 transition-colors relative"
+                      className={`p-1 cursor-pointer hover:bg-gray-200 transition-colors relative ${
+                        isToday(day) ? "bg-gray-100" : "bg-white"
+                      }`}
+                      onClick={() => handleAllDayClick(day)}
                     >
                       {hasEvents && (
                         <div className="space-y-1 h-full">
@@ -172,7 +189,9 @@ export function CalendarView({
                     return (
                       <div
                         key={dayIndex}
-                        className="bg-white p-1 cursor-pointer hover:bg-gray-50 transition-colors relative"
+                        className={`p-1 cursor-pointer hover:bg-gray-200 transition-colors relative ${
+                          isToday(day) ? "bg-gray-100" : "bg-white"
+                        }`}
                         onClick={() => handleSlotClick(day, hour)}
                       >
                         {hasEvents && (

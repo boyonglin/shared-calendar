@@ -44,7 +44,6 @@ export interface StoredSession {
 
 export interface GoogleAuthContextType {
   user: GoogleUser | null;
-  isGoogleLoaded: boolean;
   signIn: () => void;
   signOut: () => void;
 }

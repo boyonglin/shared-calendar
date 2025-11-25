@@ -18,6 +18,9 @@ const envSchema = z.object({
   // OneCal Configuration (for Outlook Calendar integration)
   ONECAL_APP_ID: z.string().optional(),
   ONECAL_API_KEY: z.string().optional(),
+
+  // Security
+  JWT_SECRET: z.string().default("dev-secret-do-not-use-in-prod"),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -28,7 +31,22 @@ export type Env = z.infer<typeof envSchema>;
  */
 export function validateEnv(): Env {
   try {
-    return envSchema.parse(process.env);
+    const parsed = envSchema.parse(process.env);
+
+    // Warn if using default JWT_SECRET in production
+    if (
+      parsed.NODE_ENV === "production" &&
+      parsed.JWT_SECRET === "dev-secret-do-not-use-in-prod"
+    ) {
+      console.error(
+        "❌ CRITICAL: JWT_SECRET is using the default value in production. This is a security risk.",
+      );
+      throw new Error(
+        "JWT_SECRET must be set to a secure value in production.",
+      );
+    }
+
+    return parsed;
   } catch (error) {
     if (error instanceof z.ZodError) {
       const missingVars = error.issues.map(

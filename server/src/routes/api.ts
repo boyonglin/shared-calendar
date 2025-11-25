@@ -8,7 +8,10 @@ import {
   validateUserId,
   validatePrimaryUserId,
   validateUserIdParam,
+  validateCreateEvent,
 } from "../middleware/validation";
+import { authenticateUser } from "../middleware/auth";
+import type { AuthRequest } from "../middleware/auth";
 
 const router = express.Router();
 
@@ -42,7 +45,6 @@ router.get(
   validatePrimaryUserId,
   async (req: Request, res: Response) => {
     try {
-      // const primaryUserId = req.params.primaryUserId;
       const timeMin = req.query.timeMin
         ? new Date(req.query.timeMin as string)
         : undefined;
@@ -179,6 +181,60 @@ router.get(
       }
 
       res.status(500).json({ error: "Failed to fetch events" });
+    }
+  },
+);
+
+router.post(
+  "/calendar/events",
+  authenticateUser,
+  validateCreateEvent,
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as AuthRequest).user!.userId;
+      const { title, description, start, end, attendees } = req.body;
+
+      // Check provider
+      const stmt = db.prepare(
+        "SELECT provider, access_token, refresh_token FROM calendar_accounts WHERE user_id = ?",
+      );
+      const account = stmt.get(userId) as
+        | { provider: string; access_token: string; refresh_token?: string }
+        | undefined;
+
+      if (!account) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+
+      if (account.provider === "google") {
+        const isAllDay = req.body.isAllDay || false;
+        const event = await googleAuthService.createEvent(
+          userId,
+          {
+            summary: title,
+            description,
+            start: isAllDay ? { date: start } : { dateTime: start },
+            end: isAllDay ? { date: end } : { dateTime: end },
+            attendees: attendees?.map((email: string) => ({ email })),
+          },
+          account,
+        );
+        res.json(event);
+      } else {
+        // TODO: Implement for other providers
+        res
+          .status(501)
+          .json({ error: "Provider not supported for event creation yet" });
+      }
+    } catch (error) {
+      console.error(
+        "Error creating event:",
+        error instanceof Error ? error.message : "Unknown error",
+      );
+      res.status(500).json({
+        error: "Failed to create event",
+      });
     }
   },
 );

@@ -12,13 +12,23 @@ import { MockCalendarProvider } from "@/services/MockCalendarProvider";
 import { UnifiedCalendarProvider } from "@/services/UnifiedCalendarProvider";
 import { useGoogleAuth } from "./GoogleAuthContext";
 
-interface CalendarContextType {
+const AUTO_REFRESH_INTERVAL_MS = 60 * 1000;
+
+export interface CalendarContextType {
   events: CalendarEvent[];
   isLoading: boolean;
   refreshEvents: () => Promise<void>;
+  createEvent: (event: {
+    title: string;
+    description?: string;
+    start: Date;
+    end: Date;
+    attendees?: string[];
+    isAllDay?: boolean;
+  }) => Promise<void>;
 }
 
-const CalendarContext = createContext<CalendarContextType | undefined>(
+export const CalendarContext = createContext<CalendarContextType | undefined>(
   undefined,
 );
 
@@ -46,6 +56,27 @@ export function CalendarProviderWrapper({
       setProvider(new MockCalendarProvider());
     }
   }, [user]);
+
+  const createEvent = async (eventData: {
+    title: string;
+    description?: string;
+    start: Date;
+    end: Date;
+    attendees?: string[];
+    isAllDay?: boolean;
+  }) => {
+    if (provider.createEvent) {
+      try {
+        const newEvent = await provider.createEvent(eventData);
+        setEvents((prev) => [...prev, newEvent]);
+      } catch (error) {
+        console.error("Failed to create event:", error);
+        throw error;
+      }
+    } else {
+      throw new Error("Provider does not support creating events");
+    }
+  };
 
   const refreshEvents = useCallback(async () => {
     setIsLoading(true);
@@ -112,8 +143,50 @@ export function CalendarProviderWrapper({
     refreshEvents();
   }, [refreshEvents]);
 
+  // Auto-refresh events every 60 seconds, but only when window is focused/visible
+  useEffect(() => {
+    let intervalId: number | null = null;
+
+    const startInterval = () => {
+      if (intervalId === null) {
+        intervalId = window.setInterval(() => {
+          refreshEvents();
+        }, AUTO_REFRESH_INTERVAL_MS);
+      }
+    };
+
+    const clearIntervalIfExists = () => {
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshEvents();
+        startInterval();
+      } else {
+        clearIntervalIfExists();
+      }
+    };
+
+    if (document.visibilityState === "visible") {
+      startInterval();
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearIntervalIfExists();
+    };
+  }, [refreshEvents]);
+
   return (
-    <CalendarContext.Provider value={{ events, isLoading, refreshEvents }}>
+    <CalendarContext.Provider
+      value={{ events, isLoading, refreshEvents, createEvent }}
+    >
       {children}
     </CalendarContext.Provider>
   );

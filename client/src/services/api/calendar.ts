@@ -41,13 +41,14 @@ export const calendarApi = {
       `/api/calendar/all-events/${userId}${query}`,
     );
   },
-  getGoogleEvents: (userId: string, timeMin?: Date, timeMax?: Date) => {
-    const params = new URLSearchParams();
-    if (timeMin) params.append("timeMin", timeMin.toISOString());
-    if (timeMax) params.append("timeMax", timeMax.toISOString());
-    const query = params.toString() ? `?${params.toString()}` : "";
-    return apiClient.get<RawCalendarEvent[]>(
-      `/api/calendar/${userId}/events${query}`,
-    );
+  createEvent: (data: {
+    title: string;
+    description?: string;
+    start: string;
+    end: string;
+    attendees?: string[];
+    isAllDay?: boolean;
+  }) => {
+    return apiClient.post<RawCalendarEvent>("/api/calendar/events", data);
   },
 };
