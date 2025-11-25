@@ -16,6 +16,14 @@ interface CalendarContextType {
   events: CalendarEvent[];
   isLoading: boolean;
   refreshEvents: () => Promise<void>;
+  createEvent: (event: {
+    title: string;
+    description?: string;
+    start: Date;
+    end: Date;
+    attendees?: string[];
+    isAllDay?: boolean;
+  }) => Promise<void>;
 }
 
 const CalendarContext = createContext<CalendarContextType | undefined>(
@@ -46,6 +54,28 @@ export function CalendarProviderWrapper({
       setProvider(new MockCalendarProvider());
     }
   }, [user]);
+
+  const createEvent = async (eventData: {
+    title: string;
+    description?: string;
+    start: Date;
+    end: Date;
+    attendees?: string[];
+    isAllDay?: boolean;
+  }) => {
+    if (provider.createEvent) {
+      try {
+        const newEvent = await provider.createEvent(eventData);
+        setEvents((prev) => [...prev, newEvent]);
+      } catch (error) {
+        console.error("Failed to create event:", error);
+        throw error;
+      }
+    } else {
+      console.warn("Provider does not support creating events");
+      // For mock provider, we could simulate it, but for now just warn
+    }
+  };
 
   const refreshEvents = useCallback(async () => {
     setIsLoading(true);
@@ -113,7 +143,9 @@ export function CalendarProviderWrapper({
   }, [refreshEvents]);
 
   return (
-    <CalendarContext.Provider value={{ events, isLoading, refreshEvents }}>
+    <CalendarContext.Provider
+      value={{ events, isLoading, refreshEvents, createEvent }}
+    >
       {children}
     </CalendarContext.Provider>
   );

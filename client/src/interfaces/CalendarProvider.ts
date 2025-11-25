@@ -5,4 +5,11 @@ import type { CalendarEvent } from "@shared/types";
  */
 export interface CalendarProvider {
   getEvents(start: Date, end: Date): Promise<CalendarEvent[]>;
+  createEvent?(event: {
+    title: string;
+    description?: string;
+    start: Date;
+    end: Date;
+    attendees?: string[];
+  }): Promise<CalendarEvent>;
 }

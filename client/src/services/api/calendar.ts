@@ -41,4 +41,15 @@ export const calendarApi = {
       `/api/calendar/all-events/${userId}${query}`,
     );
   },
+  createEvent: (data: {
+    userId: string;
+    title: string;
+    description?: string;
+    start: string;
+    end: string;
+    attendees?: string[];
+    isAllDay?: boolean;
+  }) => {
+    return apiClient.post<RawCalendarEvent>("/api/calendar/events", data);
+  },
 };
