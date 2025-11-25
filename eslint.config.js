@@ -9,7 +9,7 @@ import prettierConfig from "eslint-config-prettier";
 export default [
   // Ignore patterns (only non-obvious ones)
   {
-    ignores: ["**/dist/**", "**/build/**"],
+    ignores: ["**/dist/**", "**/build/**", "**/.history/**"],
   },
 
   // Base JavaScript config
