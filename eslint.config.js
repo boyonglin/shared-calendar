@@ -15,6 +15,22 @@ export default [
   // Base JavaScript config
   js.configs.recommended,
 
+  // CommonJS scripts (Node.js)
+  {
+    files: ["**/scripts/**/*.js"],
+    languageOptions: {
+      sourceType: "commonjs",
+      globals: {
+        require: "readonly",
+        module: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+        process: "readonly",
+        console: "readonly",
+      },
+    },
+  },
+
   // Config files (ES Module with Node globals)
   {
     files: ["**/*.config.js", "**/*.config.ts"],
@@ -57,6 +73,7 @@ export default [
         sessionStorage: "readonly",
         URLSearchParams: "readonly",
         RequestInit: "readonly",
+        HeadersInit: "readonly",
         HTMLElement: "readonly",
         HTMLDivElement: "readonly",
         KeyboardEvent: "readonly",

@@ -11,5 +11,6 @@ export interface CalendarProvider {
     start: Date;
     end: Date;
     attendees?: string[];
+    isAllDay?: boolean;
   }): Promise<CalendarEvent>;
 }

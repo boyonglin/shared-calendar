@@ -12,6 +12,8 @@ import { MockCalendarProvider } from "@/services/MockCalendarProvider";
 import { UnifiedCalendarProvider } from "@/services/UnifiedCalendarProvider";
 import { useGoogleAuth } from "./GoogleAuthContext";
 
+const AUTO_REFRESH_INTERVAL_MS = 60 * 1000;
+
 export interface CalendarContextType {
   events: CalendarEvent[];
   isLoading: boolean;
@@ -149,7 +151,7 @@ export function CalendarProviderWrapper({
       if (intervalId === null) {
         intervalId = window.setInterval(() => {
           refreshEvents();
-        }, 60000);
+        }, AUTO_REFRESH_INTERVAL_MS);
       }
     };
 
