@@ -19,18 +19,40 @@ const outlookAuthTokens = new Map<
   { userId: string; expiresAt: number }
 >();
 
-// Clean up expired tokens periodically (every 5 minutes)
-globalThis.setInterval(
-  () => {
-    const now = Date.now();
-    for (const [token, data] of outlookAuthTokens.entries()) {
-      if (data.expiresAt < now) {
-        outlookAuthTokens.delete(token);
-      }
+// Timer reference for cleanup interval
+let cleanupTimer: ReturnType<typeof globalThis.setInterval> | null = null;
+
+// Clean up expired tokens
+function cleanupExpiredTokens() {
+  const now = Date.now();
+  for (const [token, data] of outlookAuthTokens.entries()) {
+    if (data.expiresAt < now) {
+      outlookAuthTokens.delete(token);
     }
-  },
-  5 * 60 * 1000,
-);
+  }
+}
+
+// Start the cleanup timer (called when module is loaded)
+function startCleanupTimer() {
+  if (cleanupTimer === null) {
+    cleanupTimer = globalThis.setInterval(cleanupExpiredTokens, 5 * 60 * 1000);
+    // Unref the timer so it doesn't prevent Node.js from exiting
+    if (cleanupTimer.unref) {
+      cleanupTimer.unref();
+    }
+  }
+}
+
+// Stop the cleanup timer (exported for testing/graceful shutdown)
+export function stopCleanupTimer() {
+  if (cleanupTimer !== null) {
+    globalThis.clearInterval(cleanupTimer);
+    cleanupTimer = null;
+  }
+}
+
+// Start cleanup timer when module loads
+startCleanupTimer();
 
 router.get("/google", (req: Request, res: Response) => {
   const url = googleAuthService.getAuthUrl();

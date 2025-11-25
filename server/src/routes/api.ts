@@ -11,6 +11,7 @@ import {
   validateUserIdParam,
   validateCreateEvent,
   validateDraftInvitation,
+  isValidEmail,
 } from "../middleware/validation";
 import { authenticateUser } from "../middleware/auth";
 import type { AuthRequest } from "../middleware/auth";
@@ -478,9 +479,8 @@ router.post(
 
       const normalizedEmail = friendEmail.toLowerCase().trim();
 
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(normalizedEmail)) {
+      // Validate email format using shared validation utility
+      if (!isValidEmail(normalizedEmail)) {
         res.status(400).json({ error: "Invalid email format" });
         return;
       }
@@ -626,7 +626,9 @@ router.get(
 
         // Check if friend now has an account (for pending connections - user not yet signed up)
         // Note: Ideally this would be handled during friend signup, but for backwards
-        // compatibility we check here and update lazily
+        // compatibility we check here and update lazily.
+        // TODO: Consider moving this logic to a webhook or background job that triggers
+        // when a new user signs up, to avoid side effects in GET endpoints.
         if (conn.status === "pending" && !conn.friend_user_id) {
           const friendStmt = db.prepare(
             "SELECT user_id FROM calendar_accounts WHERE external_email = ?",

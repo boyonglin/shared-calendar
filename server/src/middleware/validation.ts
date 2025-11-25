@@ -1,6 +1,14 @@
 import type { Request, Response, NextFunction } from "express";
 import { body, param, validationResult } from "express-validator";
 
+// Email validation regex - used for consistent email validation across the application
+export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Helper function to validate email format
+export function isValidEmail(email: string): boolean {
+  return EMAIL_REGEX.test(email);
+}
+
 // Validation middleware to check for errors
 export const validate = (
   req: Request,
