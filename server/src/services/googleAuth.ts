@@ -202,6 +202,22 @@ export const googleAuthService = {
       refresh_token: account.refresh_token,
     });
 
+    // Handle automatic token refresh and persist updated tokens to the database
+    oauth2Client.on("tokens", (tokens) => {
+      if (tokens.access_token) {
+        const updateStmt = db.prepare(
+          "UPDATE calendar_accounts SET access_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+        );
+        updateStmt.run(tokens.access_token, userId);
+      }
+      if (tokens.refresh_token) {
+        const updateStmt = db.prepare(
+          "UPDATE calendar_accounts SET refresh_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+        );
+        updateStmt.run(tokens.refresh_token, userId);
+      }
+    });
+
     const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
     const res = await calendar.events.insert({

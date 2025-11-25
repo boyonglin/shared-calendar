@@ -69,7 +69,7 @@ export function InviteDialog({
 
   const handleSubmit = () => {
     if (!title.trim()) return;
-    onSendInvite(title, description, selectedAttendees, parseInt(duration));
+    onSendInvite(title, description, selectedAttendees, parseInt(duration, 10));
   };
 
   const formatDateTime = () => {
@@ -84,7 +84,7 @@ export function InviteDialog({
     if (isAllDay) {
       return `${dateStr} (All day)`;
     }
-    const timeStr = `${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? "PM" : "AM"}`;
+    const timeStr = `${hour === 0 ? 12 : hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? "PM" : "AM"}`;
     return `${dateStr} at ${timeStr}`;
   };
 
