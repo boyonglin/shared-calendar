@@ -14,17 +14,18 @@ export const authenticateUser = (
   res: Response,
   next: NextFunction,
 ): void => {
+  // Check for token in Authorization header first, then fall back to cookie
   const authHeader = req.headers.authorization;
+  let token: string | undefined;
 
-  if (!authHeader) {
-    res.status(401).json({ error: "No token provided" });
-    return;
+  if (authHeader) {
+    token = authHeader.split(" ")[1]; // Bearer <token>
+  } else if (req.cookies?.token) {
+    token = req.cookies.token;
   }
 
-  const token = authHeader.split(" ")[1]; // Bearer <token>
-
   if (!token) {
-    res.status(401).json({ error: "Invalid token format" });
+    res.status(401).json({ error: "No token provided" });
     return;
   }
 
@@ -36,6 +37,13 @@ export const authenticateUser = (
     (req as AuthRequest).user = decoded;
     next();
   } catch (error) {
-    res.status(401).json({ error: "Invalid or expired token" });
+    console.error("JWT verification error:", error);
+    if (error instanceof jwt.TokenExpiredError) {
+      res.status(401).json({ error: "Token expired" });
+    } else if (error instanceof jwt.JsonWebTokenError) {
+      res.status(401).json({ error: "Malformed token" });
+    } else {
+      res.status(401).json({ error: "Invalid token" });
+    }
   }
 };

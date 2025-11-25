@@ -72,8 +72,7 @@ export function CalendarProviderWrapper({
         throw error;
       }
     } else {
-      console.warn("Provider does not support creating events");
-      // For mock provider, we could simulate it, but for now just warn
+      throw new Error("Provider does not support creating events");
     }
   };
 
@@ -142,13 +141,44 @@ export function CalendarProviderWrapper({
     refreshEvents();
   }, [refreshEvents]);
 
-  // Auto-refresh events every 30 seconds
+  // Auto-refresh events every 60 seconds, but only when window is focused/visible
   useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      refreshEvents();
-    }, 30000);
+    let intervalId: number | null = null;
 
-    return () => window.clearInterval(intervalId);
+    const startInterval = () => {
+      if (intervalId === null) {
+        intervalId = window.setInterval(() => {
+          refreshEvents();
+        }, 60000);
+      }
+    };
+
+    const clearIntervalIfExists = () => {
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshEvents();
+        startInterval();
+      } else {
+        clearIntervalIfExists();
+      }
+    };
+
+    if (document.visibilityState === "visible") {
+      startInterval();
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearIntervalIfExists();
+    };
   }, [refreshEvents]);
 
   return (

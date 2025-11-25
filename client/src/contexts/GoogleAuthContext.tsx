@@ -5,7 +5,6 @@ import {
   clearStoredSession,
   restoreSession,
   saveUserSession,
-  saveAuthToken,
 } from "../utils/googleStorage";
 import { authApi } from "@/services/api/auth";
 import { API_BASE_URL } from "@/config/api";
@@ -25,16 +24,12 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
     const authSuccess = params.get("auth");
     const userId = params.get("userId");
     const provider = params.get("provider");
-    const token = params.get("token");
 
     if (authSuccess === "success" && userId) {
       // Clear params from URL
       window.history.replaceState({}, "", window.location.pathname);
 
-      // Save JWT token if provided
-      if (token) {
-        saveAuthToken(token);
-      }
+      // JWT token is now stored in HTTP-only cookie by the server
 
       // If this is an Outlook callback, don't set it as the main user
       // The Outlook connection will be detected by the useOutlookConnection hook

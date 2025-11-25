@@ -2,6 +2,7 @@ import "dotenv/config"; // Load environment variables before other imports
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth";
 import apiRoutes from "./routes/api";
 import { env } from "./config/env";
@@ -13,6 +14,9 @@ const CLIENT_URL = env.CLIENT_URL;
 
 // Security middleware
 app.use(helmet());
+
+// Cookie parser middleware
+app.use(cookieParser());
 
 // CORS middleware
 app.use(

@@ -24,6 +24,7 @@ class ApiClient {
     const response = await fetch(url, {
       ...options,
       headers,
+      credentials: "include", // Include cookies in requests
     });
 
     if (!response.ok) {
