@@ -27,7 +27,6 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [removed, setRemoved] = useState(false);
-  const [initialKey, setInitialKey] = useState<string | null>(null);
 
   // Read stored key on each render to get current state
   const storedKey = localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY);
@@ -36,16 +35,24 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const effectiveStoredKey = removed ? null : storedKey;
   const effectiveHasExistingKey = !!effectiveStoredKey;
 
-  // Initialize apiKey when dialog opens
-  if (isOpen && initialKey === null) {
-    // Don't populate the input with stored key - keep it empty for security
-    // User can click eye icon to reveal or type a new key
-    setApiKey("");
-    setInitialKey(storedKey || "");
-  }
-
   // Check if key has been modified (new key entered)
   const hasNewKey = apiKey.trim().length > 0;
+
+  // Reset state when opening or closing the dialog
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      // Reset state when closing
+      setApiKey("");
+      setShowApiKey(false);
+      setRemoved(false);
+      onClose();
+    } else {
+      // Reset state when opening
+      setApiKey("");
+      setShowApiKey(false);
+      setRemoved(false);
+    }
+  };
 
   const handleSave = () => {
     const keyToSave = apiKey.trim();
@@ -56,7 +63,6 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
     localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, keyToSave);
     setRemoved(false);
-    setInitialKey(null);
     toast.success("Gemini API key saved successfully");
     onClose();
   };
@@ -68,21 +74,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     toast.success("Gemini API key removed");
   };
 
-  const handleClose = () => {
-    setApiKey("");
-    setShowApiKey(false);
-    setRemoved(false);
-    setInitialKey(null);
-    onClose();
-  };
-
   const maskApiKey = (key: string) => {
     if (key.length <= 8) return "••••••••";
     return key.slice(0, 4) + "••••••••" + key.slice(-4);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
@@ -181,7 +179,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             )}
           </div>
           <div className="flex gap-3">
-            <Button type="button" variant="outline" onClick={handleClose}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button

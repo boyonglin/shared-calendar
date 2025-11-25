@@ -59,12 +59,24 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const primaryUserId = (req as AuthRequest).user!.userId;
-      const timeMin = req.query.timeMin
-        ? new Date(req.query.timeMin as string)
-        : undefined;
-      const timeMax = req.query.timeMax
-        ? new Date(req.query.timeMax as string)
-        : undefined;
+
+      // Validate timeMin and timeMax query parameters
+      let timeMin: Date | undefined;
+      let timeMax: Date | undefined;
+      if (req.query.timeMin) {
+        timeMin = new Date(req.query.timeMin as string);
+        if (isNaN(timeMin.getTime())) {
+          res.status(400).json({ error: "Invalid timeMin parameter" });
+          return;
+        }
+      }
+      if (req.query.timeMax) {
+        timeMax = new Date(req.query.timeMax as string);
+        if (isNaN(timeMax.getTime())) {
+          res.status(400).json({ error: "Invalid timeMax parameter" });
+          return;
+        }
+      }
 
       // Get all calendar accounts linked to this primary user
       // This includes their Google account AND any iCloud/Outlook they've connected
@@ -141,12 +153,23 @@ router.get(
   validateUserId,
   async (req: Request, res: Response) => {
     try {
-      const timeMin = req.query.timeMin
-        ? new Date(req.query.timeMin as string)
-        : undefined;
-      const timeMax = req.query.timeMax
-        ? new Date(req.query.timeMax as string)
-        : undefined;
+      // Validate timeMin and timeMax query parameters
+      let timeMin: Date | undefined;
+      let timeMax: Date | undefined;
+      if (req.query.timeMin) {
+        timeMin = new Date(req.query.timeMin as string);
+        if (isNaN(timeMin.getTime())) {
+          res.status(400).json({ error: "Invalid timeMin parameter" });
+          return;
+        }
+      }
+      if (req.query.timeMax) {
+        timeMax = new Date(req.query.timeMax as string);
+        if (isNaN(timeMax.getTime())) {
+          res.status(400).json({ error: "Invalid timeMax parameter" });
+          return;
+        }
+      }
 
       // Check which provider this user is using
       const stmt = db.prepare(
@@ -455,6 +478,13 @@ router.post(
 
       const normalizedEmail = friendEmail.toLowerCase().trim();
 
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(normalizedEmail)) {
+        res.status(400).json({ error: "Invalid email format" });
+        return;
+      }
+
       // Check if user is trying to add themselves
       const userStmt = db.prepare(
         "SELECT external_email FROM calendar_accounts WHERE user_id = ?",
@@ -493,28 +523,32 @@ router.post(
       const status = friendAccount ? "requested" : "pending";
       const friendUserId = friendAccount?.user_id || null;
 
-      insertStmt.run(userId, normalizedEmail, friendUserId, status);
+      // Wrap both inserts in a transaction to ensure atomicity
+      const addFriendTransaction = db.transaction(() => {
+        insertStmt.run(userId, normalizedEmail, friendUserId, status);
 
-      // If friend already has an account, create an INCOMING request for them
-      if (friendAccount && userAccount?.external_email) {
-        const reverseExistingStmt = db.prepare(
-          "SELECT * FROM user_connections WHERE user_id = ? AND friend_email = ?",
-        );
-        const reverseExisting = reverseExistingStmt.get(
-          friendAccount.user_id,
-          userAccount.external_email.toLowerCase(),
-        );
-
-        if (!reverseExisting) {
-          // Create incoming request for the friend (they need to accept)
-          insertStmt.run(
+        // If friend already has an account, create an INCOMING request for them
+        if (friendAccount && userAccount?.external_email) {
+          const reverseExistingStmt = db.prepare(
+            "SELECT * FROM user_connections WHERE user_id = ? AND friend_email = ?",
+          );
+          const reverseExisting = reverseExistingStmt.get(
             friendAccount.user_id,
             userAccount.external_email.toLowerCase(),
-            userId,
-            "incoming", // This is an incoming request they need to accept
           );
+
+          if (!reverseExisting) {
+            // Create incoming request for the friend (they need to accept)
+            insertStmt.run(
+              friendAccount.user_id,
+              userAccount.external_email.toLowerCase(),
+              userId,
+              "incoming", // This is an incoming request they need to accept
+            );
+          }
         }
-      }
+      });
+      addFriendTransaction();
 
       // Get the inserted connection
       const getStmt = db.prepare(
@@ -591,6 +625,8 @@ router.get(
         }
 
         // Check if friend now has an account (for pending connections - user not yet signed up)
+        // Note: Ideally this would be handled during friend signup, but for backwards
+        // compatibility we check here and update lazily
         if (conn.status === "pending" && !conn.friend_user_id) {
           const friendStmt = db.prepare(
             "SELECT user_id FROM calendar_accounts WHERE external_email = ?",
@@ -600,45 +636,50 @@ router.get(
             | undefined;
 
           if (friendAccount) {
-            // Friend signed up! Update to 'requested' status (they need to accept)
-            const updateStmt = db.prepare(`
-              UPDATE user_connections 
-              SET friend_user_id = ?, status = 'requested', updated_at = CURRENT_TIMESTAMP
-              WHERE id = ?
-            `);
-            updateStmt.run(friendAccount.user_id, conn.id);
-            conn.friend_user_id = friendAccount.user_id;
-            conn.status = "requested";
+            // Wrap the status update in a transaction for atomicity
+            const updatePendingConnection = db.transaction(() => {
+              // Friend signed up! Update to 'requested' status (they need to accept)
+              const updateStmt = db.prepare(`
+                UPDATE user_connections 
+                SET friend_user_id = ?, status = 'requested', updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+              `);
+              updateStmt.run(friendAccount.user_id, conn.id);
 
-            // Create an INCOMING request for the friend
-            const currentUserStmt = db.prepare(
-              "SELECT external_email FROM calendar_accounts WHERE user_id = ?",
-            );
-            const currentUser = currentUserStmt.get(userId) as
-              | { external_email: string }
-              | undefined;
-
-            if (currentUser?.external_email) {
-              const reverseExistingStmt = db.prepare(
-                "SELECT id FROM user_connections WHERE user_id = ? AND friend_email = ?",
+              // Create an INCOMING request for the friend
+              const currentUserStmt = db.prepare(
+                "SELECT external_email FROM calendar_accounts WHERE user_id = ?",
               );
-              const reverseExisting = reverseExistingStmt.get(
-                friendAccount.user_id,
-                currentUser.external_email.toLowerCase(),
-              );
+              const currentUser = currentUserStmt.get(userId) as
+                | { external_email: string }
+                | undefined;
 
-              if (!reverseExisting) {
-                const insertReverseStmt = db.prepare(`
-                  INSERT INTO user_connections (user_id, friend_email, friend_user_id, status)
-                  VALUES (?, ?, ?, 'incoming')
-                `);
-                insertReverseStmt.run(
+              if (currentUser?.external_email) {
+                const reverseExistingStmt = db.prepare(
+                  "SELECT id FROM user_connections WHERE user_id = ? AND friend_email = ?",
+                );
+                const reverseExisting = reverseExistingStmt.get(
                   friendAccount.user_id,
                   currentUser.external_email.toLowerCase(),
-                  userId,
                 );
+
+                if (!reverseExisting) {
+                  const insertReverseStmt = db.prepare(`
+                    INSERT INTO user_connections (user_id, friend_email, friend_user_id, status)
+                    VALUES (?, ?, ?, 'incoming')
+                  `);
+                  insertReverseStmt.run(
+                    friendAccount.user_id,
+                    currentUser.external_email.toLowerCase(),
+                    userId,
+                  );
+                }
               }
-            }
+            });
+            updatePendingConnection();
+
+            conn.friend_user_id = friendAccount.user_id;
+            conn.status = "requested";
           }
         }
 
@@ -689,32 +730,36 @@ router.delete(
         return;
       }
 
-      // Delete the user's connection
-      const deleteStmt = db.prepare(
-        "DELETE FROM user_connections WHERE id = ?",
-      );
-      deleteStmt.run(friendId);
-
-      // Also delete the reverse connection (mutual removal)
-      if (connection.friend_user_id) {
-        // Get current user's email to find reverse connection
-        const userStmt = db.prepare(
-          "SELECT external_email FROM calendar_accounts WHERE user_id = ?",
+      // Wrap the deletion logic in a transaction for atomicity
+      const removeFriendTransaction = db.transaction(() => {
+        // Delete the user's connection
+        const deleteStmt = db.prepare(
+          "DELETE FROM user_connections WHERE id = ?",
         );
-        const userAccount = userStmt.get(userId) as
-          | { external_email: string }
-          | undefined;
+        deleteStmt.run(friendId);
 
-        if (userAccount?.external_email) {
-          const deleteReverseStmt = db.prepare(
-            "DELETE FROM user_connections WHERE user_id = ? AND friend_email = ?",
+        // Also delete the reverse connection (mutual removal)
+        if (connection.friend_user_id) {
+          // Get current user's email to find reverse connection
+          const userStmt = db.prepare(
+            "SELECT external_email FROM calendar_accounts WHERE user_id = ?",
           );
-          deleteReverseStmt.run(
-            connection.friend_user_id,
-            userAccount.external_email.toLowerCase(),
-          );
+          const userAccount = userStmt.get(userId) as
+            | { external_email: string }
+            | undefined;
+
+          if (userAccount?.external_email) {
+            const deleteReverseStmt = db.prepare(
+              "DELETE FROM user_connections WHERE user_id = ? AND friend_email = ?",
+            );
+            deleteReverseStmt.run(
+              connection.friend_user_id,
+              userAccount.external_email.toLowerCase(),
+            );
+          }
         }
-      }
+      });
+      removeFriendTransaction();
 
       res.json({ success: true, message: "Friend removed successfully" });
     } catch (error) {
@@ -802,23 +847,27 @@ router.post(
         return;
       }
 
-      // Update the incoming request to accepted
-      const updateStmt = db.prepare(`
-        UPDATE user_connections 
-        SET status = 'accepted', updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `);
-      updateStmt.run(friendId);
-
-      // Update the other person's request to accepted too
-      if (request.friend_user_id) {
-        const updateOtherStmt = db.prepare(`
+      // Perform both updates in a transaction to ensure consistency
+      const acceptFriendRequest = db.transaction(() => {
+        // Update the incoming request to accepted
+        const updateStmt = db.prepare(`
           UPDATE user_connections 
           SET status = 'accepted', updated_at = CURRENT_TIMESTAMP
-          WHERE user_id = ? AND friend_user_id = ? AND status = 'requested'
+          WHERE id = ?
         `);
-        updateOtherStmt.run(request.friend_user_id, userId);
-      }
+        updateStmt.run(friendId);
+
+        // Update the other person's request to accepted too
+        if (request.friend_user_id) {
+          const updateOtherStmt = db.prepare(`
+            UPDATE user_connections 
+            SET status = 'accepted', updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = ? AND friend_user_id = ? AND status = 'requested'
+          `);
+          updateOtherStmt.run(request.friend_user_id, userId);
+        }
+      });
+      acceptFriendRequest();
 
       res.json({ success: true, message: "Friend request accepted!" });
     } catch (error) {
@@ -855,19 +904,22 @@ router.post(
         return;
       }
 
-      // Delete the incoming request
-      const deleteStmt = db.prepare(
-        "DELETE FROM user_connections WHERE id = ?",
-      );
-      deleteStmt.run(friendId);
-
-      // Also delete the other person's outgoing request
-      if (request.friend_user_id) {
-        const deleteOtherStmt = db.prepare(
-          "DELETE FROM user_connections WHERE user_id = ? AND friend_user_id = ? AND status = 'requested'",
+      // Delete both the incoming and outgoing request in a transaction
+      const rejectFriendRequest = db.transaction(() => {
+        const deleteStmt = db.prepare(
+          "DELETE FROM user_connections WHERE id = ?",
         );
-        deleteOtherStmt.run(request.friend_user_id, userId);
-      }
+        deleteStmt.run(friendId);
+
+        // Also delete the other person's outgoing request
+        if (request.friend_user_id) {
+          const deleteOtherStmt = db.prepare(
+            "DELETE FROM user_connections WHERE user_id = ? AND friend_user_id = ? AND status = 'requested'",
+          );
+          deleteOtherStmt.run(request.friend_user_id, userId);
+        }
+      });
+      rejectFriendRequest();
 
       res.json({ success: true, message: "Friend request rejected" });
     } catch (error) {
@@ -906,12 +958,23 @@ router.get(
         return;
       }
 
-      const timeMin = req.query.timeMin
-        ? new Date(req.query.timeMin as string)
-        : undefined;
-      const timeMax = req.query.timeMax
-        ? new Date(req.query.timeMax as string)
-        : undefined;
+      // Validate timeMin and timeMax query parameters
+      let timeMin: Date | undefined;
+      let timeMax: Date | undefined;
+      if (req.query.timeMin) {
+        timeMin = new Date(req.query.timeMin as string);
+        if (isNaN(timeMin.getTime())) {
+          res.status(400).json({ error: "Invalid timeMin parameter" });
+          return;
+        }
+      }
+      if (req.query.timeMax) {
+        timeMax = new Date(req.query.timeMax as string);
+        if (isNaN(timeMax.getTime())) {
+          res.status(400).json({ error: "Invalid timeMax parameter" });
+          return;
+        }
+      }
 
       // Get friend's calendar accounts (Google + any iCloud/Outlook they've linked)
       const accountStmt = db.prepare(

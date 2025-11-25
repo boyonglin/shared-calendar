@@ -296,38 +296,42 @@ function AppContent({
         (f) => f.status === "accepted" && f.friendUserId,
       );
 
-      const allFriendEvents: CalendarEvent[] = [];
-      for (const friend of acceptedFriends) {
-        try {
-          const events = await friendsApi.getFriendEvents(
-            friend.id,
-            timeMin,
-            timeMax,
-          );
-          const transformed = events.map((e) => ({
-            id: e.id,
-            userId: friend.friendUserId!,
-            start: new Date(
-              typeof e.start === "string"
-                ? e.start
-                : e.start?.dateTime || e.start?.date || "",
-            ),
-            end: new Date(
-              typeof e.end === "string"
-                ? e.end
-                : e.end?.dateTime || e.end?.date || "",
-            ),
-            title: e.title || e.summary,
-            isAllDay: !!(
-              (typeof e.start === "object" && e.start?.date) ||
-              (typeof e.end === "object" && e.end?.date)
-            ),
-          }));
-          allFriendEvents.push(...transformed);
-        } catch (err) {
-          console.error(`Error fetching events for friend ${friend.id}:`, err);
-        }
-      }
+      // Fetch all friend events in parallel for better performance
+      const eventPromises = acceptedFriends.map((friend) =>
+        friendsApi
+          .getFriendEvents(friend.id, timeMin, timeMax)
+          .then((events) =>
+            events.map((e) => ({
+              id: e.id,
+              userId: friend.friendUserId!,
+              start: new Date(
+                typeof e.start === "string"
+                  ? e.start
+                  : e.start?.dateTime || e.start?.date || "",
+              ),
+              end: new Date(
+                typeof e.end === "string"
+                  ? e.end
+                  : e.end?.dateTime || e.end?.date || "",
+              ),
+              title: e.title || e.summary,
+              isAllDay: !!(
+                (typeof e.start === "object" && e.start?.date) ||
+                (typeof e.end === "object" && e.end?.date)
+              ),
+            })),
+          )
+          .catch((err) => {
+            console.error(
+              `Error fetching events for friend ${friend.id}:`,
+              err,
+            );
+            return [];
+          }),
+      );
+
+      const allFriendEventsArrays = await Promise.all(eventPromises);
+      const allFriendEvents: CalendarEvent[] = allFriendEventsArrays.flat();
       setFriendEvents(allFriendEvents);
     } catch (err) {
       console.error("Error fetching friends:", err);
@@ -339,14 +343,10 @@ function AppContent({
   }, [fetchFriendsAndEvents]);
 
   // Handle friends change from FriendsManager
-  const handleFriendsChange = useCallback(
-    (newFriends: FriendWithColor[]) => {
-      setFriends(newFriends);
-      // Re-fetch events when friends change
-      fetchFriendsAndEvents();
-    },
-    [fetchFriendsAndEvents],
-  );
+  const handleFriendsChange = useCallback(() => {
+    // Re-fetch friends and their events when friends change
+    fetchFriendsAndEvents();
+  }, [fetchFriendsAndEvents]);
 
   // Convert Google Calendar events to our CalendarEvent format
   // Our CalendarProvider interface returns CalendarEvent[], so we can use them directly.

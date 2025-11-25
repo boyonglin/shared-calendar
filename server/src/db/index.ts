@@ -45,9 +45,15 @@ db.exec(`
   );
 `);
 
-// Create index for faster lookups
+// Create indexes for calendar_accounts to speed up lookups by external_email and primary_user_id
 db.exec(`
-  CREATE INDEX IF NOT EXISTS idx_user_connections_user_id ON user_connections(user_id);
+  CREATE INDEX IF NOT EXISTS idx_calendar_accounts_external_email ON calendar_accounts(external_email);
+  CREATE INDEX IF NOT EXISTS idx_calendar_accounts_primary_user_id ON calendar_accounts(primary_user_id);
+`);
+
+// Create index for faster lookups - use composite index on (user_id, status) for better query performance
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_user_connections_user_id_status ON user_connections(user_id, status);
   CREATE INDEX IF NOT EXISTS idx_user_connections_friend_email ON user_connections(friend_email);
   CREATE INDEX IF NOT EXISTS idx_user_connections_friend_user_id ON user_connections(friend_user_id);
 `);

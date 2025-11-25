@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import express from "express";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { googleAuthService } from "../services/googleAuth";
 import { icloudAuthService } from "../services/icloudAuth";
 import { onecalAuthService } from "../services/onecalAuth";
@@ -10,6 +11,26 @@ import type { AuthRequest } from "../middleware/auth";
 import { env } from "../config/env";
 
 const router = express.Router();
+
+// In-memory store for Outlook OAuth state tokens
+// Maps secure random token -> { userId, expiresAt }
+const outlookAuthTokens = new Map<
+  string,
+  { userId: string; expiresAt: number }
+>();
+
+// Clean up expired tokens periodically (every 5 minutes)
+globalThis.setInterval(
+  () => {
+    const now = Date.now();
+    for (const [token, data] of outlookAuthTokens.entries()) {
+      if (data.expiresAt < now) {
+        outlookAuthTokens.delete(token);
+      }
+    }
+  },
+  5 * 60 * 1000,
+);
 
 router.get("/google", (req: Request, res: Response) => {
   const url = googleAuthService.getAuthUrl();
@@ -88,8 +109,15 @@ router.get("/outlook", authenticateUser, (req: Request, res: Response) => {
   try {
     const primaryUserId = (req as AuthRequest).user!.userId;
 
-    // Store primary user ID in a cookie to retrieve in callback
-    res.cookie("outlook_primary_user", primaryUserId, {
+    // Generate a cryptographically secure random token
+    const stateToken = crypto.randomBytes(32).toString("hex");
+
+    // Store the mapping with a 10-minute expiration
+    const expiresAt = Date.now() + 10 * 60 * 1000;
+    outlookAuthTokens.set(stateToken, { userId: primaryUserId, expiresAt });
+
+    // Store only the secure token in the cookie, not the user ID
+    res.cookie("outlook_auth_state", stateToken, {
       httpOnly: true,
       secure: env.NODE_ENV === "production",
       sameSite: "lax",
@@ -107,13 +135,29 @@ router.get("/outlook", authenticateUser, (req: Request, res: Response) => {
 
 router.get("/outlook/callback", async (req: Request, res: Response) => {
   const { endUserAccountId } = req.query;
-  const primaryUserId = req.cookies?.outlook_primary_user;
+  const stateToken = req.cookies?.outlook_auth_state;
 
   // Clear the temporary cookie
-  res.clearCookie("outlook_primary_user");
+  res.clearCookie("outlook_auth_state");
 
   if (!endUserAccountId || typeof endUserAccountId !== "string") {
     res.status(400).send("Missing endUserAccountId from OneCal callback");
+    return;
+  }
+
+  // Validate the state token and retrieve the user ID
+  let primaryUserId: string | undefined;
+  if (stateToken) {
+    const tokenData = outlookAuthTokens.get(stateToken);
+    if (tokenData && tokenData.expiresAt > Date.now()) {
+      primaryUserId = tokenData.userId;
+    }
+    // Always delete the token after use (one-time use)
+    outlookAuthTokens.delete(stateToken);
+  }
+
+  if (!primaryUserId) {
+    res.status(400).send("Invalid or expired authentication state");
     return;
   }
 
