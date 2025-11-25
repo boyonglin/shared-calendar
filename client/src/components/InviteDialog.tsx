@@ -60,9 +60,7 @@ export function InviteDialog({
   useEffect(() => {
     if (!isOpen) {
       setTitle("");
-
       setDescription("");
-
       setSelectedAttendees([]);
       setDuration("60");
       setIsGenerating(false);
@@ -221,6 +219,7 @@ export function InviteDialog({
               placeholder="e.g., Team Sync Meeting"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              maxLength={200}
             />
           </div>
 
@@ -266,6 +265,7 @@ export function InviteDialog({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="min-h-[80px] border-0 resize-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                maxLength={2000}
               />
             </ScrollArea>
           </div>

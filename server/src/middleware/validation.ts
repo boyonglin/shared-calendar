@@ -42,7 +42,11 @@ export const validatePrimaryUserId = [
 
 // Validation rules for creating an event
 export const validateCreateEvent = [
-  body("title").notEmpty().withMessage("Title is required"),
+  body("title")
+    .notEmpty()
+    .withMessage("Title is required")
+    .isLength({ max: 200 })
+    .withMessage("Title must be at most 200 characters"),
   body("start")
     .isISO8601({ strict: false })
     .withMessage("Start time must be a valid ISO 8601 date"),
@@ -65,7 +69,11 @@ export const validateCreateEvent = [
 
 // Validation rules for drafting an invitation
 export const validateDraftInvitation = [
-  body("title").notEmpty().withMessage("Title is required"),
+  body("title")
+    .notEmpty()
+    .withMessage("Title is required")
+    .isLength({ max: 200 })
+    .withMessage("Title must be at most 200 characters"),
   body("start")
     .isISO8601({ strict: false })
     .withMessage("Start time must be a valid ISO 8601 date"),
@@ -84,6 +92,14 @@ export const validateDraftInvitation = [
       return true;
     }),
   body("geminiApiKey").notEmpty().withMessage("Gemini API key is required"),
+  body("description")
+    .optional()
+    .isLength({ max: 2000 })
+    .withMessage("Description must be at most 2000 characters"),
+  body("attendees")
+    .optional()
+    .isArray({ max: 50 })
+    .withMessage("Attendees must be an array with at most 50 items"),
   body("tone")
     .optional()
     .isIn(["professional", "casual", "friendly"])
