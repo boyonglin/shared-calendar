@@ -38,13 +38,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   // Initialize apiKey when dialog opens
   if (isOpen && initialKey === null) {
-    const key = storedKey || "";
-    setApiKey(key);
-    setInitialKey(key);
+    // Don't populate the input with stored key - keep it empty for security
+    // User can click eye icon to reveal or type a new key
+    setApiKey("");
+    setInitialKey(storedKey || "");
   }
 
-  // Check if key has been modified
-  const hasModifiedKey = apiKey.trim() !== (effectiveStoredKey || "");
+  // Check if key has been modified (new key entered)
+  const hasNewKey = apiKey.trim().length > 0;
 
   const handleSave = () => {
     const keyToSave = apiKey.trim();
@@ -108,12 +109,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 <Input
                   id="gemini-api-key"
                   type={showApiKey ? "text" : "password"}
-                  placeholder="Enter your Gemini API key"
+                  placeholder={
+                    effectiveHasExistingKey
+                      ? "Enter new key to replace"
+                      : "Enter your Gemini API key"
+                  }
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   className="pr-10"
                 />
-                {(apiKey || effectiveHasExistingKey) && (
+                {apiKey && (
                   <button
                     type="button"
                     onClick={() => setShowApiKey(!showApiKey)}
@@ -128,7 +133,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   </button>
                 )}
               </div>
-              {effectiveHasExistingKey && !showApiKey && effectiveStoredKey && (
+              {effectiveHasExistingKey && effectiveStoredKey && (
                 <p className="text-xs text-green-600 flex items-center gap-1">
                   <Check className="w-3 h-3" />
                   API key configured: {maskApiKey(effectiveStoredKey)}
@@ -181,7 +186,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!apiKey.trim() || !hasModifiedKey}
+              disabled={!apiKey.trim() || !hasNewKey}
             >
               Save
             </Button>
