@@ -192,9 +192,11 @@ router.post(
 
       // Check provider
       const stmt = db.prepare(
-        "SELECT provider FROM calendar_accounts WHERE user_id = ?",
+        "SELECT provider, access_token, refresh_token FROM calendar_accounts WHERE user_id = ?",
       );
-      const account = stmt.get(userId) as CalendarAccount | undefined;
+      const account = stmt.get(userId) as
+        | { provider: string; access_token: string; refresh_token?: string }
+        | undefined;
 
       if (!account) {
         res.status(404).json({ error: "User not found" });
@@ -203,13 +205,17 @@ router.post(
 
       if (account.provider === "google") {
         const isAllDay = req.body.isAllDay || false;
-        const event = await googleAuthService.createEvent(userId, {
-          summary: title,
-          description,
-          start: isAllDay ? { date: start } : { dateTime: start },
-          end: isAllDay ? { date: end } : { dateTime: end },
-          attendees: attendees?.map((email: string) => ({ email })),
-        });
+        const event = await googleAuthService.createEvent(
+          userId,
+          {
+            summary: title,
+            description,
+            start: isAllDay ? { date: start } : { dateTime: start },
+            end: isAllDay ? { date: end } : { dateTime: end },
+            attendees: attendees?.map((email: string) => ({ email })),
+          },
+          account,
+        );
         res.json(event);
       } else {
         // TODO: Implement for other providers

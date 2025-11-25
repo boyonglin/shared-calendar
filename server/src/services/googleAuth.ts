@@ -181,16 +181,20 @@ export const googleAuthService = {
       end: { dateTime?: string; date?: string };
       attendees?: { email: string }[];
     },
+    account?: { access_token: string; refresh_token?: string },
   ) => {
-    const stmt = db.prepare(
-      "SELECT * FROM calendar_accounts WHERE user_id = ?",
-    );
-    const account = stmt.get(userId) as
-      | { user_id: string; access_token: string; refresh_token?: string }
-      | undefined;
-
     if (!account) {
-      throw new Error("User not found");
+      const stmt = db.prepare(
+        "SELECT * FROM calendar_accounts WHERE user_id = ?",
+      );
+      const dbAccount = stmt.get(userId) as
+        | { user_id: string; access_token: string; refresh_token?: string }
+        | undefined;
+
+      if (!dbAccount) {
+        throw new Error("User not found");
+      }
+      account = dbAccount;
     }
 
     oauth2Client.setCredentials({

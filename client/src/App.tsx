@@ -5,6 +5,9 @@ import { InviteDialog } from "./components/InviteDialog";
 import { ICloudConnectModal } from "./components/ICloudConnectModal";
 import { UserProfileDropdown } from "./components/UserProfileDropdown";
 import { GoogleSignInButton } from "./components/GoogleSignInButton";
+import { Toaster } from "./components/ui/sonner";
+import { toast } from "sonner";
+import { addDays, addMinutes, startOfDay, setHours } from "date-fns";
 import type { User, CalendarEvent, TimeSlot } from "./types";
 import {
   GoogleAuthProvider,
@@ -246,7 +249,7 @@ function AppContent({
 
   const handleTimeSlotSelect = (slot: TimeSlot) => {
     if (!currentUser) {
-      alert("Please sign in to create calendar invites");
+      toast.warning("Please sign in to create calendar invites");
       return;
     }
     setSelectedTimeSlot(slot);
@@ -265,17 +268,16 @@ function AppContent({
 
     if (selectedTimeSlot.isAllDay) {
       // For all-day events, use the exact date without timezone conversion
-      start = new Date(selectedTimeSlot.date);
-      start.setHours(0, 0, 0, 0);
+      start = startOfDay(selectedTimeSlot.date);
       // End date should be the next day for Google Calendar format
-      end = new Date(start);
-      end.setDate(end.getDate() + 1);
-      end.setHours(0, 0, 0, 0);
+      end = addDays(start, 1);
     } else {
       // For timed events, use the hour and add duration
-      start = new Date(selectedTimeSlot.date);
-      start.setHours(selectedTimeSlot.hour, 0, 0, 0);
-      end = new Date(start.getTime() + duration * 60000);
+      start = setHours(
+        startOfDay(selectedTimeSlot.date),
+        selectedTimeSlot.hour,
+      );
+      end = addMinutes(start, duration);
     }
 
     // Map attendee IDs to emails
@@ -294,18 +296,17 @@ function AppContent({
       });
 
       setSelectedTimeSlot(null);
+      toast.success("Event created successfully");
     } catch (error) {
       console.error("Failed to create event:", error);
       const message = error instanceof Error ? error.message : "Unknown error";
-      alert(`Failed to create event: ${message}`);
+      toast.error(`Failed to create event: ${message}`);
     }
   };
 
   const handleWeekChange = (direction: "prev" | "next") => {
-    const newDate = new Date(weekStart);
-    newDate.setDate(newDate.getDate() + (direction === "next" ? 7 : -7));
-    newDate.setHours(0, 0, 0, 0);
-    setWeekStart(newDate);
+    const newDate = addDays(weekStart, direction === "next" ? 7 : -7);
+    setWeekStart(startOfDay(newDate));
   };
 
   return (
@@ -376,6 +377,7 @@ function AppContent({
         onClose={() => iCloudConnection.setShowICloudModal(false)}
         onSuccess={iCloudConnection.handleICloudConnectSuccess}
       />
+      <Toaster />
     </div>
   );
 }
