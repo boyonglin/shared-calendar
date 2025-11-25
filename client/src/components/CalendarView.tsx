@@ -146,7 +146,7 @@ export function CalendarView({
                   return (
                     <div
                       key={dayIndex}
-                      className={`p-1 cursor-pointer hover:bg-gray-50 transition-colors relative ${
+                      className={`p-1 cursor-pointer hover:bg-gray-200 transition-colors relative ${
                         isToday(day) ? "bg-gray-100" : "bg-white"
                       }`}
                       onClick={() => handleAllDayClick(day)}
@@ -189,7 +189,7 @@ export function CalendarView({
                     return (
                       <div
                         key={dayIndex}
-                        className={`p-1 cursor-pointer hover:bg-gray-50 transition-colors relative ${
+                        className={`p-1 cursor-pointer hover:bg-gray-200 transition-colors relative ${
                           isToday(day) ? "bg-gray-100" : "bg-white"
                         }`}
                         onClick={() => handleSlotClick(day, hour)}
