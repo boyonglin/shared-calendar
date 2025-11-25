@@ -5,6 +5,8 @@ import { googleAuthService } from "../services/googleAuth";
 import { icloudAuthService } from "../services/icloudAuth";
 import { onecalAuthService } from "../services/onecalAuth";
 import { validateICloudCredentials } from "../middleware/validation";
+import { authenticateUser } from "../middleware/auth";
+import type { AuthRequest } from "../middleware/auth";
 import { env } from "../config/env";
 
 const router = express.Router();
@@ -48,12 +50,18 @@ router.get("/google/callback", async (req: Request, res: Response) => {
 
 router.post(
   "/icloud",
+  authenticateUser,
   validateICloudCredentials,
   async (req: Request, res: Response) => {
     const { email, password } = req.body;
+    const primaryUserId = (req as AuthRequest).user!.userId;
 
     try {
-      const result = await icloudAuthService.verifyCredentials(email, password);
+      const result = await icloudAuthService.verifyCredentials(
+        email,
+        password,
+        primaryUserId,
+      );
       if (!result?.user?.id) {
         res
           .status(500)
@@ -76,8 +84,18 @@ router.post(
 );
 
 // Outlook/Microsoft OAuth via OneCal
-router.get("/outlook", (req: Request, res: Response) => {
+router.get("/outlook", authenticateUser, (req: Request, res: Response) => {
   try {
+    const primaryUserId = (req as AuthRequest).user!.userId;
+
+    // Store primary user ID in a cookie to retrieve in callback
+    res.cookie("outlook_primary_user", primaryUserId, {
+      httpOnly: true,
+      secure: env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 10 * 60 * 1000, // 10 minutes - just for the auth flow
+    });
+
     const url = onecalAuthService.getAuthUrl();
     res.redirect(url);
   } catch (error) {
@@ -89,6 +107,10 @@ router.get("/outlook", (req: Request, res: Response) => {
 
 router.get("/outlook/callback", async (req: Request, res: Response) => {
   const { endUserAccountId } = req.query;
+  const primaryUserId = req.cookies?.outlook_primary_user;
+
+  // Clear the temporary cookie
+  res.clearCookie("outlook_primary_user");
 
   if (!endUserAccountId || typeof endUserAccountId !== "string") {
     res.status(400).send("Missing endUserAccountId from OneCal callback");
@@ -96,7 +118,10 @@ router.get("/outlook/callback", async (req: Request, res: Response) => {
   }
 
   try {
-    const result = await onecalAuthService.handleCallback(endUserAccountId);
+    const result = await onecalAuthService.handleCallback(
+      endUserAccountId,
+      primaryUserId,
+    );
 
     // Redirect back to client with success - importantly with provider=outlook
     // This tells the client NOT to treat this as a login, just as a connection

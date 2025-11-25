@@ -65,7 +65,7 @@ export const onecalAuthService = {
     return `${ONECAL_API_BASE}/oauth/authorize/${ONECAL_APP_ID}/microsoft`;
   },
 
-  handleCallback: async (endUserAccountId: string) => {
+  handleCallback: async (endUserAccountId: string, primaryUserId?: string) => {
     if (!ONECAL_API_KEY) {
       throw new Error("ONECAL_API_KEY is not configured");
     }
@@ -86,12 +86,13 @@ export const onecalAuthService = {
 
     const stmt = db.prepare(`
       INSERT INTO calendar_accounts (
-        user_id, provider, external_email, access_token, refresh_token, metadata, updated_at
-      ) VALUES (?, 'outlook', ?, ?, NULL, ?, CURRENT_TIMESTAMP)
+        user_id, provider, external_email, access_token, refresh_token, metadata, primary_user_id, updated_at
+      ) VALUES (?, 'outlook', ?, ?, NULL, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(user_id) DO UPDATE SET
         access_token = excluded.access_token,
         external_email = excluded.external_email,
         metadata = excluded.metadata,
+        primary_user_id = excluded.primary_user_id,
         updated_at = CURRENT_TIMESTAMP
     `);
 
@@ -101,7 +102,13 @@ export const onecalAuthService = {
       status: account.status,
     });
 
-    stmt.run(endUserAccountId, account.email, endUserAccountId, metadata);
+    stmt.run(
+      endUserAccountId,
+      account.email,
+      endUserAccountId,
+      metadata,
+      primaryUserId || null,
+    );
 
     return {
       user: {
