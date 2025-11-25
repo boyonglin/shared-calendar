@@ -66,6 +66,7 @@ export function InviteDialog({
       setSelectedAttendees([]);
       setDuration("60");
       setIsGenerating(false);
+      setTone("professional");
     }
   }, [isOpen]);
 
@@ -118,7 +119,7 @@ export function InviteDialog({
     try {
       const { date, hour } = timeSlot;
       const start = new Date(date);
-      start.setHours(hour);
+      start.setHours(hour, 0, 0, 0);
       const end = new Date(start);
       end.setMinutes(end.getMinutes() + parseInt(duration, 10));
 

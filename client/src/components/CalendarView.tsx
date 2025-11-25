@@ -26,7 +26,7 @@ export function CalendarView({
   endHour = 22,
 }: CalendarViewProps) {
   const hours = Array.from(
-    { length: endHour - startHour + 1 },
+    { length: Math.max(0, endHour - startHour + 1) },
     (_, i) => i + startHour,
   );
   const weekDays = Array.from({ length: 7 }, (_, i) => {

@@ -16,6 +16,17 @@ function getGenAI(customApiKey?: string): GoogleGenerativeAI | null {
   return defaultGenAI;
 }
 
+// Sanitize user input to prevent prompt injection
+function sanitizeInput(input: string): string {
+  // Remove or escape characters that could be used to manipulate prompts
+  return input
+    .replace(/[\r\n]+/g, " ") // Replace newlines with spaces
+    .replace(/[`]/g, "'") // Replace backticks with single quotes
+    .replace(/\s+/g, " ") // Normalize whitespace
+    .trim()
+    .slice(0, 1000); // Limit length to prevent overly long inputs
+}
+
 export const aiService = {
   async generateInvitationDraft(
     eventDetails: {
@@ -38,18 +49,30 @@ export const aiService = {
     }
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-flash-latest",
+      model: "gemini-1.5-flash",
     });
+
+    // Sanitize all user-provided inputs to prevent prompt injection
+    const safeTitle = sanitizeInput(eventDetails.title);
+    const safeDescription = eventDetails.description
+      ? sanitizeInput(eventDetails.description)
+      : "";
+    const safeLocation = eventDetails.location
+      ? sanitizeInput(eventDetails.location)
+      : "";
+    const safeAttendees = eventDetails.attendees
+      ? eventDetails.attendees.map((a) => sanitizeInput(a))
+      : [];
 
     const prompt = `
       You are an AI assistant helping to draft a calendar invitation.
       
       Event Details:
-      Title: ${eventDetails.title}
+      Title: ${safeTitle}
       Time: ${eventDetails.start} to ${eventDetails.end}
-      ${eventDetails.description ? `Description: ${eventDetails.description}` : ""}
-      ${eventDetails.location ? `Location: ${eventDetails.location}` : ""}
-      ${eventDetails.attendees?.length ? `Attendees: ${eventDetails.attendees.join(", ")}` : ""}
+      ${safeDescription ? `Description: ${safeDescription}` : ""}
+      ${safeLocation ? `Location: ${safeLocation}` : ""}
+      ${safeAttendees.length ? `Attendees: ${safeAttendees.join(", ")}` : ""}
       
       Please write a ${tone} invitation message for this event.
       The message should be ready to send via email or chat.
