@@ -84,7 +84,7 @@ export function InviteDialog({
     if (isAllDay) {
       return `${dateStr} (All day)`;
     }
-    const timeStr = `${hour === 0 ? 12 : hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 && hour !== 24 ? "PM" : "AM"}`;
+    const timeStr = `${hour === 0 ? 12 : hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? "PM" : "AM"}`;
     return `${dateStr} at ${timeStr}`;
   };
 
