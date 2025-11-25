@@ -1,7 +1,6 @@
 import type { Request, Response } from "express";
 import express from "express";
 import jwt from "jsonwebtoken";
-import crypto from "crypto";
 import { googleAuthService } from "../services/googleAuth";
 import { icloudAuthService } from "../services/icloudAuth";
 import { onecalAuthService } from "../services/onecalAuth";
@@ -12,47 +11,12 @@ import { env } from "../config/env";
 
 const router = express.Router();
 
-// In-memory store for Outlook OAuth state tokens
-// Maps secure random token -> { userId, expiresAt }
-const outlookAuthTokens = new Map<
-  string,
-  { userId: string; expiresAt: number }
->();
-
-// Timer reference for cleanup interval
-let cleanupTimer: ReturnType<typeof globalThis.setInterval> | null = null;
-
-// Clean up expired tokens
-function cleanupExpiredTokens() {
-  const now = Date.now();
-  for (const [token, data] of outlookAuthTokens.entries()) {
-    if (data.expiresAt < now) {
-      outlookAuthTokens.delete(token);
-    }
-  }
+// Interface for Outlook OAuth state token payload
+interface OutlookStatePayload {
+  userId: string;
+  iat: number;
+  exp: number;
 }
-
-// Start the cleanup timer (called when module is loaded)
-function startCleanupTimer() {
-  if (cleanupTimer === null) {
-    cleanupTimer = globalThis.setInterval(cleanupExpiredTokens, 5 * 60 * 1000);
-    // Unref the timer so it doesn't prevent Node.js from exiting
-    if (cleanupTimer.unref) {
-      cleanupTimer.unref();
-    }
-  }
-}
-
-// Stop the cleanup timer (exported for testing/graceful shutdown)
-export function stopCleanupTimer() {
-  if (cleanupTimer !== null) {
-    globalThis.clearInterval(cleanupTimer);
-    cleanupTimer = null;
-  }
-}
-
-// Start cleanup timer when module loads
-startCleanupTimer();
 
 router.get("/google", (req: Request, res: Response) => {
   const url = googleAuthService.getAuthUrl();
@@ -131,14 +95,14 @@ router.get("/outlook", authenticateUser, (req: Request, res: Response) => {
   try {
     const primaryUserId = (req as AuthRequest).user!.userId;
 
-    // Generate a cryptographically secure random token
-    const stateToken = crypto.randomBytes(32).toString("hex");
+    // Generate a signed JWT state token that contains the user ID
+    // This approach works across multiple server instances and survives restarts
+    // since validation only requires the JWT_SECRET, no server-side storage needed
+    const stateToken = jwt.sign({ userId: primaryUserId }, env.JWT_SECRET, {
+      expiresIn: "10m", // 10 minutes - just for the auth flow
+    });
 
-    // Store the mapping with a 10-minute expiration
-    const expiresAt = Date.now() + 10 * 60 * 1000;
-    outlookAuthTokens.set(stateToken, { userId: primaryUserId, expiresAt });
-
-    // Store only the secure token in the cookie, not the user ID
+    // Store the signed state token in a secure cookie
     res.cookie("outlook_auth_state", stateToken, {
       httpOnly: true,
       secure: env.NODE_ENV === "production",
@@ -159,23 +123,30 @@ router.get("/outlook/callback", async (req: Request, res: Response) => {
   const { endUserAccountId } = req.query;
   const stateToken = req.cookies?.outlook_auth_state;
 
-  // Clear the temporary cookie
-  res.clearCookie("outlook_auth_state");
+  // Clear the temporary cookie with matching options for reliable removal
+  res.clearCookie("outlook_auth_state", {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
 
   if (!endUserAccountId || typeof endUserAccountId !== "string") {
     res.status(400).send("Missing endUserAccountId from OneCal callback");
     return;
   }
 
-  // Validate the state token and retrieve the user ID
+  // Validate the signed state token and extract the user ID
   let primaryUserId: string | undefined;
   if (stateToken) {
-    const tokenData = outlookAuthTokens.get(stateToken);
-    if (tokenData && tokenData.expiresAt > Date.now()) {
-      primaryUserId = tokenData.userId;
+    try {
+      const payload = jwt.verify(
+        stateToken,
+        env.JWT_SECRET,
+      ) as OutlookStatePayload;
+      primaryUserId = payload.userId;
+    } catch {
+      // Token is invalid or expired - primaryUserId remains undefined
     }
-    // Always delete the token after use (one-time use)
-    outlookAuthTokens.delete(stateToken);
   }
 
   if (!primaryUserId) {

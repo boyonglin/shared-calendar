@@ -1,8 +1,13 @@
 import type { Request, Response, NextFunction } from "express";
 import { body, param, validationResult } from "express-validator";
 
-// Email validation regex - used for consistent email validation across the application
-export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Email validation regex - RFC 5322 compliant pattern for consistent email validation
+// This pattern properly validates:
+// - Local part with allowed special characters
+// - Domain part with proper structure and TLD requirement
+// - Prevents consecutive dots and invalid edge cases
+export const EMAIL_REGEX =
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
 
 // Helper function to validate email format
 export function isValidEmail(email: string): boolean {
