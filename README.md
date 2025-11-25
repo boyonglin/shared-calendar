@@ -78,7 +78,7 @@ A calendar sharing application with Google Calendar, iCloud Calendar, and Outloo
 ✅ Filter calendar view by team members  
 ✅ Create calendar invites  
 ✅ AI calendar assistants: draft invitations  
-🚧 Multi-user calendar sharing  
+✅ Multi-user calendar sharing  
 🚧 Cross-timezone event synchronization  
 🚧 AI calendar assistants: scheduling conflicts, suggest optimal times
 
