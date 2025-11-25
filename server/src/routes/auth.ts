@@ -32,9 +32,15 @@ router.get("/google/callback", async (req: Request, res: Response) => {
       { expiresIn: "30d" },
     );
 
-    // Redirect back to client with success and token
+    // Set JWT as HTTP-only cookie and redirect back to client with success
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
     res.redirect(
-      `${env.CLIENT_URL}?auth=success&userId=${result.user.id}&token=${token}`,
+      `${env.CLIENT_URL}?auth=success&userId=${result.user.id}`,
     );
   } catch (error) {
     console.error("Auth error:", error);

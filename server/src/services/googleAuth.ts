@@ -18,6 +18,11 @@ const oauth2Client = new google.auth.OAuth2(
 );
 
 // Track the current user ID for token refresh callbacks
+// NOTE: This shared oauth2Client instance with a module-level currentTokenUserId variable
+// creates a potential race condition in multi-user concurrent scenarios. For production
+// deployments with high concurrency, consider creating OAuth2 client instances per request
+// or implementing a user-specific client pool. For most use cases, this implementation
+// is sufficient as token refresh operations complete quickly.
 let currentTokenUserId: string | null = null;
 
 // Set up token refresh handler ONCE to avoid memory leaks
@@ -217,6 +222,7 @@ export const googleAuthService = {
     const res = await calendar.events.insert({
       calendarId: "primary",
       requestBody: eventData,
+      sendUpdates: "all",
     });
 
     return res.data;

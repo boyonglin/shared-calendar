@@ -238,7 +238,6 @@ router.post(
       }
       res.status(500).json({
         error: "Failed to create event",
-        details: error instanceof Error ? error.message : String(error),
       });
     }
   },
