@@ -10,6 +10,8 @@ import {
   validateUserIdParam,
   validateCreateEvent,
 } from "../middleware/validation";
+import { authenticateUser } from "../middleware/auth";
+import type { AuthRequest } from "../middleware/auth";
 
 const router = express.Router();
 
@@ -185,10 +187,12 @@ router.get(
 
 router.post(
   "/calendar/events",
+  authenticateUser,
   validateCreateEvent,
   async (req: Request, res: Response) => {
     try {
-      const { userId, title, description, start, end, attendees } = req.body;
+      const userId = (req as AuthRequest).user!.userId;
+      const { title, description, start, end, attendees } = req.body;
 
       // Check provider
       const stmt = db.prepare(

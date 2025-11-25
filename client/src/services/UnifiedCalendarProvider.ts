@@ -59,7 +59,6 @@ export class UnifiedCalendarProvider implements CalendarProvider {
   }): Promise<CalendarEvent> {
     try {
       const response = await calendarApi.createEvent({
-        userId: this.userId,
         title: event.title,
         description: event.description,
         start: event.isAllDay

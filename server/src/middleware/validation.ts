@@ -42,7 +42,6 @@ export const validatePrimaryUserId = [
 
 // Validation rules for creating an event
 export const validateCreateEvent = [
-  body("userId").notEmpty().withMessage("User ID is required"),
   body("title").notEmpty().withMessage("Title is required"),
   body("start")
     .isISO8601({ strict: false })

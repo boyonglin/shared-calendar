@@ -42,7 +42,6 @@ export const calendarApi = {
     );
   },
   createEvent: (data: {
-    userId: string;
     title: string;
     description?: string;
     start: string;
