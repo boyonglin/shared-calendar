@@ -5,7 +5,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { RefreshCw, LogOut, ChevronDown, Cloud, Mail } from "lucide-react";
+import {
+  RefreshCw,
+  LogOut,
+  ChevronDown,
+  Cloud,
+  Mail,
+  Settings,
+} from "lucide-react";
 import type { User } from "../types";
 import type { UseICloudConnectionReturn } from "../hooks/useICloudConnection";
 import type { UseOutlookConnectionReturn } from "../hooks/useOutlookConnection";
@@ -17,6 +24,7 @@ interface UserProfileDropdownProps {
   outlookConnection: UseOutlookConnectionReturn;
   onRefreshEvents: () => void;
   onSignOut: () => void;
+  onOpenSettings: () => void;
 }
 
 export function UserProfileDropdown({
@@ -26,6 +34,7 @@ export function UserProfileDropdown({
   outlookConnection,
   onRefreshEvents,
   onSignOut,
+  onOpenSettings,
 }: UserProfileDropdownProps) {
   const {
     iCloudStatus,
@@ -182,6 +191,14 @@ export function UserProfileDropdown({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+
+        <DropdownMenuSeparator />
+
+        {/* Settings Menu Item */}
+        <DropdownMenuItem onClick={onOpenSettings} className="cursor-pointer">
+          <Settings className="w-4 h-4 mr-2" />
+          <span>Settings</span>
+        </DropdownMenuItem>
 
         <DropdownMenuSeparator />
         <DropdownMenuItem
