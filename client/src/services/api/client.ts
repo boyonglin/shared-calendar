@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "../../config/api";
+import { getAuthToken } from "../../utils/googleStorage";
 
 class ApiClient {
   private baseUrl: string;
@@ -12,12 +13,17 @@ class ApiClient {
     options?: RequestInit,
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
+    const token = getAuthToken();
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    };
+    if (token) {
+      (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+    }
     const response = await fetch(url, {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options?.headers,
-      },
+      headers,
     });
 
     if (!response.ok) {

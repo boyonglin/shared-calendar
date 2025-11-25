@@ -12,4 +12,5 @@ export const STORAGE_KEYS = {
   ACCESS_TOKEN: "google_access_token",
   TOKEN_EXPIRY: "google_token_expiry",
   CALENDAR_EVENTS: "google_calendar_events",
+  AUTH_TOKEN: "auth_token",
 } as const;

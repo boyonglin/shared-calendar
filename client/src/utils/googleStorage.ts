@@ -64,4 +64,19 @@ export function clearStoredSession(): void {
   localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.TOKEN_EXPIRY);
   localStorage.removeItem(STORAGE_KEYS.CALENDAR_EVENTS);
+  localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+}
+
+/**
+ * Save auth token (JWT) to localStorage
+ */
+export function saveAuthToken(token: string): void {
+  localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+}
+
+/**
+ * Get auth token from localStorage
+ */
+export function getAuthToken(): string | null {
+  return localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
 }
