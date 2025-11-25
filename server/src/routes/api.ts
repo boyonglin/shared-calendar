@@ -8,6 +8,7 @@ import {
   validateUserId,
   validatePrimaryUserId,
   validateUserIdParam,
+  validateCreateEvent,
 } from "../middleware/validation";
 
 const router = express.Router();
@@ -53,9 +54,9 @@ router.get(
       // For now, we'll get all accounts since we don't have a proper user table
       // In production, you'd link calendar_accounts to a users table
       const stmt = db.prepare(
-        "SELECT user_id, provider FROM calendar_accounts WHERE user_id = ?",
+        "SELECT user_id, provider FROM calendar_accounts",
       );
-      const accounts = stmt.all(req.params.primaryUserId) as CalendarAccount[];
+      const accounts = stmt.all() as CalendarAccount[];
 
       if (accounts.length === 0) {
         res.json([]);
@@ -178,6 +179,57 @@ router.get(
       }
 
       res.status(500).json({ error: "Failed to fetch events" });
+    }
+  },
+);
+
+router.post(
+  "/calendar/events",
+  validateCreateEvent,
+  async (req: Request, res: Response) => {
+    try {
+      const { userId, title, description, start, end, attendees } = req.body;
+
+      // Check provider
+      const stmt = db.prepare(
+        "SELECT provider FROM calendar_accounts WHERE user_id = ?",
+      );
+      const account = stmt.get(userId) as CalendarAccount | undefined;
+
+      if (!account) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+
+      if (account.provider === "google") {
+        const isAllDay = req.body.isAllDay || false;
+        const event = await googleAuthService.createEvent(userId, {
+          summary: title,
+          description,
+          start: isAllDay ? { date: start } : { dateTime: start },
+          end: isAllDay ? { date: end } : { dateTime: end },
+          attendees: attendees?.map((email: string) => ({ email })),
+        });
+        res.json(event);
+      } else {
+        // TODO: Implement for other providers
+        res
+          .status(501)
+          .json({ error: "Provider not supported for event creation yet" });
+      }
+    } catch (error) {
+      console.error("Error creating event:", error);
+      if (error && typeof error === "object" && "response" in error) {
+        console.error(
+          "Google API Error Response:",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (error as any).response.data,
+        );
+      }
+      res.status(500).json({
+        error: "Failed to create event",
+        details: error instanceof Error ? error.message : String(error),
+      });
     }
   },
 );

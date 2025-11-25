@@ -171,4 +171,40 @@ export const googleAuthService = {
 
     return res.data.items;
   },
+
+  createEvent: async (
+    userId: string,
+    eventData: {
+      summary: string;
+      description?: string;
+      start: { dateTime?: string; date?: string };
+      end: { dateTime?: string; date?: string };
+      attendees?: { email: string }[];
+    },
+  ) => {
+    const stmt = db.prepare(
+      "SELECT * FROM calendar_accounts WHERE user_id = ?",
+    );
+    const account = stmt.get(userId) as
+      | { user_id: string; access_token: string; refresh_token?: string }
+      | undefined;
+
+    if (!account) {
+      throw new Error("User not found");
+    }
+
+    oauth2Client.setCredentials({
+      access_token: account.access_token,
+      refresh_token: account.refresh_token,
+    });
+
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+    const res = await calendar.events.insert({
+      calendarId: "primary",
+      requestBody: eventData,
+    });
+
+    return res.data;
+  },
 };

@@ -39,3 +39,14 @@ export const validatePrimaryUserId = [
   param("primaryUserId").notEmpty().withMessage("Primary User ID is required"),
   validate,
 ];
+
+// Validation rules for creating an event
+export const validateCreateEvent = [
+  body("userId").notEmpty().withMessage("User ID is required"),
+  body("title").notEmpty().withMessage("Title is required"),
+  body("start")
+    .isISO8601()
+    .withMessage("Start time must be a valid ISO 8601 date"),
+  body("end").isISO8601().withMessage("End time must be a valid ISO 8601 date"),
+  validate,
+];
