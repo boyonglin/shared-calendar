@@ -62,3 +62,16 @@ export const validateCreateEvent = [
     }),
   validate,
 ];
+
+// Validation rules for drafting an invitation
+export const validateDraftInvitation = [
+  body("title").notEmpty().withMessage("Title is required"),
+  body("start")
+    .isISO8601({ strict: false })
+    .withMessage("Start time must be a valid ISO 8601 date"),
+  body("end")
+    .isISO8601({ strict: false })
+    .withMessage("End time must be a valid ISO 8601 date"),
+  body("geminiApiKey").notEmpty().withMessage("Gemini API key is required"),
+  validate,
+];

@@ -19,6 +19,9 @@ const envSchema = z.object({
   ONECAL_APP_ID: z.string().optional(),
   ONECAL_API_KEY: z.string().optional(),
 
+  // Gemini Configuration
+  GEMINI_API_KEY: z.string().optional(),
+
   // Security
   JWT_SECRET: z.string().default("dev-secret-do-not-use-in-prod"),
 });

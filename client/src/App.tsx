@@ -3,6 +3,7 @@ import { CalendarView } from "./components/CalendarView";
 import { UserList } from "./components/UserList";
 import { InviteDialog } from "./components/InviteDialog";
 import { ICloudConnectModal } from "./components/ICloudConnectModal";
+import { SettingsModal } from "./components/SettingsModal";
 import { UserProfileDropdown } from "./components/UserProfileDropdown";
 import { GoogleSignInButton } from "./components/GoogleSignInButton";
 import { Toaster } from "./components/ui/sonner";
@@ -203,6 +204,7 @@ function AppContent({
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(
     null,
   );
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // Add current user to selected users when logged in
   useEffect(() => {
@@ -333,6 +335,7 @@ function AppContent({
                     outlookConnection={outlookConnection}
                     onRefreshEvents={refreshEvents}
                     onSignOut={signOut}
+                    onOpenSettings={() => setShowSettingsModal(true)}
                   />
                 )
               )}
@@ -371,6 +374,7 @@ function AppContent({
         users={allUsers.filter((u) => u.id !== (currentUser?.id || "1"))}
         onClose={() => setSelectedTimeSlot(null)}
         onSendInvite={handleSendInvite}
+        onOpenSettings={() => setShowSettingsModal(true)}
       />
 
       <ICloudConnectModal
@@ -378,6 +382,12 @@ function AppContent({
         onClose={() => iCloudConnection.setShowICloudModal(false)}
         onSuccess={iCloudConnection.handleICloudConnectSuccess}
       />
+
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+      />
+
       <Toaster />
     </div>
   );
