@@ -24,17 +24,27 @@ export function getGeminiApiKey(): string | null {
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  // Read from localStorage when component renders - OK for synchronous reads
-  const storedKey = localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY);
-
-  // Initialize state with stored key for editing
-  const [apiKey, setApiKey] = useState(() => storedKey || "");
+  const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [removed, setRemoved] = useState(false);
+  const [initialKey, setInitialKey] = useState<string | null>(null);
 
-  // Re-read stored key accounting for removal
+  // Read stored key on each render to get current state
+  const storedKey = localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY);
+
+  // Track key state accounting for removal action
   const effectiveStoredKey = removed ? null : storedKey;
   const effectiveHasExistingKey = !!effectiveStoredKey;
+
+  // Initialize apiKey when dialog opens
+  if (isOpen && initialKey === null) {
+    const key = storedKey || "";
+    setApiKey(key);
+    setInitialKey(key);
+  }
+
+  // Check if key has been modified
+  const hasModifiedKey = apiKey.trim() !== (effectiveStoredKey || "");
 
   const handleSave = () => {
     const keyToSave = apiKey.trim();
@@ -45,6 +55,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
     localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, keyToSave);
     setRemoved(false);
+    setInitialKey(null);
     toast.success("Gemini API key saved successfully");
     onClose();
   };
@@ -57,9 +68,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   const handleClose = () => {
-    setApiKey(localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || "");
+    setApiKey("");
     setShowApiKey(false);
     setRemoved(false);
+    setInitialKey(null);
     onClose();
   };
 
@@ -169,7 +181,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!apiKey.trim() || apiKey === effectiveStoredKey}
+              disabled={!apiKey.trim() || !hasModifiedKey}
             >
               Save
             </Button>
