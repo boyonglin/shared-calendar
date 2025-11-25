@@ -176,6 +176,7 @@ function AppContent({
     events: calendarEvents,
     isLoading: isLoadingEvents,
     refreshEvents,
+    createEvent,
   } = useCalendar();
   const iCloudConnection = useICloudConnection({ refreshEvents });
   const outlookConnection = useOutlookConnection({ refreshEvents });
@@ -251,14 +252,53 @@ function AppContent({
     setSelectedTimeSlot(slot);
   };
 
-  const handleSendInvite = (
+  const handleSendInvite = async (
     title: string,
     description: string,
     attendees: string[],
+    duration: number,
   ) => {
-    // In a real app, this would integrate with calendar APIs
-    console.log("Sending invite:", { title, description, attendees });
-    setSelectedTimeSlot(null);
+    if (!selectedTimeSlot || !currentUser) return;
+
+    let start: Date;
+    let end: Date;
+
+    if (selectedTimeSlot.isAllDay) {
+      // For all-day events, use the exact date without timezone conversion
+      start = new Date(selectedTimeSlot.date);
+      start.setHours(0, 0, 0, 0);
+      // End date should be the next day for Google Calendar format
+      end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      end.setHours(0, 0, 0, 0);
+    } else {
+      // For timed events, use the hour and add duration
+      start = new Date(selectedTimeSlot.date);
+      start.setHours(selectedTimeSlot.hour, 0, 0, 0);
+      end = new Date(start.getTime() + duration * 60000);
+    }
+
+    // Map attendee IDs to emails
+    const attendeeEmails = attendees
+      .map((id) => allUsers.find((u) => u.id === id)?.email)
+      .filter((email): email is string => !!email);
+
+    try {
+      await createEvent({
+        title,
+        description,
+        start,
+        end,
+        attendees: attendeeEmails,
+        isAllDay: selectedTimeSlot.isAllDay,
+      });
+
+      setSelectedTimeSlot(null);
+    } catch (error) {
+      console.error("Failed to create event:", error);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      alert(`Failed to create event: ${message}`);
+    }
   };
 
   const handleWeekChange = (direction: "prev" | "next") => {

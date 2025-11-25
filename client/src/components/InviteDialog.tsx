@@ -12,6 +12,13 @@ import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 import type { TimeSlot, User } from "../types";
 import { Calendar, Clock } from "lucide-react";
 
@@ -24,6 +31,7 @@ interface InviteDialogProps {
     title: string,
     description: string,
     attendees: string[],
+    duration: number,
   ) => void;
 }
 
@@ -37,6 +45,7 @@ export function InviteDialog({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedAttendees, setSelectedAttendees] = useState<string[]>([]);
+  const [duration, setDuration] = useState("60");
 
   useEffect(() => {
     if (!isOpen) {
@@ -46,6 +55,7 @@ export function InviteDialog({
       setDescription("");
 
       setSelectedAttendees([]);
+      setDuration("60");
     }
   }, [isOpen]);
 
@@ -59,18 +69,21 @@ export function InviteDialog({
 
   const handleSubmit = () => {
     if (!title.trim()) return;
-    onSendInvite(title, description, selectedAttendees);
+    onSendInvite(title, description, selectedAttendees, parseInt(duration));
   };
 
   const formatDateTime = () => {
     if (!timeSlot) return "";
-    const { date, hour } = timeSlot;
+    const { date, hour, isAllDay } = timeSlot;
     const dateStr = date.toLocaleDateString("en-US", {
       weekday: "long",
       month: "long",
       day: "numeric",
       year: "numeric",
     });
+    if (isAllDay) {
+      return `${dateStr} (All day)`;
+    }
     const timeStr = `${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? "PM" : "AM"}`;
     return `${dateStr} at ${timeStr}`;
   };
@@ -92,10 +105,27 @@ export function InviteDialog({
                 <Calendar className="w-4 h-4" />
                 <span className="text-sm">{formatDateTime()}</span>
               </div>
-              <div className="flex items-center gap-2 text-gray-700">
-                <Clock className="w-4 h-4" />
-                <span className="text-sm">Duration: 1 hour</span>
-              </div>
+              {!timeSlot.isAllDay && (
+                <div className="flex items-center gap-2 text-gray-700">
+                  <Clock className="w-4 h-4" />
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">Duration:</span>
+                    <Select value={duration} onValueChange={setDuration}>
+                      <SelectTrigger className="w-[140px] h-8">
+                        <SelectValue placeholder="Select duration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="15">15 minutes</SelectItem>
+                        <SelectItem value="30">30 minutes</SelectItem>
+                        <SelectItem value="45">45 minutes</SelectItem>
+                        <SelectItem value="60">1 hour</SelectItem>
+                        <SelectItem value="90">1.5 hours</SelectItem>
+                        <SelectItem value="120">2 hours</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

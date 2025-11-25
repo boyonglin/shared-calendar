@@ -17,8 +17,8 @@ A calendar sharing application with Google Calendar, iCloud Calendar, and Outloo
 - **Install Dependencies**: `pixi run install`
 - **Build for Production**: `pixi run build`
 - **Start Development Server**: `pixi run dev`
-- **Lint Code**: `pixi run lint`
 - **Format Code**: `pixi run format`
+- **Lint Code**: `pixi run lint`
 
 ## Google OAuth Setup
 
@@ -76,7 +76,7 @@ A calendar sharing application with Google Calendar, iCloud Calendar, and Outloo
 
 ✅ Google & iCloud & Outlook Calendar integrations  
 ✅ Filter calendar view by team members  
-🚧 Create calendar invites  
+✅ Create calendar invites  
 🚧 Multi-user calendar sharing  
 🚧 Cross-timezone event synchronization
 
