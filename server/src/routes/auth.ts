@@ -11,6 +11,13 @@ import { env } from "../config/env";
 
 const router = express.Router();
 
+// Interface for Outlook OAuth state token payload
+interface OutlookStatePayload {
+  userId: string;
+  iat: number;
+  exp: number;
+}
+
 router.get("/google", (req: Request, res: Response) => {
   const url = googleAuthService.getAuthUrl();
   res.redirect(url);
@@ -88,8 +95,15 @@ router.get("/outlook", authenticateUser, (req: Request, res: Response) => {
   try {
     const primaryUserId = (req as AuthRequest).user!.userId;
 
-    // Store primary user ID in a cookie to retrieve in callback
-    res.cookie("outlook_primary_user", primaryUserId, {
+    // Generate a signed JWT state token that contains the user ID
+    // This approach works across multiple server instances and survives restarts
+    // since validation only requires the JWT_SECRET, no server-side storage needed
+    const stateToken = jwt.sign({ userId: primaryUserId }, env.JWT_SECRET, {
+      expiresIn: "10m", // 10 minutes - just for the auth flow
+    });
+
+    // Store the signed state token in a secure cookie
+    res.cookie("outlook_auth_state", stateToken, {
       httpOnly: true,
       secure: env.NODE_ENV === "production",
       sameSite: "lax",
@@ -107,13 +121,36 @@ router.get("/outlook", authenticateUser, (req: Request, res: Response) => {
 
 router.get("/outlook/callback", async (req: Request, res: Response) => {
   const { endUserAccountId } = req.query;
-  const primaryUserId = req.cookies?.outlook_primary_user;
+  const stateToken = req.cookies?.outlook_auth_state;
 
-  // Clear the temporary cookie
-  res.clearCookie("outlook_primary_user");
+  // Clear the temporary cookie with matching options for reliable removal
+  res.clearCookie("outlook_auth_state", {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
 
   if (!endUserAccountId || typeof endUserAccountId !== "string") {
     res.status(400).send("Missing endUserAccountId from OneCal callback");
+    return;
+  }
+
+  // Validate the signed state token and extract the user ID
+  let primaryUserId: string | undefined;
+  if (stateToken) {
+    try {
+      const payload = jwt.verify(
+        stateToken,
+        env.JWT_SECRET,
+      ) as OutlookStatePayload;
+      primaryUserId = payload.userId;
+    } catch {
+      // Token is invalid or expired - primaryUserId remains undefined
+    }
+  }
+
+  if (!primaryUserId) {
+    res.status(400).send("Invalid or expired authentication state");
     return;
   }
 

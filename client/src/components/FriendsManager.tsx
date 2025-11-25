@@ -30,7 +30,7 @@ import {
 interface FriendsManagerProps {
   isOpen: boolean;
   onClose: () => void;
-  onFriendsChange?: (friends: FriendWithColor[]) => void;
+  onFriendsChange?: () => void;
   onIncomingRequestsChange?: (count: number) => void;
 }
 
@@ -59,7 +59,7 @@ export function FriendsManager({
     try {
       const response = await friendsApi.getFriends();
       setFriends(response.friends);
-      onFriendsChange?.(response.friends);
+      onFriendsChange?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load friends");
     } finally {
