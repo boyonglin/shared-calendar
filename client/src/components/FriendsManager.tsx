@@ -27,6 +27,23 @@ import {
   type IncomingRequest,
 } from "@/services/api/friends";
 
+// Generate a temporary ID for optimistic updates
+const generateTempId = () => -Date.now();
+
+// Default colors for new friends (matches server-side color assignment)
+const FRIEND_COLORS = [
+  "#10b981",
+  "#f59e0b",
+  "#8b5cf6",
+  "#ec4899",
+  "#06b6d4",
+  "#84cc16",
+  "#f97316",
+  "#6366f1",
+  "#14b8a6",
+  "#a855f7",
+];
+
 interface FriendsManagerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -86,18 +103,36 @@ export function FriendsManager({
 
   const handleAddFriend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newFriendEmail.trim()) return;
+    const email = newFriendEmail.trim();
+    if (!email) return;
 
     setIsAdding(true);
     setError(null);
     setSuccessMessage(null);
 
+    // Optimistic update: add pending friend immediately
+    const tempId = generateTempId();
+    const optimisticFriend: FriendWithColor = {
+      id: tempId,
+      friendEmail: email,
+      friendName: null,
+      friendUserId: null,
+      friendColor: FRIEND_COLORS[friends.length % FRIEND_COLORS.length],
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
+    setFriends((prev) => [...prev, optimisticFriend]);
+    setNewFriendEmail("");
+
     try {
-      const response = await friendsApi.addFriend(newFriendEmail.trim());
+      const response = await friendsApi.addFriend(email);
       setSuccessMessage(response.message || "Friend request sent!");
-      setNewFriendEmail("");
+      // Refresh to get the actual friend data from server
       await fetchFriends();
     } catch (err) {
+      // Rollback optimistic update on error
+      setFriends((prev) => prev.filter((f) => f.id !== tempId));
+      setNewFriendEmail(email); // Restore email for retry
       setError(err instanceof Error ? err.message : "Failed to add friend");
     } finally {
       setIsAdding(false);
@@ -105,10 +140,19 @@ export function FriendsManager({
   };
 
   const handleRemoveFriend = async (friendId: number) => {
+    // Store friend for rollback
+    const friendToRemove = friends.find((f) => f.id === friendId);
+    if (!friendToRemove) return;
+
+    // Optimistic update: remove immediately
+    setFriends((prev) => prev.filter((f) => f.id !== friendId));
+
     try {
       await friendsApi.removeFriend(friendId);
-      await fetchFriends();
+      onFriendsChange?.();
     } catch (err) {
+      // Rollback on error
+      setFriends((prev) => [...prev, friendToRemove]);
       setError(err instanceof Error ? err.message : "Failed to remove friend");
     }
   };
@@ -116,11 +160,36 @@ export function FriendsManager({
   const handleAcceptRequest = async (requestId: number) => {
     setProcessingRequestId(requestId);
     setError(null);
+
+    // Find the request being accepted
+    const acceptedRequest = incomingRequests.find((r) => r.id === requestId);
+    if (!acceptedRequest) return;
+
+    // Optimistic update: remove from requests, add to friends
+    setIncomingRequests((prev) => prev.filter((r) => r.id !== requestId));
+    onIncomingRequestsChange?.(incomingRequests.length - 1);
+
+    const optimisticFriend: FriendWithColor = {
+      id: generateTempId(),
+      friendEmail: acceptedRequest.friendEmail,
+      friendName: acceptedRequest.friendName,
+      friendUserId: acceptedRequest.friendUserId,
+      friendColor: FRIEND_COLORS[friends.length % FRIEND_COLORS.length],
+      status: "accepted",
+      createdAt: new Date().toISOString(),
+    };
+    setFriends((prev) => [...prev, optimisticFriend]);
+
     try {
       await friendsApi.acceptRequest(requestId);
       setSuccessMessage("Friend request accepted!");
+      // Refresh to get actual data
       await Promise.all([fetchFriends(), fetchIncomingRequests()]);
     } catch (err) {
+      // Rollback on error
+      setIncomingRequests((prev) => [...prev, acceptedRequest]);
+      setFriends((prev) => prev.filter((f) => f.id === optimisticFriend.id));
+      onIncomingRequestsChange?.(incomingRequests.length);
       setError(err instanceof Error ? err.message : "Failed to accept request");
     } finally {
       setProcessingRequestId(null);
@@ -130,10 +199,21 @@ export function FriendsManager({
   const handleRejectRequest = async (requestId: number) => {
     setProcessingRequestId(requestId);
     setError(null);
+
+    // Store for rollback
+    const rejectedRequest = incomingRequests.find((r) => r.id === requestId);
+    if (!rejectedRequest) return;
+
+    // Optimistic update: remove immediately
+    setIncomingRequests((prev) => prev.filter((r) => r.id !== requestId));
+    onIncomingRequestsChange?.(incomingRequests.length - 1);
+
     try {
       await friendsApi.rejectRequest(requestId);
-      await fetchIncomingRequests();
     } catch (err) {
+      // Rollback on error
+      setIncomingRequests((prev) => [...prev, rejectedRequest]);
+      onIncomingRequestsChange?.(incomingRequests.length);
       setError(err instanceof Error ? err.message : "Failed to reject request");
     } finally {
       setProcessingRequestId(null);
