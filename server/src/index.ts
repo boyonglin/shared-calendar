@@ -8,12 +8,23 @@ import rateLimit from "express-rate-limit";
 import authRoutes from "./routes/auth";
 import apiRoutes from "./routes/index";
 import { env } from "./config/env";
-import logger, { createRequestLogger, logError } from "./utils/logger";
+import logger from "./utils/logger";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+import { calendarAccountRepository } from "./repositories";
+import {
+  RATE_LIMIT_WINDOW_MS,
+  RATE_LIMIT_MAX_REQUESTS,
+  RATE_LIMIT_AUTH_MAX_REQUESTS,
+  GRACEFUL_SHUTDOWN_TIMEOUT_MS,
+} from "./constants";
 import "./db"; // Initialize database
 
 const app = express();
 const PORT = env.PORT;
 const CLIENT_URL = env.CLIENT_URL;
+
+// Trust proxy for rate limiting behind reverse proxy
+app.set("trust proxy", 1);
 
 // Request ID middleware for request tracking
 let requestCounter = 0;
@@ -28,8 +39,8 @@ app.use(helmet());
 
 // Rate limiting - general API limiter
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: RATE_LIMIT_MAX_REQUESTS,
   message: { error: "Too many requests, please try again later" },
   standardHeaders: true,
   legacyHeaders: false,
@@ -37,8 +48,8 @@ const generalLimiter = rateLimit({
 
 // Stricter rate limit for auth endpoints to prevent brute force
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // Limit each IP to 20 auth requests per windowMs
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: RATE_LIMIT_AUTH_MAX_REQUESTS,
   message: {
     error: "Too many authentication attempts, please try again later",
   },
@@ -69,41 +80,33 @@ app.use("/api", apiRoutes);
 
 // Health check (excluded from rate limiting for monitoring)
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  const dbHealthy = calendarAccountRepository.healthCheck();
+  const status = dbHealthy ? "ok" : "degraded";
+  const statusCode = dbHealthy ? 200 : 503;
+
+  res.status(statusCode).json({
+    status,
+    timestamp: new Date().toISOString(),
+    checks: {
+      database: dbHealthy ? "ok" : "error",
+    },
+  });
 });
 
 // Root endpoint
 app.get("/", (_req, res) => {
   res.json({
     message: "Shared Calendar API",
+    version: "1.0.0",
     status: "running",
   });
 });
 
 // 404 handler for unmatched routes
-app.use((_req, res) => {
-  res.status(404).json({ error: "Not found" });
-});
+app.use(notFoundHandler);
 
 // Global error handler - must be last middleware
-app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
-  const requestId = (req as Request & { requestId?: string }).requestId;
-  const log = createRequestLogger({
-    requestId,
-    method: req.method,
-    path: req.path,
-  });
-
-  logError(log, err, "Unhandled error");
-
-  // Don't leak error details in production
-  const errorMessage =
-    env.NODE_ENV === "production"
-      ? "Internal server error"
-      : err.message || "Internal server error";
-
-  res.status(500).json({ error: errorMessage });
-});
+app.use(errorHandler);
 
 // Graceful shutdown handling
 const server = app.listen(PORT, () => {
@@ -118,11 +121,11 @@ const shutdown = (signal: string) => {
     process.exit(0);
   });
 
-  // Force shutdown after 10 seconds
+  // Force shutdown after timeout
   globalThis.setTimeout(() => {
     logger.error("⚠️ Forced shutdown after timeout");
     process.exit(1);
-  }, 10000);
+  }, GRACEFUL_SHUTDOWN_TIMEOUT_MS);
 };
 
 process.on("SIGTERM", () => shutdown("SIGTERM"));
