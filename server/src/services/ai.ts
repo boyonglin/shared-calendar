@@ -1,9 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { env } from "../config/env";
-
-const MAX_INPUT_LENGTH = 1000;
-const MAX_TITLE_LENGTH = 200;
-const MAX_ATTENDEES = 50;
+import { AI_MAX_INPUT_LENGTH, AI_MAX_ATTENDEE_LENGTH } from "../constants";
 
 // Default instance using server-side API key
 let defaultGenAI: GoogleGenerativeAI | null = null;
@@ -33,12 +30,9 @@ const INJECTION_PATTERNS = [
   /\[user\]/gi,
 ];
 
-function sanitizeInput(input: string, maxLength = MAX_INPUT_LENGTH): string {
-  let sanitized = input
-    .replace(/[`${}]/g, "") // Remove characters that could be used for injection
-    .trim();
+function sanitizeInput(input: string, maxLength = AI_MAX_INPUT_LENGTH): string {
+  let sanitized = input.replace(/[`${}]/g, "").trim();
 
-  // Remove common prompt injection patterns
   for (const pattern of INJECTION_PATTERNS) {
     sanitized = sanitized.replace(pattern, "");
   }
@@ -72,16 +66,16 @@ export const aiService = {
 
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
-    const safeTitle = sanitizeInput(eventDetails.title, MAX_TITLE_LENGTH);
+    const safeTitle = sanitizeInput(eventDetails.title, AI_MAX_INPUT_LENGTH);
     const safeDescription = eventDetails.description
       ? sanitizeInput(eventDetails.description)
       : "";
     const safeLocation = eventDetails.location
-      ? sanitizeInput(eventDetails.location, 200)
+      ? sanitizeInput(eventDetails.location, AI_MAX_INPUT_LENGTH)
       : "";
     const safeAttendees = (eventDetails.attendees ?? [])
-      .slice(0, MAX_ATTENDEES)
-      .map((a) => sanitizeInput(a, 100));
+      .slice(0, 50)
+      .map((a) => sanitizeInput(a, AI_MAX_ATTENDEE_LENGTH));
 
     const prompt = buildPrompt({
       title: safeTitle,
@@ -136,7 +130,7 @@ function buildPrompt(params: {
 
 function sanitizeOutput(text: string): string {
   return text
-    .replace(/```(?:markdown|html)?\n?([\s\S]*?)\n?```/gi, "$1") // Remove code blocks
-    .replace(/<\/?[^>]+(>|$)/g, "") // Remove HTML tags
+    .replace(/```(?:markdown|html)?\n?([\s\S]*?)\n?```/gi, "$1")
+    .replace(/<\/?[^>]+(>|$)/g, "")
     .trim();
 }

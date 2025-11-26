@@ -84,15 +84,15 @@ export const icloudAuthService = {
 
       const stmt = db.prepare(`
                 INSERT INTO calendar_accounts (
-                    user_id, provider, external_email, access_token, refresh_token, metadata, primary_user_id, updated_at
-                ) VALUES (?, 'icloud', ?, ?, NULL, ?, ?, CURRENT_TIMESTAMP)
+                    user_id, provider, external_email, encrypted_password, metadata, primary_user_id, updated_at
+                ) VALUES (?, 'icloud', ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(user_id) DO UPDATE SET
-                    access_token = excluded.access_token,
+                    encrypted_password = excluded.encrypted_password,
                     primary_user_id = excluded.primary_user_id,
                     updated_at = CURRENT_TIMESTAMP
             `);
 
-      // We store the encrypted password in access_token field
+      // Store the encrypted password in the dedicated encrypted_password column
       stmt.run(
         userId,
         email,
@@ -123,16 +123,20 @@ export const icloudAuthService = {
       "SELECT * FROM calendar_accounts WHERE user_id = ? AND provider = 'icloud'",
     );
     const account = stmt.get(userId) as
-      | { user_id: string; access_token: string; external_email: string }
+      | { user_id: string; encrypted_password: string; external_email: string }
       | undefined;
 
     if (!account) {
       throw new Error("iCloud account not found");
     }
 
+    if (!account.encrypted_password) {
+      throw new Error("iCloud account missing credentials");
+    }
+
     let password;
     try {
-      password = decrypt(account.access_token);
+      password = decrypt(account.encrypted_password);
     } catch (e) {
       console.error("Failed to decrypt password", e);
       throw new Error("Authentication error");
