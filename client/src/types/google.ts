@@ -10,7 +10,7 @@ export interface GoogleProfile {
 }
 
 export interface GoogleUser {
-  idToken: string;
+  idToken?: string; // Deprecated: tokens should not be sent to client
   profile: GoogleProfile;
   provider?: string;
 }
@@ -34,7 +34,7 @@ export interface GoogleCalendarEvent {
 
 export interface StoredSession {
   user: GoogleUser;
-  accessToken: string;
+  accessToken?: string; // Deprecated: tokens managed by HTTP-only cookies
   events?: GoogleCalendarEvent[];
 }
 

@@ -132,7 +132,7 @@ export const googleAuthService = {
 
     const metadata = JSON.parse(account.metadata || "{}");
     return {
-      idToken: account.access_token, // Client expects this but we shouldn't send it really. Keeping for compat.
+      // Note: idToken removed for security - access tokens should never be sent to client
       profile: {
         email: account.external_email,
         name: metadata.name,

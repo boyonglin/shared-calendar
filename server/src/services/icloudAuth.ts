@@ -3,30 +3,26 @@ import { db } from "../db";
 import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import * as ical from "node-ical";
+import { env } from "../config/env";
 
-// Validate encryption key exists and is exactly 32 bytes
-if (!process.env.ENCRYPTION_KEY) {
-  throw new Error("ENCRYPTION_KEY environment variable is required");
-}
-
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 const IV_LENGTH = 16;
 
-// Validate encryption key is exactly 32 bytes
-const getEncryptionKey = () => {
-  // If the key is a hex string (64 characters), decode it
-  if (ENCRYPTION_KEY.length === 64 && /^[0-9a-fA-F]+$/.test(ENCRYPTION_KEY)) {
-    return Buffer.from(ENCRYPTION_KEY, "hex");
-  }
-
-  // Otherwise treat as raw string (legacy support)
-  const key = Buffer.from(ENCRYPTION_KEY);
-  if (key.length !== 32) {
+// Get encryption key from validated environment
+const getEncryptionKey = (): Buffer => {
+  const encryptionKey = env.ENCRYPTION_KEY;
+  if (!encryptionKey) {
     throw new Error(
-      `ENCRYPTION_KEY must be exactly 32 bytes (or 64 hex characters), got ${key.length} bytes`,
+      "ENCRYPTION_KEY is required for iCloud integration. Please set it in your environment.",
     );
   }
-  return key;
+
+  // If the key is a hex string (64 characters), decode it
+  if (encryptionKey.length === 64 && /^[0-9a-fA-F]+$/.test(encryptionKey)) {
+    return Buffer.from(encryptionKey, "hex");
+  }
+
+  // Otherwise treat as raw string
+  return Buffer.from(encryptionKey);
 };
 
 const encrypt = (text: string): string => {

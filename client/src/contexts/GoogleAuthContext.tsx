@@ -46,10 +46,8 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
           // Only set user if it's a Google account
           if (!data.provider || data.provider === "google") {
             setUser(data);
-            // Save session to localStorage
-            if (data.idToken) {
-              saveUserSession(data, data.idToken);
-            }
+            // Save session to localStorage (tokens managed by HTTP-only cookies)
+            saveUserSession(data);
           }
         })
         .catch(() => {
