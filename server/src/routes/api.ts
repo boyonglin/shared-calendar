@@ -550,31 +550,51 @@ router.post(
         | undefined;
 
       // Wrap both inserts in a transaction to ensure atomicity
-      const addFriendTransaction = db.transaction(() => {
-        insertStmt.run(userId, normalizedEmail, friendUserId, status);
+      // The UNIQUE(user_id, friend_email) constraint in the database prevents duplicate
+      // connections even if two users simultaneously add each other as friends.
+      // In case of a race condition, the second transaction will fail with a constraint error.
+      try {
+        const addFriendTransaction = db.transaction(() => {
+          insertStmt.run(userId, normalizedEmail, friendUserId, status);
 
-        // If friend already has an account, create an INCOMING request for them
-        if (friendAccount && primaryUserAccount?.external_email) {
-          const reverseExistingStmt = db.prepare(
-            "SELECT * FROM user_connections WHERE user_id = ? AND friend_email = ?",
-          );
-          const reverseExisting = reverseExistingStmt.get(
-            friendAccount.user_id,
-            primaryUserAccount.external_email.toLowerCase(),
-          );
-
-          if (!reverseExisting) {
-            // Create incoming request for the friend (they need to accept)
-            insertStmt.run(
+          // If friend already has an account, create an INCOMING request for them
+          if (friendAccount && primaryUserAccount?.external_email) {
+            const reverseExistingStmt = db.prepare(
+              "SELECT * FROM user_connections WHERE user_id = ? AND friend_email = ?",
+            );
+            const reverseExisting = reverseExistingStmt.get(
               friendAccount.user_id,
               primaryUserAccount.external_email.toLowerCase(),
-              userId,
-              "incoming", // This is an incoming request they need to accept
             );
+
+            if (!reverseExisting) {
+              // Create incoming request for the friend (they need to accept)
+              // Use INSERT OR IGNORE to handle race condition where friend adds us at the same time
+              const insertIgnoreStmt = db.prepare(`
+                INSERT OR IGNORE INTO user_connections (user_id, friend_email, friend_user_id, status)
+                VALUES (?, ?, ?, ?)
+              `);
+              insertIgnoreStmt.run(
+                friendAccount.user_id,
+                primaryUserAccount.external_email.toLowerCase(),
+                userId,
+                "incoming", // This is an incoming request they need to accept
+              );
+            }
           }
+        });
+        addFriendTransaction();
+      } catch (dbError: unknown) {
+        // Handle unique constraint violation (race condition case)
+        if (
+          dbError instanceof Error &&
+          dbError.message.includes("UNIQUE constraint failed")
+        ) {
+          res.status(409).json({ error: "Friend request already sent" });
+          return;
         }
-      });
-      addFriendTransaction();
+        throw dbError;
+      }
 
       // Get the inserted connection
       const getStmt = db.prepare(
@@ -759,6 +779,12 @@ router.delete(
         res.status(404).json({ error: "Friend connection not found" });
         return;
       }
+
+      // Allow removal for any connection status (pending, requested, incoming, accepted)
+      // This enables users to:
+      // - Cancel pending friend requests
+      // - Reject incoming requests (alternative to explicit reject)
+      // - Remove accepted friends
 
       // Wrap the deletion logic in a transaction for atomicity
       const removeFriendTransaction = db.transaction(() => {
@@ -973,7 +999,7 @@ router.get(
         return;
       }
 
-      // Check if connection exists and is accepted
+      // Check if connection exists and is accepted on user's side
       const connStmt = db.prepare(
         "SELECT * FROM user_connections WHERE id = ? AND user_id = ? AND status = 'accepted'",
       );
@@ -984,6 +1010,23 @@ router.get(
       if (!connection || !connection.friend_user_id) {
         res.status(404).json({
           error: "Friend not found or connection not accepted",
+        });
+        return;
+      }
+
+      // Verify mutual acceptance: friend has also accepted the connection
+      // This ensures both users have consented to share calendar data
+      const reverseConnStmt = db.prepare(
+        "SELECT * FROM user_connections WHERE user_id = ? AND friend_user_id = ? AND status = 'accepted'",
+      );
+      const reverseConnection = reverseConnStmt.get(
+        connection.friend_user_id,
+        userId,
+      ) as UserConnectionRow | undefined;
+
+      if (!reverseConnection) {
+        res.status(404).json({
+          error: "Friend not found or connection not mutually accepted",
         });
         return;
       }
