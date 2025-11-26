@@ -191,9 +191,13 @@ router.get(
  */
 router.get(
   "/:userId/events",
+  authenticateUser,
   validateUserId,
   async (req: Request, res: Response) => {
     try {
+      const authUserId = (req as AuthRequest).user!.userId;
+      const requestedUserId = req.params.userId;
+
       // Validate time parameters
       const timeMinResult = parseDateParam(req.query.timeMin);
       if (!timeMinResult.valid) {
@@ -211,10 +215,10 @@ router.get(
 
       // Check which provider this user is using
       const stmt = db.prepare(
-        "SELECT provider FROM calendar_accounts WHERE user_id = ?",
+        "SELECT provider, primary_user_id FROM calendar_accounts WHERE user_id = ?",
       );
-      const account = stmt.get(req.params.userId) as
-        | CalendarAccount
+      const account = stmt.get(requestedUserId) as
+        | (CalendarAccount & { primary_user_id?: string })
         | undefined;
 
       if (!account) {
@@ -222,8 +226,20 @@ router.get(
         return;
       }
 
+      // Authorization: user can only access their own accounts or linked accounts
+      const isOwnAccount = requestedUserId === authUserId;
+      const isLinkedAccount =
+        account.primary_user_id != null &&
+        account.primary_user_id === authUserId;
+      if (!isOwnAccount && !isLinkedAccount) {
+        res
+          .status(403)
+          .json({ error: "Not authorized to access this calendar" });
+        return;
+      }
+
       const events = await fetchEventsFromProvider(
-        { ...account, user_id: req.params.userId },
+        { ...account, user_id: requestedUserId },
         timeMin,
         timeMax,
       );
