@@ -14,6 +14,7 @@ import {
 } from "../middleware/validation";
 import { authenticateUser } from "../middleware/auth";
 import type { AuthRequest } from "../middleware/auth";
+import { createRequestLogger, logError } from "../utils/logger";
 
 const router = express.Router();
 
@@ -157,9 +158,15 @@ router.get(
 
           allEvents.push(...taggedEvents);
         } catch (error: unknown) {
-          console.error(
-            `Error fetching events from ${account.provider} (${account.user_id}):`,
+          const log = createRequestLogger({
+            requestId: (req as Request & { requestId?: string }).requestId,
+            method: req.method,
+            path: req.path,
+          });
+          logError(
+            log,
             error,
+            `Error fetching events from ${account.provider} (${account.user_id})`,
           );
           // Continue with other accounts even if one fails
         }
@@ -167,7 +174,12 @@ router.get(
 
       res.json(allEvents);
     } catch (error: unknown) {
-      console.error("Error fetching all events:", error);
+      const log = createRequestLogger({
+        requestId: (req as Request & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+      });
+      logError(log, error, "Error fetching all events");
       res.status(500).json({ error: "Failed to fetch events" });
     }
   },
@@ -179,9 +191,13 @@ router.get(
  */
 router.get(
   "/:userId/events",
+  authenticateUser,
   validateUserId,
   async (req: Request, res: Response) => {
     try {
+      const authUserId = (req as AuthRequest).user!.userId;
+      const requestedUserId = req.params.userId;
+
       // Validate time parameters
       const timeMinResult = parseDateParam(req.query.timeMin);
       if (!timeMinResult.valid) {
@@ -199,10 +215,10 @@ router.get(
 
       // Check which provider this user is using
       const stmt = db.prepare(
-        "SELECT provider FROM calendar_accounts WHERE user_id = ?",
+        "SELECT provider, primary_user_id FROM calendar_accounts WHERE user_id = ?",
       );
-      const account = stmt.get(req.params.userId) as
-        | CalendarAccount
+      const account = stmt.get(requestedUserId) as
+        | (CalendarAccount & { primary_user_id?: string })
         | undefined;
 
       if (!account) {
@@ -210,8 +226,20 @@ router.get(
         return;
       }
 
+      // Authorization: user can only access their own accounts or linked accounts
+      const isOwnAccount = requestedUserId === authUserId;
+      const isLinkedAccount =
+        account.primary_user_id != null &&
+        account.primary_user_id === authUserId;
+      if (!isOwnAccount && !isLinkedAccount) {
+        res
+          .status(403)
+          .json({ error: "Not authorized to access this calendar" });
+        return;
+      }
+
       const events = await fetchEventsFromProvider(
-        { ...account, user_id: req.params.userId },
+        { ...account, user_id: requestedUserId },
         timeMin,
         timeMax,
       );
@@ -226,7 +254,12 @@ router.get(
 
       res.json(events);
     } catch (error: unknown) {
-      console.error("Error fetching events:", error);
+      const log = createRequestLogger({
+        requestId: (req as Request & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+      });
+      logError(log, error, "Error fetching events");
 
       if (error instanceof Error && error.message === "Unauthorized") {
         res.status(401).json({
@@ -292,10 +325,12 @@ router.post(
           .json({ error: "Provider not supported for event creation yet" });
       }
     } catch (error) {
-      console.error(
-        "Error creating event:",
-        error instanceof Error ? error.message : "Unknown error",
-      );
+      const log = createRequestLogger({
+        requestId: (req as Request & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+      });
+      logError(log, error, "Error creating event");
       res.status(500).json({ error: "Failed to create event" });
     }
   },
@@ -332,7 +367,12 @@ router.get(
         userId: account.user_id,
       });
     } catch (error) {
-      console.error("Error checking iCloud status:", error);
+      const log = createRequestLogger({
+        requestId: (req as Request & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+      });
+      logError(log, error, "Error checking iCloud status");
       res.status(500).json({ error: "Failed to check iCloud status" });
     }
   },
@@ -362,7 +402,12 @@ router.delete(
 
       res.json({ success: true, message: "iCloud account disconnected" });
     } catch (error) {
-      console.error("Error removing iCloud account:", error);
+      const log = createRequestLogger({
+        requestId: (req as Request & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+      });
+      logError(log, error, "Error removing iCloud account");
       res.status(500).json({ error: "Failed to remove iCloud account" });
     }
   },
@@ -399,7 +444,12 @@ router.get(
         userId: account.user_id,
       });
     } catch (error) {
-      console.error("Error checking Outlook status:", error);
+      const log = createRequestLogger({
+        requestId: (req as Request & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+      });
+      logError(log, error, "Error checking Outlook status");
       res.status(500).json({ error: "Failed to check Outlook status" });
     }
   },
@@ -429,7 +479,12 @@ router.delete(
 
       res.json({ success: true, message: "Outlook account disconnected" });
     } catch (error) {
-      console.error("Error removing Outlook account:", error);
+      const log = createRequestLogger({
+        requestId: (req as Request & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+      });
+      logError(log, error, "Error removing Outlook account");
       res.status(500).json({ error: "Failed to remove Outlook account" });
     }
   },

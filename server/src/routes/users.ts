@@ -5,6 +5,7 @@ import type { Request, Response } from "express";
 import express from "express";
 import { googleAuthService } from "../services/googleAuth";
 import { validateUserIdParam } from "../middleware/validation";
+import { createRequestLogger, logError } from "../utils/logger";
 
 const router = express.Router();
 
@@ -20,7 +21,8 @@ router.get("/:id", validateUserIdParam, (req: Request, res: Response) => {
     }
     res.json(user);
   } catch (error) {
-    console.error("Error fetching user:", error);
+    const log = createRequestLogger({ method: req.method, path: req.path });
+    logError(log, error, "Error fetching user");
     res.status(500).json({ error: "Internal server error" });
   }
 });

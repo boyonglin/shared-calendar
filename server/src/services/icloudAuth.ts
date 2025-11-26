@@ -21,8 +21,14 @@ const getEncryptionKey = (): Buffer => {
     return Buffer.from(encryptionKey, "hex");
   }
 
-  // Otherwise treat as raw string
-  return Buffer.from(encryptionKey);
+  // Otherwise treat as raw string and validate length
+  const key = Buffer.from(encryptionKey);
+  if (key.length !== 32) {
+    throw new Error(
+      `ENCRYPTION_KEY must be exactly 32 bytes (or 64 hex characters), got ${key.length} bytes`,
+    );
+  }
+  return key;
 };
 
 const encrypt = (text: string): string => {
