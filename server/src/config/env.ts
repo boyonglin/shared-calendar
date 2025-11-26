@@ -28,7 +28,19 @@ const envSchema = z.object({
   // Security
   JWT_SECRET: z
     .string()
-    .min(32, "JWT_SECRET must be at least 32 characters for security"),
+    .min(32, "JWT_SECRET must be at least 32 characters for security")
+    .refine(
+      (key) => {
+        // In production, require at least 64 characters for optimal security
+        if (process.env.NODE_ENV === "production" && key.length < 64) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: "JWT_SECRET must be at least 64 characters in production",
+      },
+    ),
 
   // Encryption (for iCloud passwords)
   ENCRYPTION_KEY: z
@@ -57,16 +69,6 @@ export type Env = z.infer<typeof envSchema>;
 export function validateEnv(): Env {
   try {
     const parsed = envSchema.parse(process.env);
-
-    // Production security checks
-    if (parsed.NODE_ENV === "production") {
-      if (parsed.JWT_SECRET.length < 64) {
-        console.warn(
-          "⚠️ WARNING: JWT_SECRET should be at least 64 characters in production for optimal security.",
-        );
-      }
-    }
-
     return parsed;
   } catch (error) {
     if (error instanceof z.ZodError) {

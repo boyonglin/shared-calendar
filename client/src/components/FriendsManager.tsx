@@ -188,7 +188,7 @@ export function FriendsManager({
     } catch (err) {
       // Rollback on error
       setIncomingRequests((prev) => [...prev, acceptedRequest]);
-      setFriends((prev) => prev.filter((f) => f.id === optimisticFriend.id));
+      setFriends((prev) => prev.filter((f) => f.id !== optimisticFriend.id));
       onIncomingRequestsChange?.(incomingRequests.length);
       setError(err instanceof Error ? err.message : "Failed to accept request");
     } finally {

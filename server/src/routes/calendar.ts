@@ -14,6 +14,7 @@ import {
 } from "../middleware/validation";
 import { authenticateUser } from "../middleware/auth";
 import type { AuthRequest } from "../middleware/auth";
+import { createRequestLogger, logError } from "../utils/logger";
 
 const router = express.Router();
 
@@ -157,9 +158,15 @@ router.get(
 
           allEvents.push(...taggedEvents);
         } catch (error: unknown) {
-          console.error(
-            `Error fetching events from ${account.provider} (${account.user_id}):`,
+          const log = createRequestLogger({
+            requestId: (req as Request & { requestId?: string }).requestId,
+            method: req.method,
+            path: req.path,
+          });
+          logError(
+            log,
             error,
+            `Error fetching events from ${account.provider} (${account.user_id})`,
           );
           // Continue with other accounts even if one fails
         }
@@ -167,7 +174,12 @@ router.get(
 
       res.json(allEvents);
     } catch (error: unknown) {
-      console.error("Error fetching all events:", error);
+      const log = createRequestLogger({
+        requestId: (req as Request & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+      });
+      logError(log, error, "Error fetching all events");
       res.status(500).json({ error: "Failed to fetch events" });
     }
   },
@@ -226,7 +238,12 @@ router.get(
 
       res.json(events);
     } catch (error: unknown) {
-      console.error("Error fetching events:", error);
+      const log = createRequestLogger({
+        requestId: (req as Request & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+      });
+      logError(log, error, "Error fetching events");
 
       if (error instanceof Error && error.message === "Unauthorized") {
         res.status(401).json({
@@ -292,10 +309,12 @@ router.post(
           .json({ error: "Provider not supported for event creation yet" });
       }
     } catch (error) {
-      console.error(
-        "Error creating event:",
-        error instanceof Error ? error.message : "Unknown error",
-      );
+      const log = createRequestLogger({
+        requestId: (req as Request & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+      });
+      logError(log, error, "Error creating event");
       res.status(500).json({ error: "Failed to create event" });
     }
   },
@@ -332,7 +351,12 @@ router.get(
         userId: account.user_id,
       });
     } catch (error) {
-      console.error("Error checking iCloud status:", error);
+      const log = createRequestLogger({
+        requestId: (req as Request & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+      });
+      logError(log, error, "Error checking iCloud status");
       res.status(500).json({ error: "Failed to check iCloud status" });
     }
   },
@@ -362,7 +386,12 @@ router.delete(
 
       res.json({ success: true, message: "iCloud account disconnected" });
     } catch (error) {
-      console.error("Error removing iCloud account:", error);
+      const log = createRequestLogger({
+        requestId: (req as Request & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+      });
+      logError(log, error, "Error removing iCloud account");
       res.status(500).json({ error: "Failed to remove iCloud account" });
     }
   },
@@ -399,7 +428,12 @@ router.get(
         userId: account.user_id,
       });
     } catch (error) {
-      console.error("Error checking Outlook status:", error);
+      const log = createRequestLogger({
+        requestId: (req as Request & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+      });
+      logError(log, error, "Error checking Outlook status");
       res.status(500).json({ error: "Failed to check Outlook status" });
     }
   },
@@ -429,7 +463,12 @@ router.delete(
 
       res.json({ success: true, message: "Outlook account disconnected" });
     } catch (error) {
-      console.error("Error removing Outlook account:", error);
+      const log = createRequestLogger({
+        requestId: (req as Request & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+      });
+      logError(log, error, "Error removing Outlook account");
       res.status(500).json({ error: "Failed to remove Outlook account" });
     }
   },

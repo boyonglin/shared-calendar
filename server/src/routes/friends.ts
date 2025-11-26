@@ -10,6 +10,7 @@ import { db } from "../db";
 import { isValidEmail } from "../middleware/validation";
 import { authenticateUser } from "../middleware/auth";
 import type { AuthRequest } from "../middleware/auth";
+import { createRequestLogger, logError } from "../utils/logger";
 
 const router = express.Router();
 
@@ -246,7 +247,13 @@ router.post("/", authenticateUser, async (req: AuthRequest, res: Response) => {
           : "Friend request sent. They will see it once they sign up.",
     });
   } catch (error) {
-    console.error("Error adding friend:", error);
+    const log = createRequestLogger({
+      requestId: (req as AuthRequest & { requestId?: string }).requestId,
+      method: req.method,
+      path: req.path,
+      userId: req.user?.userId,
+    });
+    logError(log, error, "Error adding friend");
     res.status(500).json({ error: "Failed to add friend" });
   }
 });
@@ -282,7 +289,13 @@ router.get("/", authenticateUser, async (req: AuthRequest, res: Response) => {
 
     res.json({ friends });
   } catch (error) {
-    console.error("Error fetching friends:", error);
+    const log = createRequestLogger({
+      requestId: (req as AuthRequest & { requestId?: string }).requestId,
+      method: req.method,
+      path: req.path,
+      userId: req.user?.userId,
+    });
+    logError(log, error, "Error fetching friends");
     res.status(500).json({ error: "Failed to fetch friends" });
   }
 });
@@ -372,7 +385,13 @@ router.post(
         updatedCount,
       });
     } catch (error) {
-      console.error("Error syncing pending connections:", error);
+      const log = createRequestLogger({
+        requestId: (req as AuthRequest & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+        userId: req.user?.userId,
+      });
+      logError(log, error, "Error syncing pending connections");
       res.status(500).json({ error: "Failed to sync pending connections" });
     }
   },
@@ -437,7 +456,13 @@ router.delete(
 
       res.json({ success: true, message: "Friend removed successfully" });
     } catch (error) {
-      console.error("Error removing friend:", error);
+      const log = createRequestLogger({
+        requestId: (req as AuthRequest & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+        userId: req.user?.userId,
+      });
+      logError(log, error, "Error removing friend");
       res.status(500).json({ error: "Failed to remove friend" });
     }
   },
@@ -477,7 +502,13 @@ router.get(
 
       res.json({ requests, count: requests.length });
     } catch (error) {
-      console.error("Error fetching incoming requests:", error);
+      const log = createRequestLogger({
+        requestId: (req as AuthRequest & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+        userId: req.user?.userId,
+      });
+      logError(log, error, "Error fetching incoming requests");
       res.status(500).json({ error: "Failed to fetch incoming requests" });
     }
   },
@@ -533,7 +564,13 @@ router.post(
 
       res.json({ success: true, message: "Friend request accepted!" });
     } catch (error) {
-      console.error("Error accepting friend request:", error);
+      const log = createRequestLogger({
+        requestId: (req as AuthRequest & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+        userId: req.user?.userId,
+      });
+      logError(log, error, "Error accepting friend request");
       res.status(500).json({ error: "Failed to accept friend request" });
     }
   },
@@ -585,7 +622,13 @@ router.post(
 
       res.json({ success: true, message: "Friend request rejected" });
     } catch (error) {
-      console.error("Error rejecting friend request:", error);
+      const log = createRequestLogger({
+        requestId: (req as AuthRequest & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+        userId: req.user?.userId,
+      });
+      logError(log, error, "Error rejecting friend request");
       res.status(500).json({ error: "Failed to reject friend request" });
     }
   },
@@ -695,16 +738,29 @@ router.get(
             allEvents.push(...taggedEvents);
           }
         } catch (error) {
-          console.error(
-            `Error fetching friend events from ${account.provider}:`,
+          const log = createRequestLogger({
+            requestId: (req as AuthRequest & { requestId?: string }).requestId,
+            method: req.method,
+            path: req.path,
+            userId: req.user?.userId,
+          });
+          logError(
+            log,
             error,
+            `Error fetching friend events from ${account.provider}`,
           );
         }
       }
 
       res.json(allEvents);
     } catch (error) {
-      console.error("Error fetching friend events:", error);
+      const log = createRequestLogger({
+        requestId: (req as AuthRequest & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+        userId: req.user?.userId,
+      });
+      logError(log, error, "Error fetching friend events");
       res.status(500).json({ error: "Failed to fetch friend events" });
     }
   },

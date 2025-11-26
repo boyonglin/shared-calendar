@@ -7,6 +7,7 @@ import { aiService } from "../services/ai";
 import { validateDraftInvitation } from "../middleware/validation";
 import { authenticateUser } from "../middleware/auth";
 import type { AuthRequest } from "../middleware/auth";
+import { createRequestLogger, logError } from "../utils/logger";
 
 const router = express.Router();
 
@@ -46,7 +47,13 @@ router.post(
 
       res.json({ draft });
     } catch (error) {
-      console.error("Error generating invitation draft:", error);
+      const log = createRequestLogger({
+        requestId: (req as AuthRequest & { requestId?: string }).requestId,
+        method: req.method,
+        path: req.path,
+        userId: req.user?.userId,
+      });
+      logError(log, error, "Error generating invitation draft");
       const message =
         error instanceof Error
           ? error.message
