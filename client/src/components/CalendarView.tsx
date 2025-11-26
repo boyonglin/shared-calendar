@@ -29,9 +29,13 @@ export function CalendarView({
   const validStartHour = Math.max(0, Math.min(23, startHour));
   const validEndHour = Math.max(validStartHour, Math.min(23, endHour));
 
-  const hours = Array.from(
-    { length: validEndHour - validStartHour + 1 },
-    (_, i) => i + validStartHour,
+  // Create half-hour time slots
+  const timeSlots = Array.from(
+    { length: (validEndHour - validStartHour + 1) * 2 },
+    (_, i) => ({
+      hour: Math.floor(i / 2) + validStartHour,
+      minute: (i % 2) * 30,
+    }),
   );
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const date = new Date(weekStart);
@@ -53,22 +57,27 @@ export function CalendarView({
     return date.toLocaleDateString("en-US", { weekday: "short" });
   };
 
-  const isEventInSlot = (event: CalendarEvent, date: Date, hour: number) => {
+  const isEventInSlot = (
+    event: CalendarEvent,
+    date: Date,
+    hour: number,
+    minute: number,
+  ) => {
     // Don't show all-day events in regular time slots
     if (event.isAllDay) {
       return false;
     }
 
     const slotStart = new Date(date);
-    slotStart.setHours(hour, 0, 0, 0);
+    slotStart.setHours(hour, minute, 0, 0);
     const slotEnd = new Date(date);
-    slotEnd.setHours(hour + 1, 0, 0, 0);
+    slotEnd.setHours(hour, minute + 30, 0, 0);
 
     return event.start < slotEnd && event.end > slotStart;
   };
 
-  const getEventsInSlot = (date: Date, hour: number) => {
-    return events.filter((event) => isEventInSlot(event, date, hour));
+  const getEventsInSlot = (date: Date, hour: number, minute: number) => {
+    return events.filter((event) => isEventInSlot(event, date, hour, minute));
   };
 
   const getAllDayEventsForDate = (date: Date) => {
@@ -84,8 +93,8 @@ export function CalendarView({
     return users.find((u) => u.id === userId)?.color || "#gray-400";
   };
 
-  const handleSlotClick = (date: Date, hour: number) => {
-    onTimeSlotSelect({ date, hour });
+  const handleSlotClick = (date: Date, hour: number, minute: number) => {
+    onTimeSlotSelect({ date, hour, minute });
   };
 
   const handleAllDayClick = (date: Date) => {
@@ -182,19 +191,21 @@ export function CalendarView({
 
             {/* Time slots */}
             <div className="border-l border-r border-b border-gray-200">
-              {hours.map((hour) => (
+              {timeSlots.map(({ hour, minute }) => (
                 <div
-                  key={hour}
-                  className="grid grid-cols-8 gap-px bg-gray-200 min-h-[80px]"
+                  key={`${hour}-${minute}`}
+                  className="grid grid-cols-8 gap-px bg-gray-200 min-h-[40px]"
                 >
-                  <div className="bg-white p-3 flex items-start">
-                    <span className="text-gray-600 text-sm">
-                      {hour > 12 ? hour - 12 : hour}:00{" "}
-                      {hour >= 12 ? "PM" : "AM"}
-                    </span>
+                  <div className="bg-white p-2 flex items-start">
+                    {minute === 0 && (
+                      <span className="text-gray-600 text-xs">
+                        {hour > 12 ? hour - 12 : hour || 12}:00{" "}
+                        {hour >= 12 ? "PM" : "AM"}
+                      </span>
+                    )}
                   </div>
                   {weekDays.map((day, dayIndex) => {
-                    const slotEvents = getEventsInSlot(day, hour);
+                    const slotEvents = getEventsInSlot(day, hour, minute);
                     const hasEvents = slotEvents.length > 0;
 
                     return (
@@ -203,7 +214,7 @@ export function CalendarView({
                         className={`p-1 cursor-pointer hover:bg-gray-200 transition-colors relative ${
                           isToday(day) ? "bg-gray-100" : "bg-white"
                         }`}
-                        onClick={() => handleSlotClick(day, hour)}
+                        onClick={() => handleSlotClick(day, hour, minute)}
                       >
                         {hasEvents && (
                           <div className="space-y-1 h-full">

@@ -17,5 +17,22 @@ export interface CalendarEvent {
 export interface TimeSlot {
   date: Date;
   hour: number;
+  minute?: number;
   isAllDay?: boolean;
+}
+
+export type ConnectionStatus =
+  | "pending"
+  | "accepted"
+  | "incoming"
+  | "requested";
+
+export interface UserConnection {
+  id: number;
+  userId: string;
+  friendEmail: string;
+  friendUserId?: string;
+  friendName?: string;
+  status: ConnectionStatus;
+  createdAt: string;
 }

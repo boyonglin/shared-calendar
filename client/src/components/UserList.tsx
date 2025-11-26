@@ -1,12 +1,17 @@
 import type { User } from "../types";
 import { Checkbox } from "./ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
+import { UserPlus } from "lucide-react";
 
 interface UserListProps {
   users: User[];
   selectedUsers: string[];
   currentUserId: string;
   onUserToggle: (userId: string) => void;
+  onManageFriends?: () => void;
+  isLoggedIn?: boolean;
+  incomingRequestCount?: number;
 }
 
 export function UserList({
@@ -14,11 +19,33 @@ export function UserList({
   selectedUsers,
   currentUserId,
   onUserToggle,
+  onManageFriends,
+  isLoggedIn,
+  incomingRequestCount = 0,
 }: UserListProps) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Team Members</CardTitle>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between lg:flex-col lg:items-stretch lg:gap-3">
+          <CardTitle>Team Members</CardTitle>
+          {isLoggedIn && onManageFriends && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onManageFriends}
+              className="h-8 lg:h-9 lg:w-full relative"
+            >
+              <UserPlus className="w-4 h-4 mr-1 lg:mr-2" />
+              Add Friends
+              {incomingRequestCount > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-orange-400"
+                  aria-label={`${incomingRequestCount} pending friend requests`}
+                />
+              )}
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {users.map((user) => (

@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { CalendarView } from "./components/CalendarView";
 import { UserList } from "./components/UserList";
 import { InviteDialog } from "./components/InviteDialog";
 import { ICloudConnectModal } from "./components/ICloudConnectModal";
 import { SettingsModal } from "./components/SettingsModal";
+import { FriendsManager } from "./components/FriendsManager";
 import { UserProfileDropdown } from "./components/UserProfileDropdown";
 import { GoogleSignInButton } from "./components/GoogleSignInButton";
 import { Toaster } from "./components/ui/sonner";
@@ -20,6 +21,12 @@ import {
 } from "./contexts/CalendarContext";
 import { useICloudConnection } from "./hooks/useICloudConnection";
 import { useOutlookConnection } from "./hooks/useOutlookConnection";
+import { friendsApi, type FriendWithColor } from "./services/api/friends";
+import {
+  calculateEventTimeRange,
+  parseEventTime,
+  isAllDayEvent,
+} from "./utils/calendar";
 
 // Mock data for demonstration
 const mockUsers: User[] = [
@@ -205,6 +212,37 @@ function AppContent({
     null,
   );
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showFriendsManager, setShowFriendsManager] = useState(false);
+  const [friends, setFriends] = useState<FriendWithColor[]>([]);
+  const [friendEvents, setFriendEvents] = useState<CalendarEvent[]>([]);
+  const [incomingRequestCount, setIncomingRequestCount] = useState(0);
+
+  // Fetch incoming request count on mount and periodically
+  const fetchIncomingRequestCount = useCallback(async () => {
+    if (!user) {
+      setIncomingRequestCount(0);
+      return;
+    }
+    try {
+      const response = await friendsApi.getIncomingRequests();
+      setIncomingRequestCount(response.requests.length);
+    } catch (err) {
+      console.error("Error fetching incoming requests:", err);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchIncomingRequestCount();
+  }, [fetchIncomingRequestCount]);
+
+  // Clear friends data when user logs out
+  useEffect(() => {
+    if (!user) {
+      setFriends([]);
+      setFriendEvents([]);
+      setIncomingRequestCount(0);
+    }
+  }, [user]);
 
   // Add current user to selected users when logged in
   useEffect(() => {
@@ -232,14 +270,93 @@ function AppContent({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // Fetch friends and their events when user is logged in
+  const fetchFriendsAndEvents = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const response = await friendsApi.getFriends();
+      setFriends(response.friends);
+
+      // Calculate time range using shared utility (same logic as CalendarContext)
+      const { timeMin, timeMax } = calculateEventTimeRange(weekStart);
+
+      // Fetch events for all accepted friends
+      const acceptedFriends = response.friends.filter(
+        (f) => f.status === "accepted" && f.friendUserId,
+      );
+
+      // Fetch all friend events in parallel for better performance
+      // Note: For users with many friends, consider implementing pagination,
+      // caching, or batching to reduce server load when navigating between weeks.
+      const eventPromises = acceptedFriends.map((friend) =>
+        friendsApi
+          .getFriendEvents(friend.id, timeMin, timeMax)
+          .then((events) =>
+            events.map((e) => ({
+              id: e.id,
+              userId: friend.friendUserId!,
+              start: parseEventTime(e.start),
+              end: parseEventTime(e.end),
+              title: e.title || e.summary,
+              isAllDay: isAllDayEvent(e.start, e.end),
+            })),
+          )
+          .catch((err) => {
+            console.error(
+              `Error fetching events for friend ${friend.id}:`,
+              err,
+            );
+            return [];
+          }),
+      );
+
+      const friendEventArrays = await Promise.all(eventPromises);
+      const allFriendEvents: CalendarEvent[] = friendEventArrays.flat();
+      setFriendEvents(allFriendEvents);
+    } catch (err) {
+      console.error("Error fetching friends:", err);
+    }
+  }, [user, weekStart]);
+
+  useEffect(() => {
+    fetchFriendsAndEvents();
+  }, [fetchFriendsAndEvents]);
+
+  // Handle friends change from FriendsManager
+  const handleFriendsChange = useCallback(() => {
+    // Re-fetch friends and their events when friends change
+    fetchFriendsAndEvents();
+  }, [fetchFriendsAndEvents]);
+
   // Convert Google Calendar events to our CalendarEvent format
   // Our CalendarProvider interface returns CalendarEvent[], so we can use them directly.
   const googleCalendarEvents = calendarEvents;
 
-  // Combine Google events with mock events
-  // We combine the provider events (current user) with the mock events (other users)
-  const allEvents = [...googleCalendarEvents, ...mockEvents];
-  const allUsers = currentUser ? [currentUser, ...mockUsers] : mockUsers;
+  // Convert friends to User format
+  const friendUsers: User[] = friends
+    .filter((f) => f.status === "accepted" && f.friendUserId)
+    .map((f) => ({
+      id: f.friendUserId!,
+      name: f.friendName || f.friendEmail,
+      email: f.friendEmail,
+      color: f.friendColor,
+    }));
+
+  // Combine Google events with friend events (no more mock events when friends exist)
+  const allEvents =
+    friendUsers.length > 0
+      ? [...googleCalendarEvents, ...friendEvents]
+      : [...googleCalendarEvents, ...mockEvents];
+
+  // Combine current user, friends, and mock users (mock users only if no friends)
+  const allUsers = currentUser
+    ? friendUsers.length > 0
+      ? [currentUser, ...friendUsers]
+      : [currentUser, ...mockUsers]
+    : friendUsers.length > 0
+      ? friendUsers
+      : mockUsers;
 
   const handleUserToggle = (userId: string) => {
     setSelectedUsers((prev) =>
@@ -352,6 +469,9 @@ function AppContent({
               selectedUsers={selectedUsers}
               currentUserId={currentUser?.id || "1"}
               onUserToggle={handleUserToggle}
+              onManageFriends={() => setShowFriendsManager(true)}
+              isLoggedIn={!!user}
+              incomingRequestCount={incomingRequestCount}
             />
           </div>
 
@@ -386,6 +506,13 @@ function AppContent({
       <SettingsModal
         isOpen={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
+      />
+
+      <FriendsManager
+        isOpen={showFriendsManager}
+        onClose={() => setShowFriendsManager(false)}
+        onFriendsChange={handleFriendsChange}
+        onIncomingRequestsChange={setIncomingRequestCount}
       />
 
       <Toaster />

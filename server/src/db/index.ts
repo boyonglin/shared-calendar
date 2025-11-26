@@ -17,9 +17,45 @@ db.exec(`
     refresh_token TEXT,
     encrypted_password TEXT,
     metadata TEXT,
+    primary_user_id TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
+`);
+
+// Add primary_user_id column if it doesn't exist (migration for existing databases)
+try {
+  db.exec(`ALTER TABLE calendar_accounts ADD COLUMN primary_user_id TEXT`);
+  console.log("✅ Added primary_user_id column to calendar_accounts");
+} catch {
+  // Column already exists, ignore
+}
+
+// User connections table for friend relationships
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_connections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    friend_email TEXT NOT NULL,
+    friend_user_id TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, friend_email)
+  );
+`);
+
+// Create indexes for calendar_accounts to speed up lookups by external_email and primary_user_id
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_calendar_accounts_external_email ON calendar_accounts(external_email);
+  CREATE INDEX IF NOT EXISTS idx_calendar_accounts_primary_user_id ON calendar_accounts(primary_user_id);
+`);
+
+// Create index for faster lookups - use composite index on (user_id, status) for better query performance
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_user_connections_user_id_status ON user_connections(user_id, status);
+  CREATE INDEX IF NOT EXISTS idx_user_connections_friend_email ON user_connections(friend_email);
+  CREATE INDEX IF NOT EXISTS idx_user_connections_friend_user_id ON user_connections(friend_user_id);
 `);
 
 console.log("✅ Database initialized");

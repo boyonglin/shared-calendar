@@ -52,7 +52,11 @@ const decrypt = (text: string): string => {
 };
 
 export const icloudAuthService = {
-  verifyCredentials: async (email: string, appSpecificPassword: string) => {
+  verifyCredentials: async (
+    email: string,
+    appSpecificPassword: string,
+    primaryUserId?: string,
+  ) => {
     const client = new DAVClient({
       serverUrl: "https://caldav.icloud.com",
       credentials: {
@@ -78,10 +82,11 @@ export const icloudAuthService = {
 
       const stmt = db.prepare(`
                 INSERT INTO calendar_accounts (
-                    user_id, provider, external_email, access_token, refresh_token, metadata, updated_at
-                ) VALUES (?, 'icloud', ?, ?, NULL, ?, CURRENT_TIMESTAMP)
+                    user_id, provider, external_email, access_token, refresh_token, metadata, primary_user_id, updated_at
+                ) VALUES (?, 'icloud', ?, ?, NULL, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(user_id) DO UPDATE SET
                     access_token = excluded.access_token,
+                    primary_user_id = excluded.primary_user_id,
                     updated_at = CURRENT_TIMESTAMP
             `);
 
@@ -91,6 +96,7 @@ export const icloudAuthService = {
         email,
         encryptedPassword,
         JSON.stringify({ name: email }), // iCloud doesn't give us a name easily, use email
+        primaryUserId || null,
       );
 
       return {

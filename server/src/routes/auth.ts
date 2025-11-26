@@ -5,9 +5,18 @@ import { googleAuthService } from "../services/googleAuth";
 import { icloudAuthService } from "../services/icloudAuth";
 import { onecalAuthService } from "../services/onecalAuth";
 import { validateICloudCredentials } from "../middleware/validation";
+import { authenticateUser } from "../middleware/auth";
+import type { AuthRequest } from "../middleware/auth";
 import { env } from "../config/env";
 
 const router = express.Router();
+
+// Interface for Outlook OAuth state token payload
+interface OutlookStatePayload {
+  userId: string;
+  iat: number;
+  exp: number;
+}
 
 router.get("/google", (req: Request, res: Response) => {
   const url = googleAuthService.getAuthUrl();
@@ -48,12 +57,18 @@ router.get("/google/callback", async (req: Request, res: Response) => {
 
 router.post(
   "/icloud",
+  authenticateUser,
   validateICloudCredentials,
   async (req: Request, res: Response) => {
     const { email, password } = req.body;
+    const primaryUserId = (req as AuthRequest).user!.userId;
 
     try {
-      const result = await icloudAuthService.verifyCredentials(email, password);
+      const result = await icloudAuthService.verifyCredentials(
+        email,
+        password,
+        primaryUserId,
+      );
       if (!result?.user?.id) {
         res
           .status(500)
@@ -76,8 +91,28 @@ router.post(
 );
 
 // Outlook/Microsoft OAuth via OneCal
-router.get("/outlook", (req: Request, res: Response) => {
+router.get("/outlook", authenticateUser, (req: Request, res: Response) => {
   try {
+    const primaryUserId = (req as AuthRequest).user!.userId;
+
+    // Generate a signed JWT state token that contains the user ID
+    // This approach works across multiple server instances and survives restarts
+    // since validation only requires the JWT_SECRET, no server-side storage needed
+    const stateToken = jwt.sign({ userId: primaryUserId }, env.JWT_SECRET, {
+      expiresIn: "10m", // 10 minutes - just for the auth flow
+    });
+
+    // Store the signed state token in a secure cookie
+    // Note: Using sameSite: "lax" instead of "strict" because the OAuth callback
+    // is a cross-site navigation that requires the cookie to be sent.
+    // The JWT-based state token provides additional CSRF protection.
+    res.cookie("outlook_auth_state", stateToken, {
+      httpOnly: true,
+      secure: env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 10 * 60 * 1000, // 10 minutes - just for the auth flow
+    });
+
     const url = onecalAuthService.getAuthUrl();
     res.redirect(url);
   } catch (error) {
@@ -89,14 +124,51 @@ router.get("/outlook", (req: Request, res: Response) => {
 
 router.get("/outlook/callback", async (req: Request, res: Response) => {
   const { endUserAccountId } = req.query;
+  const stateToken = req.cookies?.outlook_auth_state;
+
+  // Clear the temporary cookie with matching options for reliable removal
+  res.clearCookie("outlook_auth_state", {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
 
   if (!endUserAccountId || typeof endUserAccountId !== "string") {
     res.status(400).send("Missing endUserAccountId from OneCal callback");
     return;
   }
 
+  // Validate the signed state token and extract the user ID
+  let primaryUserId: string | undefined;
+  if (stateToken) {
+    try {
+      const payload = jwt.verify(
+        stateToken,
+        env.JWT_SECRET,
+      ) as OutlookStatePayload;
+      primaryUserId = payload.userId;
+    } catch (err) {
+      if (err instanceof jwt.TokenExpiredError) {
+        console.error("JWT verification failed: Token expired", err);
+      } else if (err instanceof jwt.JsonWebTokenError) {
+        console.error("JWT verification failed: Invalid token", err);
+      } else {
+        console.error("JWT verification failed: Unknown error", err);
+      }
+      // Token is invalid or expired - primaryUserId remains undefined
+    }
+  }
+
+  if (!primaryUserId) {
+    res.status(400).send("Invalid or expired authentication state");
+    return;
+  }
+
   try {
-    const result = await onecalAuthService.handleCallback(endUserAccountId);
+    const result = await onecalAuthService.handleCallback(
+      endUserAccountId,
+      primaryUserId,
+    );
 
     // Redirect back to client with success - importantly with provider=outlook
     // This tells the client NOT to treat this as a login, just as a connection
