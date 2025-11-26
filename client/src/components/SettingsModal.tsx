@@ -35,9 +35,6 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const effectiveStoredKey = removed ? null : storedKey;
   const effectiveHasExistingKey = !!effectiveStoredKey;
 
-  // Check if key has been modified (new key entered)
-  const hasNewKey = apiKey.trim().length > 0;
-
   // Reset state when opening or closing the dialog
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -186,10 +183,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             >
               Cancel
             </Button>
-            <Button
-              onClick={handleSave}
-              disabled={!apiKey.trim() || !hasNewKey}
-            >
+            <Button onClick={handleSave} disabled={!apiKey.trim()}>
               Save
             </Button>
           </div>

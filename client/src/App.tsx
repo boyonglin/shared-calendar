@@ -22,6 +22,11 @@ import {
 import { useICloudConnection } from "./hooks/useICloudConnection";
 import { useOutlookConnection } from "./hooks/useOutlookConnection";
 import { friendsApi, type FriendWithColor } from "./services/api/friends";
+import {
+  calculateEventTimeRange,
+  parseEventTime,
+  isAllDayEvent,
+} from "./utils/calendar";
 
 // Mock data for demonstration
 const mockUsers: User[] = [
@@ -273,23 +278,8 @@ function AppContent({
       const response = await friendsApi.getFriends();
       setFriends(response.friends);
 
-      // Calculate time range based on weekStart (same as CalendarContext)
-      let timeMin: Date;
-      let timeMax: Date;
-
-      if (weekStart) {
-        timeMin = new Date(weekStart);
-        timeMin.setDate(timeMin.getDate() - 14); // 2 weeks before
-        timeMin.setHours(0, 0, 0, 0);
-
-        timeMax = new Date(weekStart);
-        timeMax.setDate(timeMax.getDate() + 21); // 3 weeks after
-        timeMax.setHours(23, 59, 59, 999);
-      } else {
-        const now = new Date();
-        timeMin = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        timeMax = new Date(now.getFullYear(), now.getMonth() + 2, 0);
-      }
+      // Calculate time range using shared utility (same logic as CalendarContext)
+      const { timeMin, timeMax } = calculateEventTimeRange(weekStart);
 
       // Fetch events for all accepted friends
       const acceptedFriends = response.friends.filter(
@@ -297,6 +287,8 @@ function AppContent({
       );
 
       // Fetch all friend events in parallel for better performance
+      // Note: For users with many friends, consider implementing pagination,
+      // caching, or batching to reduce server load when navigating between weeks.
       const eventPromises = acceptedFriends.map((friend) =>
         friendsApi
           .getFriendEvents(friend.id, timeMin, timeMax)
@@ -304,21 +296,10 @@ function AppContent({
             events.map((e) => ({
               id: e.id,
               userId: friend.friendUserId!,
-              start: new Date(
-                typeof e.start === "string"
-                  ? e.start
-                  : e.start?.dateTime || e.start?.date || "",
-              ),
-              end: new Date(
-                typeof e.end === "string"
-                  ? e.end
-                  : e.end?.dateTime || e.end?.date || "",
-              ),
+              start: parseEventTime(e.start),
+              end: parseEventTime(e.end),
               title: e.title || e.summary,
-              isAllDay: !!(
-                (typeof e.start === "object" && e.start?.date) ||
-                (typeof e.end === "object" && e.end?.date)
-              ),
+              isAllDay: isAllDayEvent(e.start, e.end),
             })),
           )
           .catch((err) => {
@@ -330,8 +311,8 @@ function AppContent({
           }),
       );
 
-      const allFriendEventsArrays = await Promise.all(eventPromises);
-      const allFriendEvents: CalendarEvent[] = allFriendEventsArrays.flat();
+      const friendEventArrays = await Promise.all(eventPromises);
+      const allFriendEvents: CalendarEvent[] = friendEventArrays.flat();
       setFriendEvents(allFriendEvents);
     } catch (err) {
       console.error("Error fetching friends:", err);

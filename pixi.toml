@@ -12,7 +12,7 @@ dev = { cmd = "npm run dev" }
 build = { depends-on = ["build-client", "build-server"] }
 lint = { cmd = "npm run lint" }
 format = { cmd = "npm run format" }
-start = { depends-on = ["install", "build", "format", "lint", "dev"] }
+start = { depends-on = ["install", "build", "format", "lint"] }
 
 # Root tasks
 install-root = { cmd = "npm install" }

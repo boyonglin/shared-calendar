@@ -38,7 +38,10 @@ export function UserList({
               <UserPlus className="w-4 h-4 mr-1 lg:mr-2" />
               Add Friends
               {incomingRequestCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-orange-400" />
+                <span
+                  className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-orange-400"
+                  aria-label={`${incomingRequestCount} pending friend requests`}
+                />
               )}
             </Button>
           )}

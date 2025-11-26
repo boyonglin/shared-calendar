@@ -485,12 +485,17 @@ router.post(
         return;
       }
 
-      // Check if user is trying to add themselves
-      const userStmt = db.prepare(
-        "SELECT external_email FROM calendar_accounts WHERE user_id = ?",
+      // Check if user is trying to add themselves (check all email addresses)
+      const userEmailsStmt = db.prepare(
+        "SELECT external_email FROM calendar_accounts WHERE user_id = ? OR primary_user_id = ?",
       );
-      const userAccount = userStmt.get(userId) as CalendarAccount | undefined;
-      if (userAccount?.external_email?.toLowerCase() === normalizedEmail) {
+      const userAccounts = userEmailsStmt.all(userId, userId) as {
+        external_email: string | null;
+      }[];
+      const userEmails = userAccounts
+        .map((acc) => acc.external_email?.toLowerCase().trim())
+        .filter((email): email is string => !!email);
+      if (userEmails.includes(normalizedEmail)) {
         res.status(400).json({ error: "You cannot add yourself as a friend" });
         return;
       }
@@ -499,9 +504,22 @@ router.post(
       const existingStmt = db.prepare(
         "SELECT * FROM user_connections WHERE user_id = ? AND friend_email = ?",
       );
-      const existing = existingStmt.get(userId, normalizedEmail);
+      const existing = existingStmt.get(userId, normalizedEmail) as
+        | UserConnectionRow
+        | undefined;
       if (existing) {
-        res.status(409).json({ error: "Friend request already sent" });
+        let errorMsg = "Friend request already sent";
+        if (existing.status === "accepted") {
+          errorMsg = "You are already friends";
+        } else if (
+          existing.status === "pending" ||
+          existing.status === "requested"
+        ) {
+          errorMsg = "Friend request pending";
+        } else if (existing.status === "incoming") {
+          errorMsg = "You have a pending friend request from this user";
+        }
+        res.status(409).json({ error: errorMsg });
         return;
       }
 
@@ -523,25 +541,33 @@ router.post(
       const status = friendAccount ? "requested" : "pending";
       const friendUserId = friendAccount?.user_id || null;
 
+      // Get the current user's primary email for creating reverse connection
+      const primaryUserStmt = db.prepare(
+        "SELECT external_email FROM calendar_accounts WHERE user_id = ?",
+      );
+      const primaryUserAccount = primaryUserStmt.get(userId) as
+        | { external_email: string }
+        | undefined;
+
       // Wrap both inserts in a transaction to ensure atomicity
       const addFriendTransaction = db.transaction(() => {
         insertStmt.run(userId, normalizedEmail, friendUserId, status);
 
         // If friend already has an account, create an INCOMING request for them
-        if (friendAccount && userAccount?.external_email) {
+        if (friendAccount && primaryUserAccount?.external_email) {
           const reverseExistingStmt = db.prepare(
             "SELECT * FROM user_connections WHERE user_id = ? AND friend_email = ?",
           );
           const reverseExisting = reverseExistingStmt.get(
             friendAccount.user_id,
-            userAccount.external_email.toLowerCase(),
+            primaryUserAccount.external_email.toLowerCase(),
           );
 
           if (!reverseExisting) {
             // Create incoming request for the friend (they need to accept)
             insertStmt.run(
               friendAccount.user_id,
-              userAccount.external_email.toLowerCase(),
+              primaryUserAccount.external_email.toLowerCase(),
               userId,
               "incoming", // This is an incoming request they need to accept
             );
@@ -625,10 +651,12 @@ router.get(
         }
 
         // Check if friend now has an account (for pending connections - user not yet signed up)
-        // Note: Ideally this would be handled during friend signup, but for backwards
-        // compatibility we check here and update lazily.
-        // TODO: Consider moving this logic to a webhook or background job that triggers
-        // when a new user signs up, to avoid side effects in GET endpoints.
+        // WARNING: This GET endpoint performs side effects (database writes), which violates REST
+        // principles where GET requests should be idempotent and read-only.
+        // TODO: Move this logic to one of the following before production:
+        // 1. A POST endpoint that explicitly triggers status updates
+        // 2. A background job that runs periodically
+        // 3. A webhook triggered during user signup
         if (conn.status === "pending" && !conn.friend_user_id) {
           const friendStmt = db.prepare(
             "SELECT user_id FROM calendar_accounts WHERE external_email = ?",

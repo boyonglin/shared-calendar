@@ -103,6 +103,9 @@ router.get("/outlook", authenticateUser, (req: Request, res: Response) => {
     });
 
     // Store the signed state token in a secure cookie
+    // Note: Using sameSite: "lax" instead of "strict" because the OAuth callback
+    // is a cross-site navigation that requires the cookie to be sent.
+    // The JWT-based state token provides additional CSRF protection.
     res.cookie("outlook_auth_state", stateToken, {
       httpOnly: true,
       secure: env.NODE_ENV === "production",
@@ -144,7 +147,14 @@ router.get("/outlook/callback", async (req: Request, res: Response) => {
         env.JWT_SECRET,
       ) as OutlookStatePayload;
       primaryUserId = payload.userId;
-    } catch {
+    } catch (err) {
+      if (err instanceof jwt.TokenExpiredError) {
+        console.error("JWT verification failed: Token expired", err);
+      } else if (err instanceof jwt.JsonWebTokenError) {
+        console.error("JWT verification failed: Invalid token", err);
+      } else {
+        console.error("JWT verification failed: Unknown error", err);
+      }
       // Token is invalid or expired - primaryUserId remains undefined
     }
   }
