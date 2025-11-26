@@ -23,6 +23,7 @@ import { useICloudConnection } from "./hooks/useICloudConnection";
 import { useOutlookConnection } from "./hooks/useOutlookConnection";
 import { useFriends } from "./hooks/useFriends";
 import { useCalendarAggregation } from "./hooks/useCalendarAggregation";
+import { useAppState } from "./hooks/useAppState";
 import { mockUsers, mockEvents } from "./data/mockData";
 
 function AppContent({
@@ -70,24 +71,18 @@ function AppContent({
     mockEvents,
   });
 
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([
-    "1",
-    "2",
-    "3",
-    "4",
-  ]);
+  // Use app state hook for UI state management
+  const {
+    selectedUsers,
+    toggleUser: handleUserToggle,
+    modals,
+    openModal,
+    closeModal,
+  } = useAppState({ currentUser });
+
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot | null>(
     null,
   );
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showFriendsManager, setShowFriendsManager] = useState(false);
-
-  // Add current user to selected users when logged in
-  useEffect(() => {
-    if (currentUser && !selectedUsers.includes(currentUser.id)) {
-      setSelectedUsers((prev) => [...prev, currentUser.id]);
-    }
-  }, [currentUser?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check iCloud and Outlook status on mount when user is present
   useEffect(() => {
@@ -107,14 +102,6 @@ function AppContent({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
-
-  const handleUserToggle = (userId: string) => {
-    setSelectedUsers((prev) =>
-      prev.includes(userId)
-        ? prev.filter((id) => id !== userId)
-        : [...prev, userId],
-    );
-  };
 
   const handleTimeSlotSelect = (slot: TimeSlot) => {
     if (!currentUser) {
@@ -202,7 +189,7 @@ function AppContent({
                     outlookConnection={outlookConnection}
                     onRefreshEvents={refreshEvents}
                     onSignOut={signOut}
-                    onOpenSettings={() => setShowSettingsModal(true)}
+                    onOpenSettings={() => openModal("settings")}
                   />
                 )
               )}
@@ -219,7 +206,7 @@ function AppContent({
               selectedUsers={selectedUsers}
               currentUserId={currentUser?.id || "1"}
               onUserToggle={handleUserToggle}
-              onManageFriends={() => setShowFriendsManager(true)}
+              onManageFriends={() => openModal("friends")}
               isLoggedIn={!!user}
               incomingRequestCount={incomingRequestCount}
             />
@@ -244,7 +231,7 @@ function AppContent({
         users={allUsers.filter((u) => u.id !== (currentUser?.id || "1"))}
         onClose={() => setSelectedTimeSlot(null)}
         onSendInvite={handleSendInvite}
-        onOpenSettings={() => setShowSettingsModal(true)}
+        onOpenSettings={() => openModal("settings")}
       />
 
       <ICloudConnectModal
@@ -254,13 +241,13 @@ function AppContent({
       />
 
       <SettingsModal
-        isOpen={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
+        isOpen={modals.settings}
+        onClose={() => closeModal("settings")}
       />
 
       <FriendsManager
-        isOpen={showFriendsManager}
-        onClose={() => setShowFriendsManager(false)}
+        isOpen={modals.friends}
+        onClose={() => closeModal("friends")}
         onFriendsChange={refetchFriends}
         onIncomingRequestsChange={setIncomingRequestCount}
       />

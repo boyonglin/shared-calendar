@@ -39,7 +39,7 @@ export function restoreSession(): StoredSession | null {
  * Save user session to localStorage
  * Note: Auth tokens are now managed via HTTP-only cookies by the server
  */
-export function saveUserSession(user: GoogleUser, _accessToken?: string): void {
+export function saveUserSession(user: GoogleUser): void {
   localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
   // Token expiry is now managed by server-side cookies
   // Keep a session timestamp for UI purposes

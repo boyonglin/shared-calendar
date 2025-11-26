@@ -5,13 +5,6 @@
 import type { User, CalendarEvent } from "@shared/types";
 
 /**
- * Check if mock data should be used
- * Can be controlled via environment variable for production
- */
-export const ENABLE_MOCK_DATA =
-  import.meta.env.VITE_ENABLE_MOCK_DATA !== "false";
-
-/**
  * Mock users for demonstration
  */
 export const mockUsers: User[] = [

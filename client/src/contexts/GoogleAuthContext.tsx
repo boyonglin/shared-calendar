@@ -22,11 +22,11 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const authSuccess = params.get("auth");
-    const userId = params.get("userId");
+    const authCode = params.get("code");
     const provider = params.get("provider");
 
-    if (authSuccess === "success" && userId) {
-      // Clear params from URL
+    if (authSuccess === "success" && authCode) {
+      // Clear params from URL immediately
       window.history.replaceState({}, "", window.location.pathname);
 
       // JWT token is now stored in HTTP-only cookie by the server
@@ -38,20 +38,26 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Only fetch and set user if this is a Google login
-      // Fetch user data
+      // Exchange the auth code for user data, then fetch full profile
       authApi
-        .getUser(userId)
+        .exchangeCode(authCode)
+        .then((exchangeData) => {
+          // Only proceed if it's a Google account
+          if (exchangeData.provider !== "google") {
+            return;
+          }
+          // Fetch full user profile
+          return authApi.getUser(exchangeData.userId);
+        })
         .then((data) => {
-          // Only set user if it's a Google account
-          if (!data.provider || data.provider === "google") {
+          if (data) {
             setUser(data);
             // Save session to localStorage (tokens managed by HTTP-only cookies)
             saveUserSession(data);
           }
         })
         .catch(() => {
-          // Silently handle error
+          // Silently handle error - code may be expired or invalid
         });
     }
   }, []);
