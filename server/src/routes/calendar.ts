@@ -1,12 +1,13 @@
 /**
  * Calendar routes - handles calendar events and provider integrations
  */
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import express from "express";
 import { googleAuthService } from "../services/googleAuth";
 import { icloudAuthService } from "../services/icloudAuth";
 import { onecalAuthService } from "../services/onecalAuth";
-import { db } from "../db";
+import { calendarAccountRepository } from "../repositories/calendarAccountRepository";
+import type { CalendarAccount } from "../repositories/calendarAccountRepository";
 import {
   validateUserId,
   validatePrimaryUserId,
@@ -15,25 +16,15 @@ import {
 import { authenticateUser } from "../middleware/auth";
 import type { AuthRequest } from "../middleware/auth";
 import { createRequestLogger, logError } from "../utils/logger";
+import {
+  BadRequestError,
+  NotFoundError,
+  ForbiddenError,
+  UnauthorizedError,
+  NotImplementedError,
+} from "../utils/errors";
 
 const router = express.Router();
-
-// =============================================================================
-// Types
-// =============================================================================
-
-interface CalendarAccount {
-  user_id: string;
-  provider: string;
-  external_email?: string;
-  metadata?: string;
-  access_token?: string;
-  refresh_token?: string;
-}
-
-interface DBResult {
-  changes: number;
-}
 
 // =============================================================================
 // Helper Functions
@@ -105,34 +96,26 @@ router.get(
   "/all-events/:primaryUserId",
   authenticateUser,
   validatePrimaryUserId,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const primaryUserId = (req as AuthRequest).user!.userId;
 
       // Validate time parameters
       const timeMinResult = parseDateParam(req.query.timeMin);
       if (!timeMinResult.valid) {
-        res.status(400).json({ error: "Invalid timeMin parameter" });
-        return;
+        throw new BadRequestError("Invalid timeMin parameter");
       }
       const timeMaxResult = parseDateParam(req.query.timeMax);
       if (!timeMaxResult.valid) {
-        res.status(400).json({ error: "Invalid timeMax parameter" });
-        return;
+        throw new BadRequestError("Invalid timeMax parameter");
       }
 
       const timeMin = timeMinResult.date || undefined;
       const timeMax = timeMaxResult.date || undefined;
 
       // Get all calendar accounts linked to this primary user
-      const stmt = db.prepare(
-        `SELECT user_id, provider FROM calendar_accounts 
-         WHERE user_id = ? OR primary_user_id = ?`,
-      );
-      const accounts = stmt.all(
-        primaryUserId,
-        primaryUserId,
-      ) as CalendarAccount[];
+      const accounts =
+        calendarAccountRepository.findByPrimaryUserId(primaryUserId);
 
       if (accounts.length === 0) {
         res.json([]);
@@ -174,13 +157,7 @@ router.get(
 
       res.json(allEvents);
     } catch (error: unknown) {
-      const log = createRequestLogger({
-        requestId: (req as Request & { requestId?: string }).requestId,
-        method: req.method,
-        path: req.path,
-      });
-      logError(log, error, "Error fetching all events");
-      res.status(500).json({ error: "Failed to fetch events" });
+      next(error);
     }
   },
 );
@@ -193,7 +170,7 @@ router.get(
   "/:userId/events",
   authenticateUser,
   validateUserId,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const authUserId = (req as AuthRequest).user!.userId;
       const requestedUserId = req.params.userId;
@@ -201,29 +178,21 @@ router.get(
       // Validate time parameters
       const timeMinResult = parseDateParam(req.query.timeMin);
       if (!timeMinResult.valid) {
-        res.status(400).json({ error: "Invalid timeMin parameter" });
-        return;
+        throw new BadRequestError("Invalid timeMin parameter");
       }
       const timeMaxResult = parseDateParam(req.query.timeMax);
       if (!timeMaxResult.valid) {
-        res.status(400).json({ error: "Invalid timeMax parameter" });
-        return;
+        throw new BadRequestError("Invalid timeMax parameter");
       }
 
       const timeMin = timeMinResult.date || undefined;
       const timeMax = timeMaxResult.date || undefined;
 
       // Check which provider this user is using
-      const stmt = db.prepare(
-        "SELECT provider, primary_user_id FROM calendar_accounts WHERE user_id = ?",
-      );
-      const account = stmt.get(requestedUserId) as
-        | (CalendarAccount & { primary_user_id?: string })
-        | undefined;
+      const account = calendarAccountRepository.findByUserId(requestedUserId);
 
       if (!account) {
-        res.status(404).json({ error: "User not found" });
-        return;
+        throw new NotFoundError("User not found");
       }
 
       // Authorization: user can only access their own accounts or linked accounts
@@ -232,10 +201,7 @@ router.get(
         account.primary_user_id != null &&
         account.primary_user_id === authUserId;
       if (!isOwnAccount && !isLinkedAccount) {
-        res
-          .status(403)
-          .json({ error: "Not authorized to access this calendar" });
-        return;
+        throw new ForbiddenError("Not authorized to access this calendar");
       }
 
       const events = await fetchEventsFromProvider(
@@ -248,27 +214,20 @@ router.get(
         events.length === 0 &&
         !["google", "icloud", "outlook"].includes(account.provider)
       ) {
-        res.status(400).json({ error: "Unsupported provider" });
-        return;
+        throw new BadRequestError("Unsupported provider");
       }
 
       res.json(events);
     } catch (error: unknown) {
-      const log = createRequestLogger({
-        requestId: (req as Request & { requestId?: string }).requestId,
-        method: req.method,
-        path: req.path,
-      });
-      logError(log, error, "Error fetching events");
-
       if (error instanceof Error && error.message === "Unauthorized") {
-        res.status(401).json({
-          error: "Authentication expired. Please reconnect your calendar.",
-        });
+        next(
+          new UnauthorizedError(
+            "Authentication expired. Please reconnect your calendar.",
+          ),
+        );
         return;
       }
-
-      res.status(500).json({ error: "Failed to fetch events" });
+      next(error);
     }
   },
 );
@@ -281,28 +240,23 @@ router.post(
   "/events",
   authenticateUser,
   validateCreateEvent,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = (req as AuthRequest).user!.userId;
       const { title, description, start, end, attendees, isAllDay } = req.body;
 
       // Check provider
-      const stmt = db.prepare(
-        "SELECT provider, access_token, refresh_token FROM calendar_accounts WHERE user_id = ?",
-      );
-      const account = stmt.get(userId) as CalendarAccount | undefined;
+      const account = calendarAccountRepository.findByUserId(userId);
 
       if (!account) {
-        res.status(404).json({ error: "User not found" });
-        return;
+        throw new NotFoundError("User not found");
       }
 
       if (account.provider === "google") {
         if (!account.access_token) {
-          res
-            .status(401)
-            .json({ error: "Google account not properly authenticated" });
-          return;
+          throw new UnauthorizedError(
+            "Google account not properly authenticated",
+          );
         }
         const event = await googleAuthService.createEvent(
           userId,
@@ -315,23 +269,17 @@ router.post(
           },
           {
             access_token: account.access_token,
-            refresh_token: account.refresh_token,
+            refresh_token: account.refresh_token ?? undefined,
           },
         );
         res.json(event);
       } else {
-        res
-          .status(501)
-          .json({ error: "Provider not supported for event creation yet" });
+        throw new NotImplementedError(
+          "Provider not supported for event creation yet",
+        );
       }
     } catch (error) {
-      const log = createRequestLogger({
-        requestId: (req as Request & { requestId?: string }).requestId,
-        method: req.method,
-        path: req.path,
-      });
-      logError(log, error, "Error creating event");
-      res.status(500).json({ error: "Failed to create event" });
+      next(error);
     }
   },
 );
@@ -347,14 +295,14 @@ router.post(
 router.get(
   "/icloud/status",
   authenticateUser,
-  (req: Request, res: Response) => {
+  (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = (req as AuthRequest).user!.userId;
 
-      const stmt = db.prepare(
-        "SELECT user_id, external_email FROM calendar_accounts WHERE provider = 'icloud' AND primary_user_id = ?",
+      const account = calendarAccountRepository.findByProviderAndPrimaryUser(
+        "icloud",
+        userId,
       );
-      const account = stmt.get(userId) as CalendarAccount | undefined;
 
       if (!account) {
         res.json({ connected: false });
@@ -367,13 +315,7 @@ router.get(
         userId: account.user_id,
       });
     } catch (error) {
-      const log = createRequestLogger({
-        requestId: (req as Request & { requestId?: string }).requestId,
-        method: req.method,
-        path: req.path,
-      });
-      logError(log, error, "Error checking iCloud status");
-      res.status(500).json({ error: "Failed to check iCloud status" });
+      next(error);
     }
   },
 );
@@ -386,29 +328,23 @@ router.delete(
   "/icloud/:userId",
   authenticateUser,
   validateUserId,
-  (req: Request, res: Response) => {
+  (req: Request, res: Response, next: NextFunction) => {
     try {
       const primaryUserId = (req as AuthRequest).user!.userId;
 
-      const stmt = db.prepare(
-        "DELETE FROM calendar_accounts WHERE user_id = ? AND provider = 'icloud' AND primary_user_id = ?",
+      const deleted = calendarAccountRepository.deleteByUserIdAndProvider(
+        req.params.userId,
+        "icloud",
+        primaryUserId,
       );
-      const result = stmt.run(req.params.userId, primaryUserId) as DBResult;
 
-      if (result.changes === 0) {
-        res.status(404).json({ error: "iCloud account not found" });
-        return;
+      if (!deleted) {
+        throw new NotFoundError("iCloud account not found");
       }
 
       res.json({ success: true, message: "iCloud account disconnected" });
     } catch (error) {
-      const log = createRequestLogger({
-        requestId: (req as Request & { requestId?: string }).requestId,
-        method: req.method,
-        path: req.path,
-      });
-      logError(log, error, "Error removing iCloud account");
-      res.status(500).json({ error: "Failed to remove iCloud account" });
+      next(error);
     }
   },
 );
@@ -424,14 +360,14 @@ router.delete(
 router.get(
   "/outlook/status",
   authenticateUser,
-  (req: Request, res: Response) => {
+  (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = (req as AuthRequest).user!.userId;
 
-      const stmt = db.prepare(
-        "SELECT user_id, external_email FROM calendar_accounts WHERE provider = 'outlook' AND primary_user_id = ?",
+      const account = calendarAccountRepository.findByProviderAndPrimaryUser(
+        "outlook",
+        userId,
       );
-      const account = stmt.get(userId) as CalendarAccount | undefined;
 
       if (!account) {
         res.json({ connected: false });
@@ -444,13 +380,7 @@ router.get(
         userId: account.user_id,
       });
     } catch (error) {
-      const log = createRequestLogger({
-        requestId: (req as Request & { requestId?: string }).requestId,
-        method: req.method,
-        path: req.path,
-      });
-      logError(log, error, "Error checking Outlook status");
-      res.status(500).json({ error: "Failed to check Outlook status" });
+      next(error);
     }
   },
 );
@@ -463,29 +393,23 @@ router.delete(
   "/outlook/:userId",
   authenticateUser,
   validateUserId,
-  (req: Request, res: Response) => {
+  (req: Request, res: Response, next: NextFunction) => {
     try {
       const primaryUserId = (req as AuthRequest).user!.userId;
 
-      const stmt = db.prepare(
-        "DELETE FROM calendar_accounts WHERE user_id = ? AND provider = 'outlook' AND primary_user_id = ?",
+      const deleted = calendarAccountRepository.deleteByUserIdAndProvider(
+        req.params.userId,
+        "outlook",
+        primaryUserId,
       );
-      const result = stmt.run(req.params.userId, primaryUserId) as DBResult;
 
-      if (result.changes === 0) {
-        res.status(404).json({ error: "Outlook account not found" });
-        return;
+      if (!deleted) {
+        throw new NotFoundError("Outlook account not found");
       }
 
       res.json({ success: true, message: "Outlook account disconnected" });
     } catch (error) {
-      const log = createRequestLogger({
-        requestId: (req as Request & { requestId?: string }).requestId,
-        method: req.method,
-        path: req.path,
-      });
-      logError(log, error, "Error removing Outlook account");
-      res.status(500).json({ error: "Failed to remove Outlook account" });
+      next(error);
     }
   },
 );
