@@ -90,5 +90,5 @@ See [`server/API.md`](./server/API.md) for complete API documentation including:
 ✅ Create calendar invites  
 ✅ AI calendar assistants: draft invitations  
 ✅ Multi-user calendar sharing  
-🚧 Cross-timezone event synchronization  
+✅ Cross-timezone event synchronization  
 🚧 AI calendar assistants: scheduling conflicts, suggest optimal times

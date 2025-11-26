@@ -4,7 +4,7 @@
  * Centralizes modal states and user selection logic
  * to reduce complexity in App.tsx
  */
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { User } from "../types";
 
 export interface ModalState {
@@ -57,18 +57,19 @@ export function useAppState({
     icloud: false,
   });
 
-  // Track previous user ID to detect changes
-  const [prevUserId, setPrevUserId] = useState<string | null>(
-    currentUser?.id ?? null,
-  );
+  // Track previous user ID to detect changes using a ref (doesn't cause re-render)
+  const prevUserIdRef = useRef<string | null>(currentUser?.id ?? null);
 
-  // Handle user changes (login/logout) - update derived state
-  if (currentUser?.id !== prevUserId) {
-    setPrevUserId(currentUser?.id ?? null);
-    if (currentUser && !selectedUsers.includes(currentUser.id)) {
-      setSelectedUsers((prev) => [...prev, currentUser.id]);
+  // Handle user changes (login/logout) - update derived state in useEffect
+  useEffect(() => {
+    const prevUserId = prevUserIdRef.current;
+    if (currentUser?.id !== prevUserId) {
+      prevUserIdRef.current = currentUser?.id ?? null;
+      if (currentUser && !selectedUsers.includes(currentUser.id)) {
+        setSelectedUsers((prev) => [...prev, currentUser.id]);
+      }
     }
-  }
+  }, [currentUser, selectedUsers]);
 
   /**
    * Toggle a user's selection in the calendar view

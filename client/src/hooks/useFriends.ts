@@ -4,11 +4,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { friendsApi, type FriendWithColor } from "@/services/api/friends";
 import type { CalendarEvent } from "@shared/types";
-import {
-  calculateEventTimeRange,
-  parseEventTime,
-  isAllDayEvent,
-} from "@/utils/calendar";
+import { calculateEventTimeRange, isAllDayEvent } from "@/utils/calendar";
+import { convertToViewerTimezone } from "@/utils/timezone";
 
 export interface UseFriendsReturn {
   friends: FriendWithColor[];
@@ -118,8 +115,10 @@ export function useFriends({
             events.map((e) => ({
               id: e.id,
               userId: friend.friendUserId!,
-              start: parseEventTime(e.start),
-              end: parseEventTime(e.end),
+              // Use timezone-aware conversion for friend events
+              // This ensures events are displayed in the viewer's local timezone
+              start: convertToViewerTimezone(e.start),
+              end: convertToViewerTimezone(e.end),
               title: e.title || e.summary,
               isAllDay: isAllDayEvent(e.start, e.end),
             })),
