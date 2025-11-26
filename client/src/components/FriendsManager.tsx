@@ -222,7 +222,7 @@ export function FriendsManager({
                         size="sm"
                         onClick={() => handleAcceptRequest(request.id)}
                         disabled={processingRequestId === request.id}
-                        className="h-7 text-green-600 border-green-300 hover:bg-green-50 hover:text-green-700"
+                        className="h-7"
                       >
                         {processingRequestId === request.id ? (
                           <Loader2 className="w-3 h-3 animate-spin" />
@@ -232,11 +232,11 @@ export function FriendsManager({
                         Accept
                       </Button>
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         onClick={() => handleRejectRequest(request.id)}
                         disabled={processingRequestId === request.id}
-                        className="h-7 text-red-600 border-red-300 hover:bg-red-50 hover:text-red-700"
+                        className="h-7"
                       >
                         <UserX className="w-3 h-3 mr-1" />
                         Reject
