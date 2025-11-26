@@ -7,6 +7,9 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
+  LOG_LEVEL: z
+    .enum(["fatal", "error", "warn", "info", "debug", "trace"])
+    .optional(),
 
   // Google OAuth Configuration
   GOOGLE_CLIENT_ID: z.string().min(1, "GOOGLE_CLIENT_ID is required"),
@@ -23,7 +26,38 @@ const envSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
 
   // Security
-  JWT_SECRET: z.string().default("dev-secret-do-not-use-in-prod"),
+  JWT_SECRET: z
+    .string()
+    .min(32, "JWT_SECRET must be at least 32 characters for security")
+    .refine(
+      (key) => {
+        // In production, require at least 64 characters for optimal security
+        if (process.env.NODE_ENV === "production" && key.length < 64) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: "JWT_SECRET must be at least 64 characters in production",
+      },
+    ),
+
+  // Encryption (for iCloud passwords)
+  ENCRYPTION_KEY: z
+    .string()
+    .refine(
+      (key) => {
+        // Accept 64 hex characters OR 32 raw bytes
+        if (key.length === 64 && /^[0-9a-fA-F]+$/.test(key)) return true;
+        if (Buffer.from(key).length === 32) return true;
+        return false;
+      },
+      {
+        message:
+          "ENCRYPTION_KEY must be exactly 32 bytes (or 64 hex characters)",
+      },
+    )
+    .optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -35,20 +69,6 @@ export type Env = z.infer<typeof envSchema>;
 export function validateEnv(): Env {
   try {
     const parsed = envSchema.parse(process.env);
-
-    // Warn if using default JWT_SECRET in production
-    if (
-      parsed.NODE_ENV === "production" &&
-      parsed.JWT_SECRET === "dev-secret-do-not-use-in-prod"
-    ) {
-      console.error(
-        "❌ CRITICAL: JWT_SECRET is using the default value in production. This is a security risk.",
-      );
-      throw new Error(
-        "JWT_SECRET must be set to a secure value in production.",
-      );
-    }
-
     return parsed;
   } catch (error) {
     if (error instanceof z.ZodError) {

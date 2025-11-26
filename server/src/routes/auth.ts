@@ -8,6 +8,11 @@ import { validateICloudCredentials } from "../middleware/validation";
 import { authenticateUser } from "../middleware/auth";
 import type { AuthRequest } from "../middleware/auth";
 import { env } from "../config/env";
+import { createAuthCode, exchangeAuthCode } from "../utils/authCodes";
+import {
+  JWT_COOKIE_MAX_AGE_MS,
+  OUTLOOK_AUTH_COOKIE_MAX_AGE_MS,
+} from "../constants";
 
 const router = express.Router();
 
@@ -41,18 +46,53 @@ router.get("/google/callback", async (req: Request, res: Response) => {
       { expiresIn: "30d" },
     );
 
-    // Set JWT as HTTP-only cookie and redirect back to client with success
+    // Set JWT as HTTP-only cookie
     res.cookie("token", token, {
       httpOnly: true,
       secure: env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      maxAge: JWT_COOKIE_MAX_AGE_MS,
     });
-    res.redirect(`${env.CLIENT_URL}?auth=success&userId=${result.user.id}`);
+
+    // Create a short-lived exchange code instead of exposing userId in URL
+    const authCode = createAuthCode({
+      userId: result.user.id,
+      email: result.user.email,
+      provider: "google",
+    });
+
+    res.redirect(`${env.CLIENT_URL}?auth=success&code=${authCode}`);
   } catch (error) {
     console.error("Auth error:", error);
     res.redirect(`${env.CLIENT_URL}?auth=error`);
   }
+});
+
+/**
+ * POST /auth/exchange
+ * Exchange a short-lived auth code for user data
+ */
+router.post("/exchange", (req: Request, res: Response) => {
+  const { code } = req.body;
+
+  if (!code || typeof code !== "string") {
+    res.status(400).json({ error: "Missing code" });
+    return;
+  }
+
+  const authData = exchangeAuthCode(code);
+
+  if (!authData) {
+    res.status(400).json({ error: "Invalid or expired code" });
+    return;
+  }
+
+  // Return the user data - the client can then fetch full profile
+  res.json({
+    userId: authData.userId,
+    email: authData.email,
+    provider: authData.provider,
+  });
 });
 
 router.post(
@@ -110,7 +150,7 @@ router.get("/outlook", authenticateUser, (req: Request, res: Response) => {
       httpOnly: true,
       secure: env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 10 * 60 * 1000, // 10 minutes - just for the auth flow
+      maxAge: OUTLOOK_AUTH_COOKIE_MAX_AGE_MS,
     });
 
     const url = onecalAuthService.getAuthUrl();
@@ -170,10 +210,17 @@ router.get("/outlook/callback", async (req: Request, res: Response) => {
       primaryUserId,
     );
 
-    // Redirect back to client with success - importantly with provider=outlook
-    // This tells the client NOT to treat this as a login, just as a connection
+    // Create a short-lived exchange code instead of exposing userId in URL
+    const authCode = createAuthCode({
+      userId: result.user.id,
+      email: result.user.email,
+      provider: "outlook",
+    });
+
+    // Redirect back to client with success - provider=outlook tells client
+    // NOT to treat this as a login, just as a connection
     res.redirect(
-      `${env.CLIENT_URL}?auth=success&provider=outlook&outlookUserId=${result.user.id}`,
+      `${env.CLIENT_URL}?auth=success&provider=outlook&code=${authCode}`,
     );
   } catch (error) {
     console.error("Outlook callback error:", error);

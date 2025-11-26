@@ -3,24 +3,26 @@ import { db } from "../db";
 import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import * as ical from "node-ical";
+import { env } from "../config/env";
 
-// Validate encryption key exists and is exactly 32 bytes
-if (!process.env.ENCRYPTION_KEY) {
-  throw new Error("ENCRYPTION_KEY environment variable is required");
-}
-
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 const IV_LENGTH = 16;
 
-// Validate encryption key is exactly 32 bytes
-const getEncryptionKey = () => {
-  // If the key is a hex string (64 characters), decode it
-  if (ENCRYPTION_KEY.length === 64 && /^[0-9a-fA-F]+$/.test(ENCRYPTION_KEY)) {
-    return Buffer.from(ENCRYPTION_KEY, "hex");
+// Get encryption key from validated environment
+const getEncryptionKey = (): Buffer => {
+  const encryptionKey = env.ENCRYPTION_KEY;
+  if (!encryptionKey) {
+    throw new Error(
+      "ENCRYPTION_KEY is required for iCloud integration. Please set it in your environment.",
+    );
   }
 
-  // Otherwise treat as raw string (legacy support)
-  const key = Buffer.from(ENCRYPTION_KEY);
+  // If the key is a hex string (64 characters), decode it
+  if (encryptionKey.length === 64 && /^[0-9a-fA-F]+$/.test(encryptionKey)) {
+    return Buffer.from(encryptionKey, "hex");
+  }
+
+  // Otherwise treat as raw string and validate length
+  const key = Buffer.from(encryptionKey);
   if (key.length !== 32) {
     throw new Error(
       `ENCRYPTION_KEY must be exactly 32 bytes (or 64 hex characters), got ${key.length} bytes`,
@@ -82,15 +84,15 @@ export const icloudAuthService = {
 
       const stmt = db.prepare(`
                 INSERT INTO calendar_accounts (
-                    user_id, provider, external_email, access_token, refresh_token, metadata, primary_user_id, updated_at
-                ) VALUES (?, 'icloud', ?, ?, NULL, ?, ?, CURRENT_TIMESTAMP)
+                    user_id, provider, external_email, encrypted_password, metadata, primary_user_id, updated_at
+                ) VALUES (?, 'icloud', ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(user_id) DO UPDATE SET
-                    access_token = excluded.access_token,
+                    encrypted_password = excluded.encrypted_password,
                     primary_user_id = excluded.primary_user_id,
                     updated_at = CURRENT_TIMESTAMP
             `);
 
-      // We store the encrypted password in access_token field
+      // Store the encrypted password in the dedicated encrypted_password column
       stmt.run(
         userId,
         email,
@@ -121,16 +123,20 @@ export const icloudAuthService = {
       "SELECT * FROM calendar_accounts WHERE user_id = ? AND provider = 'icloud'",
     );
     const account = stmt.get(userId) as
-      | { user_id: string; access_token: string; external_email: string }
+      | { user_id: string; encrypted_password: string; external_email: string }
       | undefined;
 
     if (!account) {
       throw new Error("iCloud account not found");
     }
 
+    if (!account.encrypted_password) {
+      throw new Error("iCloud account missing credentials");
+    }
+
     let password;
     try {
-      password = decrypt(account.access_token);
+      password = decrypt(account.encrypted_password);
     } catch (e) {
       console.error("Failed to decrypt password", e);
       throw new Error("Authentication error");

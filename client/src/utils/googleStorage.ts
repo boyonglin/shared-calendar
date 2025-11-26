@@ -11,23 +11,22 @@ import {
 
 /**
  * Restore Google session from localStorage
+ * Note: Auth tokens are now managed via HTTP-only cookies
  * @returns Stored session data if valid, null otherwise
  */
 export function restoreSession(): StoredSession | null {
   const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
-  const savedToken = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
   const savedExpiry = localStorage.getItem(STORAGE_KEYS.TOKEN_EXPIRY);
   const savedEvents = localStorage.getItem(STORAGE_KEYS.CALENDAR_EVENTS);
 
-  if (savedUser && savedToken && savedExpiry) {
+  if (savedUser && savedExpiry) {
     const expiryTime = parseInt(savedExpiry, 10);
     const now = Date.now();
 
-    // Check if token is still valid (with buffer)
+    // Check if session is still likely valid (with buffer)
     if (now < expiryTime - TOKEN_EXPIRY_BUFFER_MS) {
       return {
         user: JSON.parse(savedUser),
-        accessToken: savedToken,
         events: savedEvents ? JSON.parse(savedEvents) : undefined,
       };
     }
@@ -38,13 +37,14 @@ export function restoreSession(): StoredSession | null {
 
 /**
  * Save user session to localStorage
+ * Note: Auth tokens are now managed via HTTP-only cookies by the server
  */
-export function saveUserSession(user: GoogleUser, accessToken: string): void {
+export function saveUserSession(user: GoogleUser): void {
   localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
-  localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken);
-  // Google access tokens typically expire in 1 hour
-  const expiryTime = Date.now() + TOKEN_EXPIRY_DURATION_MS;
-  localStorage.setItem(STORAGE_KEYS.TOKEN_EXPIRY, expiryTime.toString());
+  // Token expiry is now managed by server-side cookies
+  // Keep a session timestamp for UI purposes
+  const sessionTime = Date.now() + TOKEN_EXPIRY_DURATION_MS;
+  localStorage.setItem(STORAGE_KEYS.TOKEN_EXPIRY, sessionTime.toString());
 }
 
 /**

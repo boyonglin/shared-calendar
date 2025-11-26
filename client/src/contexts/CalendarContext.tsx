@@ -14,6 +14,10 @@ import { useGoogleAuth } from "./GoogleAuthContext";
 
 const AUTO_REFRESH_INTERVAL_MS = 60 * 1000;
 
+// Generate a temporary ID for optimistic updates
+const generateTempEventId = () =>
+  `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
 export interface CalendarContextType {
   events: CalendarEvent[];
   isLoading: boolean;
@@ -66,10 +70,27 @@ export function CalendarProviderWrapper({
     isAllDay?: boolean;
   }) => {
     if (provider.createEvent) {
+      // Create optimistic event with temporary ID
+      const tempId = generateTempEventId();
+      const optimisticEvent: CalendarEvent = {
+        id: tempId,
+        userId: user?.profile.sub || "unknown",
+        title: eventData.title,
+        start: eventData.start,
+        end: eventData.end,
+        isAllDay: eventData.isAllDay,
+      };
+
+      // Optimistic update: add event immediately
+      setEvents((prev) => [...prev, optimisticEvent]);
+
       try {
         const newEvent = await provider.createEvent(eventData);
-        setEvents((prev) => [...prev, newEvent]);
+        // Replace optimistic event with real one from server
+        setEvents((prev) => prev.map((e) => (e.id === tempId ? newEvent : e)));
       } catch (error) {
+        // Rollback optimistic update on error
+        setEvents((prev) => prev.filter((e) => e.id !== tempId));
         console.error("Failed to create event:", error);
         throw error;
       }

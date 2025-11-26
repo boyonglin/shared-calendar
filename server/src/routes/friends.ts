@@ -1,0 +1,580 @@
+/**
+ * Friends routes - handles friend connections and calendar sharing
+ */
+import type { Response, NextFunction } from "express";
+import express from "express";
+import { googleAuthService } from "../services/googleAuth";
+import { icloudAuthService } from "../services/icloudAuth";
+import { onecalAuthService } from "../services/onecalAuth";
+import { calendarAccountRepository } from "../repositories/calendarAccountRepository";
+import { userConnectionRepository } from "../repositories/userConnectionRepository";
+import { isValidEmail } from "../middleware/validation";
+import { authenticateUser } from "../middleware/auth";
+import type { AuthRequest } from "../middleware/auth";
+import { createRequestLogger, logError } from "../utils/logger";
+import { BadRequestError, NotFoundError, ConflictError } from "../utils/errors";
+import { FRIEND_COLORS } from "../constants";
+
+const router = express.Router();
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * Generate a consistent color for a friend based on their email
+ */
+function generateFriendColor(email: string): string {
+  let hash = 0;
+  for (let i = 0; i < email.length; i++) {
+    hash = email.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return FRIEND_COLORS[Math.abs(hash) % FRIEND_COLORS.length];
+}
+
+/**
+ * Extract friend name from metadata or fall back to email
+ */
+function extractFriendName(
+  metadata: string | undefined | null,
+  email: string,
+): string {
+  if (metadata) {
+    try {
+      const parsed = JSON.parse(metadata);
+      return parsed.name || email;
+    } catch {
+      // Use email as fallback
+    }
+  }
+  return email;
+}
+
+/**
+ * Validate friend ID parameter
+ */
+function validateFriendId(friendIdStr: string): number | null {
+  const friendId = parseInt(friendIdStr, 10);
+  return isNaN(friendId) ? null : friendId;
+}
+
+/**
+ * Parse and validate date query parameters
+ */
+function parseDateParam(value: unknown): Date | undefined {
+  if (!value) return undefined;
+  const date = new Date(value as string);
+  return isNaN(date.getTime()) ? undefined : date;
+}
+
+// =============================================================================
+// Routes
+// =============================================================================
+
+/**
+ * POST /friends
+ * Add a friend by email (sends a friend request)
+ */
+router.post(
+  "/",
+  authenticateUser,
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const { friendEmail } = req.body;
+
+      if (!friendEmail || typeof friendEmail !== "string") {
+        throw new BadRequestError("Friend email is required");
+      }
+
+      const normalizedEmail = friendEmail.toLowerCase().trim();
+
+      if (!isValidEmail(normalizedEmail)) {
+        throw new BadRequestError("Invalid email format");
+      }
+
+      // Check if user is trying to add themselves
+      const userEmails =
+        calendarAccountRepository.findAllEmailsByPrimaryUserId(userId);
+
+      if (userEmails.includes(normalizedEmail)) {
+        throw new BadRequestError("You cannot add yourself as a friend");
+      }
+
+      // Check if connection already exists
+      const existing = userConnectionRepository.findByUserIdAndFriendEmail(
+        userId,
+        normalizedEmail,
+      );
+
+      if (existing) {
+        const errorMessages: Record<string, string> = {
+          accepted: "You are already friends",
+          pending: "Friend request pending",
+          requested: "Friend request pending",
+          incoming: "You have a pending friend request from this user",
+        };
+        throw new ConflictError(
+          errorMessages[existing.status] || "Friend request already sent",
+        );
+      }
+
+      // Check if friend has an account
+      const friendAccount =
+        calendarAccountRepository.findByExternalEmail(normalizedEmail);
+
+      const status = friendAccount ? "requested" : "pending";
+      const friendUserId = friendAccount?.user_id || null;
+
+      // Get current user's email for reverse connection
+      const primaryUserAccount = calendarAccountRepository.findByUserId(userId);
+
+      // Use transaction to ensure atomicity
+      try {
+        userConnectionRepository.transaction(() => {
+          userConnectionRepository.create(
+            userId,
+            normalizedEmail,
+            friendUserId,
+            status,
+          );
+
+          // Create incoming request for friend if they have an account
+          if (friendAccount && primaryUserAccount?.external_email) {
+            const reverseExisting =
+              userConnectionRepository.findByUserIdAndFriendEmail(
+                friendAccount.user_id,
+                primaryUserAccount.external_email.toLowerCase(),
+              );
+
+            if (!reverseExisting) {
+              userConnectionRepository.createOrIgnore(
+                friendAccount.user_id,
+                primaryUserAccount.external_email.toLowerCase(),
+                userId,
+                "incoming",
+              );
+            }
+          }
+        });
+      } catch (dbError: unknown) {
+        if (
+          dbError instanceof Error &&
+          dbError.message.includes("UNIQUE constraint failed")
+        ) {
+          throw new ConflictError("Friend request already sent");
+        }
+        throw dbError;
+      }
+
+      // Get the inserted connection
+      const connection = userConnectionRepository.findByUserIdAndFriendEmail(
+        userId,
+        normalizedEmail,
+      );
+
+      res.status(201).json({
+        success: true,
+        connection: {
+          id: connection!.id,
+          userId: connection!.user_id,
+          friendEmail: connection!.friend_email,
+          friendUserId: connection!.friend_user_id,
+          friendName: extractFriendName(
+            friendAccount?.metadata,
+            normalizedEmail,
+          ),
+          status: connection!.status,
+          createdAt: connection!.created_at,
+        },
+        message:
+          status === "requested"
+            ? "Friend request sent! They need to accept it."
+            : "Friend request sent. They will see it once they sign up.",
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * GET /friends
+ * Get all friends for a user (excluding incoming requests)
+ */
+router.get(
+  "/",
+  authenticateUser,
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+
+      const connections = userConnectionRepository.findAllByUserId(userId);
+
+      const friends = connections.map((conn) => ({
+        id: conn.id,
+        userId: conn.user_id,
+        friendEmail: conn.friend_email,
+        friendUserId: conn.friend_user_id,
+        friendName: extractFriendName(conn.metadata, conn.friend_email),
+        friendColor: generateFriendColor(conn.friend_email),
+        status: conn.status,
+        createdAt: conn.created_at,
+      }));
+
+      res.json({ friends });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * POST /friends/sync-pending
+ * Explicitly sync pending friend connections (replaces GET side effects)
+ * Call this when you want to check if pending friends have signed up
+ */
+router.post(
+  "/sync-pending",
+  authenticateUser,
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+
+      // Find pending connections where friend might have signed up
+      const pendingConnections =
+        userConnectionRepository.findPendingWithoutFriendUserId(userId);
+
+      let updatedCount = 0;
+
+      for (const conn of pendingConnections) {
+        const friendAccount = calendarAccountRepository.findByExternalEmail(
+          conn.friend_email,
+        );
+
+        if (friendAccount) {
+          userConnectionRepository.transaction(() => {
+            // Update to 'requested' status
+            userConnectionRepository.updateFriendUserIdAndStatus(
+              conn.id,
+              friendAccount.user_id,
+              "requested",
+            );
+
+            // Create incoming request for friend
+            const currentUser = calendarAccountRepository.findByUserId(userId);
+
+            if (currentUser?.external_email) {
+              const reverseExisting =
+                userConnectionRepository.findByUserIdAndFriendEmail(
+                  friendAccount.user_id,
+                  currentUser.external_email.toLowerCase(),
+                );
+
+              if (!reverseExisting) {
+                userConnectionRepository.create(
+                  friendAccount.user_id,
+                  currentUser.external_email.toLowerCase(),
+                  userId,
+                  "incoming",
+                );
+              }
+            }
+          });
+          updatedCount++;
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Synced ${updatedCount} pending connections`,
+        updatedCount,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * DELETE /friends/:friendId
+ * Remove a friend (mutual removal)
+ */
+router.delete(
+  "/:friendId",
+  authenticateUser,
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const friendId = validateFriendId(req.params.friendId);
+
+      if (friendId === null) {
+        throw new BadRequestError("Invalid friend ID");
+      }
+
+      const connection = userConnectionRepository.findByIdAndUserId(
+        friendId,
+        userId,
+      );
+
+      if (!connection) {
+        throw new NotFoundError("Friend connection not found");
+      }
+
+      userConnectionRepository.transaction(() => {
+        userConnectionRepository.deleteById(friendId);
+
+        // Remove reverse connection
+        if (connection.friend_user_id) {
+          const userAccount = calendarAccountRepository.findByUserId(userId);
+
+          if (userAccount?.external_email) {
+            userConnectionRepository.deleteByUserIdAndFriendEmail(
+              connection.friend_user_id,
+              userAccount.external_email.toLowerCase(),
+            );
+          }
+        }
+      });
+
+      res.json({ success: true, message: "Friend removed successfully" });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * GET /friends/requests/incoming
+ * Get incoming friend requests
+ */
+router.get(
+  "/requests/incoming",
+  authenticateUser,
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+
+      const connections = userConnectionRepository.findIncomingRequests(userId);
+
+      const requests = connections.map((conn) => ({
+        id: conn.id,
+        userId: conn.user_id,
+        friendEmail: conn.friend_email,
+        friendUserId: conn.friend_user_id,
+        friendName: extractFriendName(conn.metadata, conn.friend_email),
+        friendColor: generateFriendColor(conn.friend_email),
+        status: conn.status,
+        createdAt: conn.created_at,
+      }));
+
+      res.json({ requests, count: requests.length });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * POST /friends/:friendId/accept
+ * Accept a friend request
+ */
+router.post(
+  "/:friendId/accept",
+  authenticateUser,
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const friendId = validateFriendId(req.params.friendId);
+
+      if (friendId === null) {
+        throw new BadRequestError("Invalid friend ID");
+      }
+
+      const request = userConnectionRepository.findByIdUserIdAndStatus(
+        friendId,
+        userId,
+        "incoming",
+      );
+
+      if (!request) {
+        throw new NotFoundError("Friend request not found");
+      }
+
+      userConnectionRepository.transaction(() => {
+        userConnectionRepository.updateStatus(friendId, "accepted");
+
+        if (request.friend_user_id) {
+          userConnectionRepository.updateStatusByUserIdAndFriendUserId(
+            request.friend_user_id,
+            userId,
+            "requested",
+            "accepted",
+          );
+        }
+      });
+
+      res.json({ success: true, message: "Friend request accepted!" });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * POST /friends/:friendId/reject
+ * Reject a friend request
+ */
+router.post(
+  "/:friendId/reject",
+  authenticateUser,
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const friendId = validateFriendId(req.params.friendId);
+
+      if (friendId === null) {
+        throw new BadRequestError("Invalid friend ID");
+      }
+
+      const request = userConnectionRepository.findByIdUserIdAndStatus(
+        friendId,
+        userId,
+        "incoming",
+      );
+
+      if (!request) {
+        throw new NotFoundError("Friend request not found");
+      }
+
+      userConnectionRepository.transaction(() => {
+        userConnectionRepository.deleteById(friendId);
+
+        if (request.friend_user_id) {
+          userConnectionRepository.deleteByUserIdAndFriendUserIdAndStatus(
+            request.friend_user_id,
+            userId,
+            "requested",
+          );
+        }
+      });
+
+      res.json({ success: true, message: "Friend request rejected" });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+/**
+ * GET /friends/:friendId/events
+ * Get friend's calendar events (only for accepted mutual connections)
+ */
+router.get(
+  "/:friendId/events",
+  authenticateUser,
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user!.userId;
+      const friendId = validateFriendId(req.params.friendId);
+
+      if (friendId === null) {
+        throw new BadRequestError("Invalid friend ID");
+      }
+
+      // Check if connection exists and is accepted
+      const connection = userConnectionRepository.findByIdUserIdAndStatus(
+        friendId,
+        userId,
+        "accepted",
+      );
+
+      if (!connection || !connection.friend_user_id) {
+        throw new NotFoundError("Friend not found or connection not accepted");
+      }
+
+      // Verify mutual acceptance
+      const reverseConnection =
+        userConnectionRepository.findByUserIdAndFriendUserId(
+          connection.friend_user_id,
+          userId,
+          "accepted",
+        );
+
+      if (!reverseConnection) {
+        throw new NotFoundError(
+          "Friend not found or connection not mutually accepted",
+        );
+      }
+
+      const timeMin = parseDateParam(req.query.timeMin);
+      const timeMax = parseDateParam(req.query.timeMax);
+
+      if (req.query.timeMin && !timeMin) {
+        throw new BadRequestError("Invalid timeMin parameter");
+      }
+      if (req.query.timeMax && !timeMax) {
+        throw new BadRequestError("Invalid timeMax parameter");
+      }
+
+      // Get friend's calendar accounts
+      const accounts = calendarAccountRepository.findByPrimaryUserId(
+        connection.friend_user_id,
+      );
+
+      const allEvents: Array<Record<string, unknown>> = [];
+
+      for (const account of accounts) {
+        try {
+          let events;
+          if (account.provider === "google") {
+            events = await googleAuthService.getCalendarEvents(
+              account.user_id,
+              timeMin,
+              timeMax,
+            );
+          } else if (account.provider === "icloud") {
+            events = await icloudAuthService.getCalendarEvents(
+              account.user_id,
+              timeMin,
+              timeMax,
+            );
+          } else if (account.provider === "outlook") {
+            events = await onecalAuthService.getCalendarEvents(
+              account.user_id,
+              timeMin,
+              timeMax,
+            );
+          }
+
+          if (events && Array.isArray(events)) {
+            const taggedEvents = events.map((event) => ({
+              ...event,
+              userId: account.user_id,
+              friendConnectionId: friendId,
+            }));
+            allEvents.push(...taggedEvents);
+          }
+        } catch (error) {
+          const log = createRequestLogger({
+            requestId: (req as AuthRequest & { requestId?: string }).requestId,
+            method: req.method,
+            path: req.path,
+            userId: req.user?.userId,
+          });
+          logError(
+            log,
+            error,
+            `Error fetching friend events from ${account.provider}`,
+          );
+        }
+      }
+
+      res.json(allEvents);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+export default router;
