@@ -67,10 +67,21 @@ A calendar sharing application with Google Calendar, iCloud Calendar, and Outloo
     /config       Environment configuration with Zod validation
     /db           Database schema and migrations
     /middleware   Security & validation middleware
-    /routes       API routes (auth, calendar)
+    /routes       API routes (auth, calendar, friends, ai)
     /services     Calendar providers (Google, iCloud, Outlook)
+    /utils        Utilities (logging, calendar helpers)
+  API.md          📖 Complete API documentation
 /shared         Shared TypeScript types
 ```
+
+## API Documentation
+
+See [`server/API.md`](./server/API.md) for complete API documentation including:
+
+- All endpoints with request/response examples
+- Authentication flow
+- Rate limiting details
+- Error response formats
 
 ## Features
 
@@ -81,12 +92,3 @@ A calendar sharing application with Google Calendar, iCloud Calendar, and Outloo
 ✅ Multi-user calendar sharing  
 🚧 Cross-timezone event synchronization  
 🚧 AI calendar assistants: scheduling conflicts, suggest optimal times
-
-## Security Features
-
-- **Helmet**: Content Security Policy, XSS protection
-- **Rate Limiting**: API endpoint protection (100 req/15min, auth: 50 req/15min)
-- **Input Validation**: express-validator on all API endpoints
-- **Environment Validation**: Zod schema validation on startup
-- **Password Encryption**: AES-256-CBC encryption for iCloud credentials
-- **Error Boundaries**: Graceful error handling in React

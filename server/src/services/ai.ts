@@ -70,7 +70,7 @@ export const aiService = {
       );
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
     const safeTitle = sanitizeInput(eventDetails.title, MAX_TITLE_LENGTH);
     const safeDescription = eventDetails.description
