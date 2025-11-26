@@ -57,7 +57,12 @@ export function CalendarView({
     return date.toLocaleDateString("en-US", { weekday: "short" });
   };
 
-  const isEventInSlot = (event: CalendarEvent, date: Date, hour: number, minute: number) => {
+  const isEventInSlot = (
+    event: CalendarEvent,
+    date: Date,
+    hour: number,
+    minute: number,
+  ) => {
     // Don't show all-day events in regular time slots
     if (event.isAllDay) {
       return false;

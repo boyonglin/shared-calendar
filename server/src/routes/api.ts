@@ -485,12 +485,17 @@ router.post(
         return;
       }
 
-      // Check if user is trying to add themselves
-      const userStmt = db.prepare(
-        "SELECT external_email FROM calendar_accounts WHERE user_id = ?",
+      // Check if user is trying to add themselves (check all email addresses)
+      const userEmailsStmt = db.prepare(
+        "SELECT external_email FROM calendar_accounts WHERE user_id = ? OR primary_user_id = ?",
       );
-      const userAccount = userStmt.get(userId) as CalendarAccount | undefined;
-      if (userAccount?.external_email?.toLowerCase() === normalizedEmail) {
+      const userAccounts = userEmailsStmt.all(userId, userId) as {
+        external_email: string | null;
+      }[];
+      const userEmails = userAccounts
+        .map((acc) => acc.external_email?.toLowerCase().trim())
+        .filter((email): email is string => !!email);
+      if (userEmails.includes(normalizedEmail)) {
         res.status(400).json({ error: "You cannot add yourself as a friend" });
         return;
       }
@@ -499,9 +504,22 @@ router.post(
       const existingStmt = db.prepare(
         "SELECT * FROM user_connections WHERE user_id = ? AND friend_email = ?",
       );
-      const existing = existingStmt.get(userId, normalizedEmail);
+      const existing = existingStmt.get(userId, normalizedEmail) as
+        | UserConnectionRow
+        | undefined;
       if (existing) {
-        res.status(409).json({ error: "Friend request already sent" });
+        let errorMsg = "Friend request already sent";
+        if (existing.status === "accepted") {
+          errorMsg = "You are already friends";
+        } else if (
+          existing.status === "pending" ||
+          existing.status === "requested"
+        ) {
+          errorMsg = "Friend request pending";
+        } else if (existing.status === "incoming") {
+          errorMsg = "You have a pending friend request from this user";
+        }
+        res.status(409).json({ error: errorMsg });
         return;
       }
 
@@ -523,32 +541,60 @@ router.post(
       const status = friendAccount ? "requested" : "pending";
       const friendUserId = friendAccount?.user_id || null;
 
+      // Get the current user's primary email for creating reverse connection
+      const primaryUserStmt = db.prepare(
+        "SELECT external_email FROM calendar_accounts WHERE user_id = ?",
+      );
+      const primaryUserAccount = primaryUserStmt.get(userId) as
+        | { external_email: string }
+        | undefined;
+
       // Wrap both inserts in a transaction to ensure atomicity
-      const addFriendTransaction = db.transaction(() => {
-        insertStmt.run(userId, normalizedEmail, friendUserId, status);
+      // The UNIQUE(user_id, friend_email) constraint in the database prevents duplicate
+      // connections even if two users simultaneously add each other as friends.
+      // In case of a race condition, the second transaction will fail with a constraint error.
+      try {
+        const addFriendTransaction = db.transaction(() => {
+          insertStmt.run(userId, normalizedEmail, friendUserId, status);
 
-        // If friend already has an account, create an INCOMING request for them
-        if (friendAccount && userAccount?.external_email) {
-          const reverseExistingStmt = db.prepare(
-            "SELECT * FROM user_connections WHERE user_id = ? AND friend_email = ?",
-          );
-          const reverseExisting = reverseExistingStmt.get(
-            friendAccount.user_id,
-            userAccount.external_email.toLowerCase(),
-          );
-
-          if (!reverseExisting) {
-            // Create incoming request for the friend (they need to accept)
-            insertStmt.run(
-              friendAccount.user_id,
-              userAccount.external_email.toLowerCase(),
-              userId,
-              "incoming", // This is an incoming request they need to accept
+          // If friend already has an account, create an INCOMING request for them
+          if (friendAccount && primaryUserAccount?.external_email) {
+            const reverseExistingStmt = db.prepare(
+              "SELECT * FROM user_connections WHERE user_id = ? AND friend_email = ?",
             );
+            const reverseExisting = reverseExistingStmt.get(
+              friendAccount.user_id,
+              primaryUserAccount.external_email.toLowerCase(),
+            );
+
+            if (!reverseExisting) {
+              // Create incoming request for the friend (they need to accept)
+              // Use INSERT OR IGNORE to handle race condition where friend adds us at the same time
+              const insertIgnoreStmt = db.prepare(`
+                INSERT OR IGNORE INTO user_connections (user_id, friend_email, friend_user_id, status)
+                VALUES (?, ?, ?, ?)
+              `);
+              insertIgnoreStmt.run(
+                friendAccount.user_id,
+                primaryUserAccount.external_email.toLowerCase(),
+                userId,
+                "incoming", // This is an incoming request they need to accept
+              );
+            }
           }
+        });
+        addFriendTransaction();
+      } catch (dbError: unknown) {
+        // Handle unique constraint violation (race condition case)
+        if (
+          dbError instanceof Error &&
+          dbError.message.includes("UNIQUE constraint failed")
+        ) {
+          res.status(409).json({ error: "Friend request already sent" });
+          return;
         }
-      });
-      addFriendTransaction();
+        throw dbError;
+      }
 
       // Get the inserted connection
       const getStmt = db.prepare(
@@ -625,10 +671,12 @@ router.get(
         }
 
         // Check if friend now has an account (for pending connections - user not yet signed up)
-        // Note: Ideally this would be handled during friend signup, but for backwards
-        // compatibility we check here and update lazily.
-        // TODO: Consider moving this logic to a webhook or background job that triggers
-        // when a new user signs up, to avoid side effects in GET endpoints.
+        // WARNING: This GET endpoint performs side effects (database writes), which violates REST
+        // principles where GET requests should be idempotent and read-only.
+        // TODO: Move this logic to one of the following before production:
+        // 1. A POST endpoint that explicitly triggers status updates
+        // 2. A background job that runs periodically
+        // 3. A webhook triggered during user signup
         if (conn.status === "pending" && !conn.friend_user_id) {
           const friendStmt = db.prepare(
             "SELECT user_id FROM calendar_accounts WHERE external_email = ?",
@@ -731,6 +779,12 @@ router.delete(
         res.status(404).json({ error: "Friend connection not found" });
         return;
       }
+
+      // Allow removal for any connection status (pending, requested, incoming, accepted)
+      // This enables users to:
+      // - Cancel pending friend requests
+      // - Reject incoming requests (alternative to explicit reject)
+      // - Remove accepted friends
 
       // Wrap the deletion logic in a transaction for atomicity
       const removeFriendTransaction = db.transaction(() => {
@@ -945,7 +999,7 @@ router.get(
         return;
       }
 
-      // Check if connection exists and is accepted
+      // Check if connection exists and is accepted on user's side
       const connStmt = db.prepare(
         "SELECT * FROM user_connections WHERE id = ? AND user_id = ? AND status = 'accepted'",
       );
@@ -956,6 +1010,23 @@ router.get(
       if (!connection || !connection.friend_user_id) {
         res.status(404).json({
           error: "Friend not found or connection not accepted",
+        });
+        return;
+      }
+
+      // Verify mutual acceptance: friend has also accepted the connection
+      // This ensures both users have consented to share calendar data
+      const reverseConnStmt = db.prepare(
+        "SELECT * FROM user_connections WHERE user_id = ? AND friend_user_id = ? AND status = 'accepted'",
+      );
+      const reverseConnection = reverseConnStmt.get(
+        connection.friend_user_id,
+        userId,
+      ) as UserConnectionRow | undefined;
+
+      if (!reverseConnection) {
+        res.status(404).json({
+          error: "Friend not found or connection not mutually accepted",
         });
         return;
       }

@@ -313,6 +313,7 @@ export function FriendsManager({
                           size="sm"
                           onClick={() => handleRemoveFriend(friend.id)}
                           className="h-7 w-7 p-0 text-gray-400 hover:text-red-500"
+                          aria-label="Remove friend"
                         >
                           <X className="w-4 h-4" />
                         </Button>
