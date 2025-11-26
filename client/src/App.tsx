@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { CalendarView } from "./components/CalendarView";
 import { UserList } from "./components/UserList";
 import { InviteDialog } from "./components/InviteDialog";
@@ -10,7 +10,7 @@ import { GoogleSignInButton } from "./components/GoogleSignInButton";
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
 import { addDays, addMinutes, startOfDay, setHours } from "date-fns";
-import type { User, CalendarEvent, TimeSlot } from "./types";
+import type { User, TimeSlot } from "./types";
 import {
   GoogleAuthProvider,
   useGoogleAuth,
@@ -21,159 +21,9 @@ import {
 } from "./contexts/CalendarContext";
 import { useICloudConnection } from "./hooks/useICloudConnection";
 import { useOutlookConnection } from "./hooks/useOutlookConnection";
-import { friendsApi, type FriendWithColor } from "./services/api/friends";
-import {
-  calculateEventTimeRange,
-  parseEventTime,
-  isAllDayEvent,
-} from "./utils/calendar";
-
-// Mock data for demonstration
-const mockUsers: User[] = [
-  {
-    id: "2",
-    name: "Sarah Johnson",
-    email: "sarah@example.com",
-    color: "#10b981",
-  },
-  {
-    id: "3",
-    name: "Michael Brown",
-    email: "michael@example.com",
-    color: "#f59e0b",
-  },
-  { id: "4", name: "Emma Davis", email: "emma@example.com", color: "#8b5cf6" },
-];
-
-const mockEvents: CalendarEvent[] = [
-  // Week 1
-  {
-    id: "2",
-    userId: "2",
-    start: new Date(2025, 10, 12, 0, 0),
-    end: new Date(2025, 10, 12, 23, 59),
-    title: "Team Offsite",
-    isAllDay: true,
-  },
-  {
-    id: "3",
-    userId: "2",
-    start: new Date(2025, 10, 13, 9, 0),
-    end: new Date(2025, 10, 13, 10, 0),
-  },
-  {
-    id: "4",
-    userId: "2",
-    start: new Date(2025, 10, 13, 12, 0),
-    end: new Date(2025, 10, 13, 13, 0),
-  },
-  {
-    id: "5",
-    userId: "3",
-    start: new Date(2025, 10, 14, 13, 0),
-    end: new Date(2025, 10, 14, 15, 0),
-  },
-  {
-    id: "6",
-    userId: "4",
-    start: new Date(2025, 10, 14, 11, 0),
-    end: new Date(2025, 10, 14, 12, 0),
-  },
-  {
-    id: "8",
-    userId: "2",
-    start: new Date(2025, 10, 15, 10, 0),
-    end: new Date(2025, 10, 15, 11, 0),
-  },
-  {
-    id: "9",
-    userId: "3",
-    start: new Date(2025, 10, 15, 14, 0),
-    end: new Date(2025, 10, 15, 16, 0),
-  },
-  // Week 2
-  {
-    id: "10",
-    userId: "4",
-    start: new Date(2025, 10, 18, 15, 0),
-    end: new Date(2025, 10, 18, 16, 30),
-  },
-  {
-    id: "12",
-    userId: "2",
-    start: new Date(2025, 10, 19, 14, 0),
-    end: new Date(2025, 10, 19, 15, 0),
-  },
-  {
-    id: "13",
-    userId: "3",
-    start: new Date(2025, 10, 20, 11, 0),
-    end: new Date(2025, 10, 20, 12, 30),
-  },
-  {
-    id: "14",
-    userId: "4",
-    start: new Date(2025, 10, 21, 13, 0),
-    end: new Date(2025, 10, 21, 14, 0),
-  },
-  // Week 3
-  {
-    id: "15",
-    userId: "2",
-    start: new Date(2025, 10, 25, 9, 0),
-    end: new Date(2025, 10, 25, 10, 30),
-  },
-  {
-    id: "16",
-    userId: "3",
-    start: new Date(2025, 10, 26, 14, 0),
-    end: new Date(2025, 10, 26, 16, 0),
-  },
-  {
-    id: "17",
-    userId: "4",
-    start: new Date(2025, 10, 27, 10, 0),
-    end: new Date(2025, 10, 27, 11, 0),
-  },
-  // Week 4
-  {
-    id: "18",
-    userId: "2",
-    start: new Date(2025, 11, 2, 13, 0),
-    end: new Date(2025, 11, 2, 15, 0),
-  },
-  {
-    id: "19",
-    userId: "3",
-    start: new Date(2025, 11, 3, 9, 0),
-    end: new Date(2025, 11, 3, 10, 0),
-  },
-  {
-    id: "20",
-    userId: "4",
-    start: new Date(2025, 11, 4, 14, 0),
-    end: new Date(2025, 11, 4, 15, 30),
-  },
-  // Week 5
-  {
-    id: "21",
-    userId: "2",
-    start: new Date(2025, 11, 9, 11, 0),
-    end: new Date(2025, 11, 9, 12, 0),
-  },
-  {
-    id: "22",
-    userId: "3",
-    start: new Date(2025, 11, 10, 15, 0),
-    end: new Date(2025, 11, 10, 16, 0),
-  },
-  {
-    id: "23",
-    userId: "4",
-    start: new Date(2025, 11, 11, 10, 0),
-    end: new Date(2025, 11, 11, 11, 30),
-  },
-];
+import { useFriends } from "./hooks/useFriends";
+import { useCalendarAggregation } from "./hooks/useCalendarAggregation";
+import { mockUsers, mockEvents } from "./data/mockData";
 
 function AppContent({
   weekStart,
@@ -202,6 +52,24 @@ function AppContent({
       }
     : null;
 
+  // Use extracted hooks for friends and calendar aggregation
+  const {
+    friends,
+    friendEvents,
+    incomingRequestCount,
+    setIncomingRequestCount,
+    refetch: refetchFriends,
+  } = useFriends({ isAuthenticated: !!user, weekStart });
+
+  const { allUsers, allEvents } = useCalendarAggregation({
+    currentUser,
+    userEvents: calendarEvents,
+    friends,
+    friendEvents,
+    mockUsers,
+    mockEvents,
+  });
+
   const [selectedUsers, setSelectedUsers] = useState<string[]>([
     "1",
     "2",
@@ -213,36 +81,6 @@ function AppContent({
   );
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showFriendsManager, setShowFriendsManager] = useState(false);
-  const [friends, setFriends] = useState<FriendWithColor[]>([]);
-  const [friendEvents, setFriendEvents] = useState<CalendarEvent[]>([]);
-  const [incomingRequestCount, setIncomingRequestCount] = useState(0);
-
-  // Fetch incoming request count on mount and periodically
-  const fetchIncomingRequestCount = useCallback(async () => {
-    if (!user) {
-      setIncomingRequestCount(0);
-      return;
-    }
-    try {
-      const response = await friendsApi.getIncomingRequests();
-      setIncomingRequestCount(response.requests.length);
-    } catch (err) {
-      console.error("Error fetching incoming requests:", err);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    fetchIncomingRequestCount();
-  }, [fetchIncomingRequestCount]);
-
-  // Clear friends data when user logs out
-  useEffect(() => {
-    if (!user) {
-      setFriends([]);
-      setFriendEvents([]);
-      setIncomingRequestCount(0);
-    }
-  }, [user]);
 
   // Add current user to selected users when logged in
   useEffect(() => {
@@ -269,94 +107,6 @@ function AppContent({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
-
-  // Fetch friends and their events when user is logged in
-  const fetchFriendsAndEvents = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      const response = await friendsApi.getFriends();
-      setFriends(response.friends);
-
-      // Calculate time range using shared utility (same logic as CalendarContext)
-      const { timeMin, timeMax } = calculateEventTimeRange(weekStart);
-
-      // Fetch events for all accepted friends
-      const acceptedFriends = response.friends.filter(
-        (f) => f.status === "accepted" && f.friendUserId,
-      );
-
-      // Fetch all friend events in parallel for better performance
-      // Note: For users with many friends, consider implementing pagination,
-      // caching, or batching to reduce server load when navigating between weeks.
-      const eventPromises = acceptedFriends.map((friend) =>
-        friendsApi
-          .getFriendEvents(friend.id, timeMin, timeMax)
-          .then((events) =>
-            events.map((e) => ({
-              id: e.id,
-              userId: friend.friendUserId!,
-              start: parseEventTime(e.start),
-              end: parseEventTime(e.end),
-              title: e.title || e.summary,
-              isAllDay: isAllDayEvent(e.start, e.end),
-            })),
-          )
-          .catch((err) => {
-            console.error(
-              `Error fetching events for friend ${friend.id}:`,
-              err,
-            );
-            return [];
-          }),
-      );
-
-      const friendEventArrays = await Promise.all(eventPromises);
-      const allFriendEvents: CalendarEvent[] = friendEventArrays.flat();
-      setFriendEvents(allFriendEvents);
-    } catch (err) {
-      console.error("Error fetching friends:", err);
-    }
-  }, [user, weekStart]);
-
-  useEffect(() => {
-    fetchFriendsAndEvents();
-  }, [fetchFriendsAndEvents]);
-
-  // Handle friends change from FriendsManager
-  const handleFriendsChange = useCallback(() => {
-    // Re-fetch friends and their events when friends change
-    fetchFriendsAndEvents();
-  }, [fetchFriendsAndEvents]);
-
-  // Convert Google Calendar events to our CalendarEvent format
-  // Our CalendarProvider interface returns CalendarEvent[], so we can use them directly.
-  const googleCalendarEvents = calendarEvents;
-
-  // Convert friends to User format
-  const friendUsers: User[] = friends
-    .filter((f) => f.status === "accepted" && f.friendUserId)
-    .map((f) => ({
-      id: f.friendUserId!,
-      name: f.friendName || f.friendEmail,
-      email: f.friendEmail,
-      color: f.friendColor,
-    }));
-
-  // Combine Google events with friend events (no more mock events when friends exist)
-  const allEvents =
-    friendUsers.length > 0
-      ? [...googleCalendarEvents, ...friendEvents]
-      : [...googleCalendarEvents, ...mockEvents];
-
-  // Combine current user, friends, and mock users (mock users only if no friends)
-  const allUsers = currentUser
-    ? friendUsers.length > 0
-      ? [currentUser, ...friendUsers]
-      : [currentUser, ...mockUsers]
-    : friendUsers.length > 0
-      ? friendUsers
-      : mockUsers;
 
   const handleUserToggle = (userId: string) => {
     setSelectedUsers((prev) =>
@@ -511,7 +261,7 @@ function AppContent({
       <FriendsManager
         isOpen={showFriendsManager}
         onClose={() => setShowFriendsManager(false)}
-        onFriendsChange={handleFriendsChange}
+        onFriendsChange={refetchFriends}
         onIncomingRequestsChange={setIncomingRequestCount}
       />
 

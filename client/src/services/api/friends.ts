@@ -45,6 +45,12 @@ export interface AcceptRejectResponse {
   message: string;
 }
 
+export interface SyncPendingResponse {
+  success: boolean;
+  message: string;
+  updatedCount: number;
+}
+
 export const friendsApi = {
   // Add a friend by email (sends a request)
   addFriend: (friendEmail: string) =>
@@ -68,6 +74,10 @@ export const friendsApi = {
   // Reject a friend request
   rejectRequest: (requestId: number) =>
     apiClient.post<AcceptRejectResponse>(`/api/friends/${requestId}/reject`),
+
+  // Sync pending friend connections (check if pending friends have signed up)
+  syncPendingConnections: () =>
+    apiClient.post<SyncPendingResponse>("/api/friends/sync-pending"),
 
   // Get a friend's calendar events
   getFriendEvents: (friendId: number, timeMin?: Date, timeMax?: Date) => {
