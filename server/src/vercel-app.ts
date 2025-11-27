@@ -15,7 +15,7 @@ import authRoutes from "./routes/auth";
 import apiRoutes from "./routes/index";
 import { env } from "./config/env";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
-import { calendarAccountRepository } from "./repositories";
+import { calendarAccountRepositoryAsync } from "./repositories/calendarAccountRepositoryAsync";
 import {
   RATE_LIMIT_WINDOW_MS,
   RATE_LIMIT_MAX_REQUESTS,
@@ -103,8 +103,8 @@ app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api", apiRoutes);
 
 // Health check
-app.get("/api/health", (_req, res) => {
-  const dbHealthy = calendarAccountRepository.healthCheck();
+app.get("/api/health", async (_req, res) => {
+  const dbHealthy = await calendarAccountRepositoryAsync.healthCheck();
   const status = dbHealthy ? "ok" : "degraded";
   const statusCode = dbHealthy ? 200 : 503;
 
