@@ -640,36 +640,44 @@ async function handleGetAllEvents(
 
           for (const obj of objects) {
             if (obj.data) {
-              const parsed = ical.parseICS(obj.data);
+              try {
+                const parsed = ical.parseICS(obj.data);
 
-              for (const key in parsed) {
-                const event = parsed[key];
-                if (event.type === "VEVENT") {
-                  const startDate = event.start;
-                  const endDate = event.end;
+                for (const key in parsed) {
+                  const event = parsed[key];
+                  if (event.type === "VEVENT") {
+                    const startDate = event.start;
+                    const endDate = event.end;
 
-                  // Filter to only events within the time range
-                  if (
-                    startDate &&
-                    startDate >= timeMin &&
-                    startDate <= timeMax
-                  ) {
-                    allEvents.push({
-                      id: event.uid || key,
-                      summary: event.summary || "Untitled Event",
-                      start: { dateTime: startDate.toISOString() },
-                      end: {
-                        dateTime: endDate
-                          ? endDate.toISOString()
-                          : startDate.toISOString(),
-                      },
-                      calendarId: calendar.url,
-                      accountType: "icloud",
-                      accountEmail: account.external_email,
-                      userId: account.user_id,
-                    });
+                    // Filter to only events within the time range
+                    if (
+                      startDate &&
+                      startDate >= timeMin &&
+                      startDate <= timeMax
+                    ) {
+                      allEvents.push({
+                        id: event.uid || key,
+                        summary: event.summary || "Untitled Event",
+                        start: { dateTime: startDate.toISOString() },
+                        end: {
+                          dateTime: endDate
+                            ? endDate.toISOString()
+                            : startDate.toISOString(),
+                        },
+                        calendarId: calendar.url,
+                        accountType: "icloud",
+                        accountEmail: account.external_email,
+                        userId: account.user_id,
+                      });
+                    }
                   }
                 }
+              } catch (parseErr) {
+                // Skip malformed calendar objects
+                console.error(
+                  `Error parsing iCloud calendar object for ${account.user_id}:`,
+                  parseErr,
+                );
               }
             }
           }
@@ -1737,37 +1745,45 @@ async function handleGetFriendEvents(
 
           for (const obj of objects) {
             if (obj.data) {
-              const parsed = ical.parseICS(obj.data);
+              try {
+                const parsed = ical.parseICS(obj.data);
 
-              for (const key in parsed) {
-                const event = parsed[key];
-                if (event.type === "VEVENT") {
-                  const startDate = event.start;
-                  const endDate = event.end;
+                for (const key in parsed) {
+                  const event = parsed[key];
+                  if (event.type === "VEVENT") {
+                    const startDate = event.start;
+                    const endDate = event.end;
 
-                  // Filter to only events within the time range
-                  if (
-                    startDate &&
-                    startDate >= timeMin &&
-                    startDate <= timeMax
-                  ) {
-                    allEvents.push({
-                      id: event.uid || key,
-                      summary: event.summary || "Untitled Event",
-                      start: { dateTime: startDate.toISOString() },
-                      end: {
-                        dateTime: endDate
-                          ? endDate.toISOString()
-                          : startDate.toISOString(),
-                      },
-                      calendarId: calendar.url,
-                      accountType: "icloud",
-                      accountEmail: account.external_email,
-                      userId: account.user_id,
-                      friendConnectionId: friendId,
-                    });
+                    // Filter to only events within the time range
+                    if (
+                      startDate &&
+                      startDate >= timeMin &&
+                      startDate <= timeMax
+                    ) {
+                      allEvents.push({
+                        id: event.uid || key,
+                        summary: event.summary || "Untitled Event",
+                        start: { dateTime: startDate.toISOString() },
+                        end: {
+                          dateTime: endDate
+                            ? endDate.toISOString()
+                            : startDate.toISOString(),
+                        },
+                        calendarId: calendar.url,
+                        accountType: "icloud",
+                        accountEmail: account.external_email,
+                        userId: account.user_id,
+                        friendConnectionId: friendId,
+                      });
+                    }
                   }
                 }
+              } catch (parseErr) {
+                // Skip malformed calendar objects
+                console.error(
+                  `Error parsing iCloud calendar object for friend ${friendUserId}:`,
+                  parseErr,
+                );
               }
             }
           }
