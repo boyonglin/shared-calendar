@@ -6,7 +6,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient, type Client } from "@libsql/client";
 import { google } from "googleapis";
-import jwt from "jsonwebtoken";
+import * as jwt from "jsonwebtoken";
 
 // =============================================================================
 // Environment Variables
@@ -391,7 +391,11 @@ async function handleGetAllEvents(
     }
 
     // Fetch Outlook events via OneCal
-    if (account.provider === "outlook" && account.access_token && ONECAL_API_KEY) {
+    if (
+      account.provider === "outlook" &&
+      account.access_token &&
+      ONECAL_API_KEY
+    ) {
       try {
         const endUserAccountId = account.access_token as string;
 
@@ -404,7 +408,9 @@ async function handleGetAllEvents(
         );
 
         if (!calendarsResponse.ok) {
-          console.error(`Failed to fetch Outlook calendars: ${await calendarsResponse.text()}`);
+          console.error(
+            `Failed to fetch Outlook calendars: ${await calendarsResponse.text()}`,
+          );
           continue;
         }
 
@@ -415,7 +421,9 @@ async function handleGetAllEvents(
 
         // Use primary calendar or first available
         const primaryCalendar = allCalendars.find((cal) => cal.isPrimary);
-        const calendars = primaryCalendar ? [primaryCalendar] : allCalendars.slice(0, 1);
+        const calendars = primaryCalendar
+          ? [primaryCalendar]
+          : allCalendars.slice(0, 1);
 
         for (const calendar of calendars) {
           const eventsParams = new URLSearchParams({
@@ -430,7 +438,9 @@ async function handleGetAllEvents(
           );
 
           if (!eventsResponse.ok) {
-            console.error(`Failed to fetch Outlook events: ${await eventsResponse.text()}`);
+            console.error(
+              `Failed to fetch Outlook events: ${await eventsResponse.text()}`,
+            );
             continue;
           }
 
@@ -449,8 +459,14 @@ async function handleGetAllEvents(
             allEvents.push({
               id: event.id,
               summary: event.title || event.summary || "Untitled Event",
-              start: { dateTime: event.start?.dateTime, date: event.start?.date },
-              end: { dateTime: event.end?.dateTime, date: event.end?.date },
+              start: {
+                dateTime: event.start?.dateTime,
+                date: event.start?.date,
+              },
+              end: {
+                dateTime: event.end?.dateTime,
+                date: event.end?.date,
+              },
               calendarId: calendar.id,
               accountType: "outlook",
               accountEmail: account.external_email,
@@ -779,10 +795,23 @@ async function handleOutlookCallback(
 // =============================================================================
 
 const FRIEND_COLORS = [
-  "#EF4444", "#F97316", "#F59E0B", "#EAB308", "#84CC16",
-  "#22C55E", "#10B981", "#14B8A6", "#06B6D4", "#0EA5E9",
-  "#3B82F6", "#6366F1", "#8B5CF6", "#A855F7", "#D946EF",
-  "#EC4899", "#F43F5E",
+  "#EF4444",
+  "#F97316",
+  "#F59E0B",
+  "#EAB308",
+  "#84CC16",
+  "#22C55E",
+  "#10B981",
+  "#14B8A6",
+  "#06B6D4",
+  "#0EA5E9",
+  "#3B82F6",
+  "#6366F1",
+  "#8B5CF6",
+  "#A855F7",
+  "#D946EF",
+  "#EC4899",
+  "#F43F5E",
 ];
 
 function generateFriendColor(email: string): string {
@@ -828,7 +857,10 @@ async function handleGetFriends(
     userId: conn.user_id,
     friendEmail: conn.friend_email,
     friendUserId: conn.friend_user_id,
-    friendName: extractFriendName(conn.metadata as string | null, conn.friend_email as string),
+    friendName: extractFriendName(
+      conn.metadata as string | null,
+      conn.friend_email as string,
+    ),
     friendColor: generateFriendColor(conn.friend_email as string),
     status: conn.status,
     createdAt: conn.created_at,
@@ -860,7 +892,10 @@ async function handleGetIncomingRequests(
     userId: conn.user_id,
     friendEmail: conn.friend_email,
     friendUserId: conn.friend_user_id,
-    friendName: extractFriendName(conn.metadata as string | null, conn.friend_email as string),
+    friendName: extractFriendName(
+      conn.metadata as string | null,
+      conn.friend_email as string,
+    ),
     friendColor: generateFriendColor(conn.friend_email as string),
     status: conn.status,
     createdAt: conn.created_at,
@@ -1013,7 +1048,10 @@ export default async function handler(
     // ===================
 
     // GET /api/friends
-    if ((path === "/api/friends" || path === "/api/friends/") && req.method === "GET") {
+    if (
+      (path === "/api/friends" || path === "/api/friends/") &&
+      req.method === "GET"
+    ) {
       return handleGetFriends(req, res);
     }
 
@@ -1027,7 +1065,8 @@ export default async function handler(
 
     // POST /api/friends/sync-pending
     if (
-      (path === "/api/friends/sync-pending" || path === "/api/friends/sync-pending/") &&
+      (path === "/api/friends/sync-pending" ||
+        path === "/api/friends/sync-pending/") &&
       req.method === "POST"
     ) {
       return handleSyncPending(req, res);
