@@ -7,6 +7,9 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient, type Client } from "@libsql/client";
 import { google } from "googleapis";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import { DAVClient } from "tsdav";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // =============================================================================
 // Environment Variables
@@ -22,6 +25,15 @@ const CLIENT_URL =
 const ONECAL_APP_ID = process.env.ONECAL_APP_ID;
 const ONECAL_API_KEY = process.env.ONECAL_API_KEY;
 const ONECAL_API_BASE = "https://api.onecalunified.com/api/v1";
+
+// Encryption Configuration (for iCloud password storage)
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+const IV_LENGTH = 16;
+
+// AI Configuration
+const AI_MAX_INPUT_LENGTH = 1000;
+const AI_MAX_ATTENDEE_LENGTH = 100;
+const AI_MAX_ATTENDEES = 50;
 
 // =============================================================================
 // Database
@@ -162,6 +174,115 @@ function verifyToken(req: VercelRequest): JwtPayload | null {
   } catch {
     return null;
   }
+}
+
+// =============================================================================
+// Encryption Helpers (for iCloud password storage)
+// =============================================================================
+
+function getEncryptionKey(): Buffer {
+  if (!ENCRYPTION_KEY) {
+    throw new Error(
+      "ENCRYPTION_KEY is required for iCloud integration. Please set it in your environment.",
+    );
+  }
+
+  // If the key is a hex string (64 characters), decode it
+  if (ENCRYPTION_KEY.length === 64 && /^[0-9a-fA-F]+$/.test(ENCRYPTION_KEY)) {
+    return Buffer.from(ENCRYPTION_KEY, "hex");
+  }
+
+  // Otherwise treat as raw string and validate length
+  const key = Buffer.from(ENCRYPTION_KEY);
+  if (key.length !== 32) {
+    throw new Error(
+      `ENCRYPTION_KEY must be exactly 32 bytes (or 64 hex characters), got ${key.length} bytes`,
+    );
+  }
+  return key;
+}
+
+function encrypt(text: string): string {
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv("aes-256-cbc", getEncryptionKey(), iv);
+  let encrypted = cipher.update(text, "utf8");
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString("hex") + ":" + encrypted.toString("hex");
+}
+
+// Note: decrypt function will be needed when iCloud calendar event fetching is implemented.
+// See server/src/services/icloudAuth.ts for reference implementation.
+
+// =============================================================================
+// AI Helpers
+// =============================================================================
+
+// Patterns that could be used for prompt injection attacks
+const INJECTION_PATTERNS = [
+  /ignore\s+(all\s+)?previous\s+instructions?/gi,
+  /ignore\s+(all\s+)?prior\s+instructions?/gi,
+  /disregard\s+(all\s+)?previous/gi,
+  /forget\s+(all\s+)?previous/gi,
+  /you\s+are\s+now/gi,
+  /new\s+instructions?:/gi,
+  /system\s*:/gi,
+  /\[system\]/gi,
+  /\[assistant\]/gi,
+  /\[user\]/gi,
+];
+
+function sanitizeInput(input: string, maxLength = AI_MAX_INPUT_LENGTH): string {
+  let sanitized = input.replace(/[`${}]/g, "").trim();
+
+  for (const pattern of INJECTION_PATTERNS) {
+    sanitized = sanitized.replace(pattern, "");
+  }
+
+  return sanitized.slice(0, maxLength);
+}
+
+function sanitizeOutput(text: string): string {
+  return text
+    .replace(/```(?:markdown|html)?\n?([\s\S]*?)\n?```/gi, "$1")
+    .replace(/<\/?[^>]+(>|$)/g, "")
+    .trim();
+}
+
+type Tone = "professional" | "casual" | "friendly";
+const VALID_TONES: Tone[] = ["professional", "casual", "friendly"];
+
+function buildAIPrompt(params: {
+  title: string;
+  description: string;
+  location: string;
+  attendees: string[];
+  start: string;
+  end: string;
+  tone: Tone;
+}): string {
+  const { title, description, location, attendees, start, end, tone } = params;
+  const lines = [
+    "You are an AI assistant helping to draft a calendar invitation.",
+    "",
+    "Event Details:",
+    `Title: ${title}`,
+    `Time: ${start} to ${end}`,
+  ];
+
+  if (description) lines.push(`Description: ${description}`);
+  if (location) lines.push(`Location: ${location}`);
+  if (attendees.length) lines.push(`Attendees: ${attendees.join(", ")}`);
+
+  lines.push(
+    "",
+    `Please write a ${tone} invitation message for this event.`,
+    "The message should be ready to send via email or chat.",
+    "Keep it concise but clear.",
+    "",
+    "Output only plain text. Do not include any HTML tags, markdown formatting, or code blocks.",
+  );
+
+  return lines.join("\n");
 }
 
 // =============================================================================
@@ -541,6 +662,99 @@ async function handleCreateEvent(
   });
 
   return res.status(200).json(response.data);
+}
+
+async function handleICloudConnect(
+  req: VercelRequest,
+  res: VercelResponse,
+): Promise<VercelResponse> {
+  const user = verifyToken(req);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { email, password } = req.body || {};
+
+  // Validate email format and type
+  if (
+    !email ||
+    typeof email !== "string" ||
+    !email.includes("@") ||
+    email.length > 255
+  ) {
+    return res.status(400).json({ error: "Invalid email format" });
+  }
+
+  // Validate password format and type
+  if (
+    !password ||
+    typeof password !== "string" ||
+    password.length < 1 ||
+    password.length > 1000
+  ) {
+    return res.status(400).json({ error: "Invalid password format" });
+  }
+
+  // Verify credentials with Apple's CalDAV server using tsdav
+  const davClient = new DAVClient({
+    serverUrl: "https://caldav.icloud.com",
+    credentials: {
+      username: email,
+      password: password,
+    },
+    authMethod: "Basic",
+    defaultAccountType: "caldav",
+  });
+
+  try {
+    await davClient.login();
+    // Attempt to fetch calendars to verify credentials are valid
+    await davClient.fetchCalendars();
+  } catch (error) {
+    console.error("iCloud verification failed:", error);
+    return res.status(401).json({
+      error:
+        "Failed to verify iCloud credentials. Please check your Apple ID and App-Specific Password.",
+    });
+  }
+
+  // Generate a new ID for this iCloud connection
+  const iCloudUserId = `icloud_${crypto.randomUUID()}`;
+
+  // Encrypt the app-specific password
+  const encryptedPassword = encrypt(password);
+
+  // Store the iCloud account in the database
+  const client = getTursoClient();
+  const metadata = JSON.stringify({ name: email });
+
+  try {
+    await client.execute({
+      sql: `INSERT INTO calendar_accounts (
+        user_id, provider, external_email, encrypted_password, metadata, primary_user_id, updated_at
+      ) VALUES (?, 'icloud', ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id) DO UPDATE SET
+        external_email = excluded.external_email,
+        encrypted_password = excluded.encrypted_password,
+        metadata = excluded.metadata,
+        updated_at = CURRENT_TIMESTAMP`,
+      args: [iCloudUserId, email, encryptedPassword, metadata, user.userId],
+    });
+  } catch (error) {
+    console.error("Failed to store iCloud account:", error);
+    return res.status(500).json({
+      error: "Failed to save iCloud connection. Please try again.",
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    user: {
+      id: iCloudUserId,
+      email: email,
+      provider: "icloud",
+    },
+  });
 }
 
 async function handleICloudStatus(
@@ -1424,6 +1638,109 @@ async function handleGetFriendEvents(
 }
 
 // =============================================================================
+// AI Handlers
+// =============================================================================
+
+async function handleDraftInvitation(
+  req: VercelRequest,
+  res: VercelResponse,
+): Promise<VercelResponse> {
+  const user = verifyToken(req);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const {
+    title,
+    description,
+    start,
+    end,
+    attendees,
+    location,
+    tone,
+    geminiApiKey,
+  } = req.body || {};
+
+  if (!title || !start || !end) {
+    return res
+      .status(400)
+      .json({ error: "Missing required fields (title, start, end)" });
+  }
+
+  // Validate and sanitize geminiApiKey
+  if (typeof geminiApiKey !== "string" || geminiApiKey.trim().length === 0) {
+    return res.status(400).json({ error: "Invalid Gemini API key format" });
+  }
+  // Validate API key format - Google API keys are alphanumeric with underscores and dashes
+  const trimmedGeminiApiKey = geminiApiKey.trim();
+  if (!/^[A-Za-z0-9_-]+$/.test(trimmedGeminiApiKey)) {
+    return res
+      .status(400)
+      .json({ error: "Gemini API key contains invalid characters" });
+  }
+
+  // Validate tone using module-level constant
+  const selectedTone: Tone = VALID_TONES.includes(tone) ? tone : "professional";
+
+  // Sanitize inputs
+  const safeTitle = sanitizeInput(title, AI_MAX_INPUT_LENGTH);
+  const safeDescription = description ? sanitizeInput(description) : "";
+  const safeLocation = location
+    ? sanitizeInput(location, AI_MAX_INPUT_LENGTH)
+    : "";
+  const safeAttendees = (attendees ?? [])
+    .slice(0, AI_MAX_ATTENDEES)
+    .map((a: string) => sanitizeInput(a, AI_MAX_ATTENDEE_LENGTH));
+
+  // Validate datetime format using Date parsing
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (
+    isNaN(startDate.getTime()) ||
+    isNaN(endDate.getTime()) ||
+    !/T\d{2}:\d{2}/.test(start) ||
+    !/T\d{2}:\d{2}/.test(end)
+  ) {
+    return res
+      .status(400)
+      .json({ error: "Invalid datetime format. Use ISO 8601 format." });
+  }
+  if (endDate < startDate) {
+    return res
+      .status(400)
+      .json({ error: "End time must not be before start time" });
+  }
+
+  try {
+    const genAI = new GoogleGenerativeAI(trimmedGeminiApiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+
+    // Use validated datetime strings directly (already validated by Date parsing)
+    const prompt = buildAIPrompt({
+      title: safeTitle,
+      description: safeDescription,
+      location: safeLocation,
+      attendees: safeAttendees,
+      start: start,
+      end: end,
+      tone: selectedTone,
+    });
+
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    const draft = sanitizeOutput(text);
+
+    return res.status(200).json({ draft });
+  } catch (error) {
+    console.error("Error generating invitation draft:", error);
+    return res.status(500).json({
+      error:
+        "Failed to generate invitation draft. Please check your API key and try again.",
+    });
+  }
+}
+
+// =============================================================================
 // Main Handler
 // =============================================================================
 export default async function handler(
@@ -1483,6 +1800,13 @@ export default async function handler(
       path === "/api/auth/outlook/callback/"
     ) {
       return handleOutlookCallback(req, res);
+    }
+    // iCloud auth route
+    if (
+      (path === "/api/auth/icloud" || path === "/api/auth/icloud/") &&
+      req.method === "POST"
+    ) {
+      return handleICloudConnect(req, res);
     }
 
     // ===================
@@ -1610,6 +1934,19 @@ export default async function handler(
       return handleRemoveFriend(req, res, friendId);
     }
 
+    // ===================
+    // AI routes
+    // ===================
+
+    // POST /api/ai/draft-invitation
+    if (
+      (path === "/api/ai/draft-invitation" ||
+        path === "/api/ai/draft-invitation/") &&
+      req.method === "POST"
+    ) {
+      return handleDraftInvitation(req, res);
+    }
+
     // Root endpoint
     if (path === "/api" || path === "/api/") {
       return res.status(200).json({
@@ -1623,6 +1960,7 @@ export default async function handler(
           "GET /api/auth/outlook",
           "GET /api/auth/outlook/callback",
           "POST /api/auth/exchange",
+          "POST /api/auth/icloud",
           "GET /api/users/:id",
           "GET /api/calendar/all-events/:userId",
           "POST /api/calendar/events",
@@ -1638,6 +1976,7 @@ export default async function handler(
           "POST /api/friends/:friendId/accept",
           "POST /api/friends/:friendId/reject",
           "GET /api/friends/:friendId/events",
+          "POST /api/ai/draft-invitation",
         ],
       });
     }
