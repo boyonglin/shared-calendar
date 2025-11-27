@@ -10,7 +10,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { DAVClient } from "tsdav";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import * as ical from "node-ical";
+import ical from "node-ical";
 
 // =============================================================================
 // Environment Variables
@@ -1148,8 +1148,9 @@ async function handleGetFriends(
   const result = await client.execute({
     sql: `SELECT uc.*, ca.metadata 
           FROM user_connections uc
-          LEFT JOIN calendar_accounts ca ON uc.friend_user_id = ca.user_id
-          WHERE uc.user_id = ? AND uc.status != 'incoming'`,
+          LEFT JOIN calendar_accounts ca ON ca.external_email = uc.friend_email
+          WHERE uc.user_id = ? AND uc.status != 'incoming'
+          ORDER BY uc.created_at DESC`,
     args: [user.userId],
   });
 
@@ -1183,8 +1184,9 @@ async function handleGetIncomingRequests(
   const result = await client.execute({
     sql: `SELECT uc.*, ca.metadata 
           FROM user_connections uc
-          LEFT JOIN calendar_accounts ca ON uc.friend_user_id = ca.user_id
-          WHERE uc.user_id = ? AND uc.status = 'incoming'`,
+          LEFT JOIN calendar_accounts ca ON ca.external_email = uc.friend_email
+          WHERE uc.user_id = ? AND uc.status = 'incoming'
+          ORDER BY uc.created_at DESC`,
     args: [user.userId],
   });
 
@@ -1214,11 +1216,68 @@ async function handleSyncPending(
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  // For now, just return success - full sync logic can be added later
+  const client = getTursoClient();
+
+  // Find pending connections where friend might have signed up
+  const pendingResult = await client.execute({
+    sql: `SELECT id, friend_email, friend_user_id
+          FROM user_connections
+          WHERE user_id = ? AND status = 'pending' AND friend_user_id IS NULL`,
+    args: [user.userId],
+  });
+
+  let updatedCount = 0;
+
+  for (const conn of pendingResult.rows) {
+    const friendEmail = conn.friend_email as string;
+
+    // Check if friend has an account now
+    const friendAccountResult = await client.execute({
+      sql: "SELECT user_id FROM calendar_accounts WHERE external_email = ?",
+      args: [friendEmail],
+    });
+
+    if (friendAccountResult.rows.length > 0) {
+      const friendUserId = friendAccountResult.rows[0].user_id as string;
+
+      // Update to 'requested' status
+      await client.execute({
+        sql: "UPDATE user_connections SET friend_user_id = ?, status = 'requested', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        args: [friendUserId, conn.id],
+      });
+
+      // Create incoming request for friend
+      const currentUserResult = await client.execute({
+        sql: "SELECT external_email FROM calendar_accounts WHERE user_id = ?",
+        args: [user.userId],
+      });
+
+      if (currentUserResult.rows.length > 0) {
+        const currentUserEmail = currentUserResult.rows[0]
+          .external_email as string;
+
+        // Check if reverse connection exists
+        const reverseResult = await client.execute({
+          sql: "SELECT id FROM user_connections WHERE user_id = ? AND friend_email = ?",
+          args: [friendUserId, currentUserEmail.toLowerCase()],
+        });
+
+        if (reverseResult.rows.length === 0) {
+          await client.execute({
+            sql: `INSERT INTO user_connections (user_id, friend_email, friend_user_id, status, created_at, updated_at)
+                  VALUES (?, ?, ?, 'incoming', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+            args: [friendUserId, currentUserEmail.toLowerCase(), user.userId],
+          });
+        }
+      }
+      updatedCount++;
+    }
+  }
+
   return res.status(200).json({
     success: true,
-    message: "Synced 0 pending connections",
-    updatedCount: 0,
+    message: `Synced ${updatedCount} pending connections`,
+    updatedCount,
   });
 }
 
@@ -1910,7 +1969,20 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<VercelResponse | void> {
-  const path = req.url?.split("?")[0] || "/api";
+  const rawPath = req.url?.split("?")[0] || "/api";
+
+  // Debug logging
+  console.log(`[API] Method: ${req.method}, URL: ${req.url}, Path: ${rawPath}`);
+  console.log(`[API] Headers:`, JSON.stringify(req.headers));
+
+  // Normalize path: remove trailing slash and ensure it starts with /api
+  let path = rawPath.replace(/\/$/, "");
+  if (!path.startsWith("/api")) {
+    // Handle case where path might be relative or missing /api prefix due to rewriting
+    path = `/api${path.startsWith("/") ? "" : "/"}${path}`;
+  }
+
+  console.log(`[API] Normalized Path: ${path}`);
 
   // CORS
   res.setHeader("Access-Control-Allow-Origin", CLIENT_URL);
@@ -1929,7 +2001,7 @@ export default async function handler(
     await ensureDbInitialized();
 
     // Health check
-    if (path === "/api/health" || path === "/api/health/") {
+    if (path === "/api/health") {
       const client = getTursoClient();
       await client.execute("SELECT 1");
       return res.status(200).json({
@@ -1942,40 +2014,31 @@ export default async function handler(
     // ===================
     // Auth routes
     // ===================
-    if (path === "/api/auth/google" || path === "/api/auth/google/") {
+    if (path === "/api/auth/google") {
       return handleGoogleAuth(res);
     }
-    if (
-      path === "/api/auth/google/callback" ||
-      path === "/api/auth/google/callback/"
-    ) {
+    if (path === "/api/auth/google/callback") {
       return handleGoogleCallback(req, res);
     }
-    if (path === "/api/auth/exchange" || path === "/api/auth/exchange/") {
+    if (path === "/api/auth/exchange") {
       return handleAuthExchange(req, res);
     }
     // Outlook OAuth routes
-    if (path === "/api/auth/outlook" || path === "/api/auth/outlook/") {
+    if (path === "/api/auth/outlook") {
       return handleOutlookAuth(req, res);
     }
-    if (
-      path === "/api/auth/outlook/callback" ||
-      path === "/api/auth/outlook/callback/"
-    ) {
+    if (path === "/api/auth/outlook/callback") {
       return handleOutlookCallback(req, res);
     }
     // iCloud auth route
-    if (
-      (path === "/api/auth/icloud" || path === "/api/auth/icloud/") &&
-      req.method === "POST"
-    ) {
+    if (path === "/api/auth/icloud" && req.method === "POST") {
       return handleICloudConnect(req, res);
     }
 
     // ===================
     // User routes - /api/users/:id
     // ===================
-    const userMatch = path.match(/^\/api\/users\/([^/]+)\/?$/);
+    const userMatch = path.match(/^\/api\/users\/([^/]+)$/);
     if (userMatch) {
       return handleGetUser(userMatch[1], res);
     }
@@ -1985,48 +2048,35 @@ export default async function handler(
     // ===================
 
     // GET /api/calendar/all-events/:userId
-    const allEventsMatch = path.match(
-      /^\/api\/calendar\/all-events\/([^/]+)\/?$/,
-    );
+    const allEventsMatch = path.match(/^\/api\/calendar\/all-events\/([^/]+)$/);
     if (allEventsMatch && req.method === "GET") {
       return handleGetAllEvents(req, res, allEventsMatch[1]);
     }
 
     // POST /api/calendar/events
-    if (
-      (path === "/api/calendar/events" || path === "/api/calendar/events/") &&
-      req.method === "POST"
-    ) {
+    if (path === "/api/calendar/events" && req.method === "POST") {
       return handleCreateEvent(req, res);
     }
 
     // GET /api/calendar/icloud/status
-    if (
-      path === "/api/calendar/icloud/status" ||
-      path === "/api/calendar/icloud/status/"
-    ) {
+    if (path === "/api/calendar/icloud/status") {
       return handleICloudStatus(req, res);
     }
 
     // DELETE /api/calendar/icloud/:userId
-    const icloudDeleteMatch = path.match(
-      /^\/api\/calendar\/icloud\/([^/]+)\/?$/,
-    );
+    const icloudDeleteMatch = path.match(/^\/api\/calendar\/icloud\/([^/]+)$/);
     if (icloudDeleteMatch && req.method === "DELETE") {
       return handleRemoveICloud(req, res, icloudDeleteMatch[1]);
     }
 
     // GET /api/calendar/outlook/status
-    if (
-      path === "/api/calendar/outlook/status" ||
-      path === "/api/calendar/outlook/status/"
-    ) {
+    if (path === "/api/calendar/outlook/status") {
       return handleOutlookStatus(req, res);
     }
 
     // DELETE /api/calendar/outlook/:userId
     const outlookDeleteMatch = path.match(
-      /^\/api\/calendar\/outlook\/([^/]+)\/?$/,
+      /^\/api\/calendar\/outlook\/([^/]+)$/,
     );
     if (outlookDeleteMatch && req.method === "DELETE") {
       return handleRemoveOutlook(req, res, outlookDeleteMatch[1]);
@@ -2037,61 +2087,48 @@ export default async function handler(
     // ===================
 
     // GET /api/friends
-    if (
-      (path === "/api/friends" || path === "/api/friends/") &&
-      req.method === "GET"
-    ) {
+    if (path === "/api/friends" && req.method === "GET") {
       return handleGetFriends(req, res);
     }
 
     // POST /api/friends
-    if (
-      (path === "/api/friends" || path === "/api/friends/") &&
-      req.method === "POST"
-    ) {
+    if (path === "/api/friends" && req.method === "POST") {
       return handleAddFriend(req, res);
     }
 
     // GET /api/friends/requests/incoming
-    if (
-      path === "/api/friends/requests/incoming" ||
-      path === "/api/friends/requests/incoming/"
-    ) {
+    if (path === "/api/friends/requests/incoming") {
       return handleGetIncomingRequests(req, res);
     }
 
     // POST /api/friends/sync-pending
-    if (
-      (path === "/api/friends/sync-pending" ||
-        path === "/api/friends/sync-pending/") &&
-      req.method === "POST"
-    ) {
+    if (path === "/api/friends/sync-pending" && req.method === "POST") {
       return handleSyncPending(req, res);
     }
 
     // POST /api/friends/:friendId/accept
-    const acceptMatch = path.match(/^\/api\/friends\/(\d+)\/accept\/?$/);
+    const acceptMatch = path.match(/^\/api\/friends\/(\d+)\/accept$/);
     if (acceptMatch && req.method === "POST") {
       const friendId = parseInt(acceptMatch[1], 10);
       return handleAcceptFriend(req, res, friendId);
     }
 
     // POST /api/friends/:friendId/reject
-    const rejectMatch = path.match(/^\/api\/friends\/(\d+)\/reject\/?$/);
+    const rejectMatch = path.match(/^\/api\/friends\/(\d+)\/reject$/);
     if (rejectMatch && req.method === "POST") {
       const friendId = parseInt(rejectMatch[1], 10);
       return handleRejectFriend(req, res, friendId);
     }
 
     // GET /api/friends/:friendId/events
-    const friendEventsMatch = path.match(/^\/api\/friends\/(\d+)\/events\/?$/);
+    const friendEventsMatch = path.match(/^\/api\/friends\/(\d+)\/events$/);
     if (friendEventsMatch && req.method === "GET") {
       const friendId = parseInt(friendEventsMatch[1], 10);
       return handleGetFriendEvents(req, res, friendId);
     }
 
     // DELETE /api/friends/:friendId
-    const friendDeleteMatch = path.match(/^\/api\/friends\/(\d+)\/?$/);
+    const friendDeleteMatch = path.match(/^\/api\/friends\/(\d+)$/);
     if (friendDeleteMatch && req.method === "DELETE") {
       const friendId = parseInt(friendDeleteMatch[1], 10);
       return handleRemoveFriend(req, res, friendId);
@@ -2102,16 +2139,12 @@ export default async function handler(
     // ===================
 
     // POST /api/ai/draft-invitation
-    if (
-      (path === "/api/ai/draft-invitation" ||
-        path === "/api/ai/draft-invitation/") &&
-      req.method === "POST"
-    ) {
+    if (path === "/api/ai/draft-invitation" && req.method === "POST") {
       return handleDraftInvitation(req, res);
     }
 
     // Root endpoint
-    if (path === "/api" || path === "/api/") {
+    if (path === "/api") {
       return res.status(200).json({
         message: "Shared Calendar API",
         version: "1.0.0",
@@ -2145,7 +2178,8 @@ export default async function handler(
     }
 
     // 404
-    return res.status(404).json({ error: "Not found", path });
+    console.log(`[API] 404 Not Found: ${path}`);
+    return res.status(404).json({ error: "Not found", path, rawUrl: req.url });
   } catch (error) {
     console.error("API Error:", error);
     return res.status(500).json({

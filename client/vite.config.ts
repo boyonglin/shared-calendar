@@ -48,7 +48,33 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
-            // Only cache external API calls, not our own /api routes
+            // Internal API routes - always go to network
+            urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
+            handler: "NetworkOnly",
+            method: "GET",
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
+            handler: "NetworkOnly",
+            method: "POST",
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
+            handler: "NetworkOnly",
+            method: "PUT",
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
+            handler: "NetworkOnly",
+            method: "DELETE",
+          },
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
+            handler: "NetworkOnly",
+            method: "PATCH",
+          },
+          {
+            // External API calls
             urlPattern: /^https:\/\/api\..*/i,
             handler: "NetworkFirst",
             options: {
