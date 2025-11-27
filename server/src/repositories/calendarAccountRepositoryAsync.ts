@@ -51,7 +51,7 @@ export const calendarAccountRepositoryAsync = {
       sql: "SELECT * FROM calendar_accounts WHERE user_id = ?",
       args: [userId],
     });
-    return result.rows[0] as CalendarAccount | undefined;
+    return result.rows[0] as unknown as CalendarAccount | undefined;
   },
 
   async findByUserIdAndProvider(
@@ -63,7 +63,7 @@ export const calendarAccountRepositoryAsync = {
       sql: "SELECT * FROM calendar_accounts WHERE user_id = ? AND provider = ?",
       args: [userId, provider],
     });
-    return result.rows[0] as CalendarAccount | undefined;
+    return result.rows[0] as unknown as CalendarAccount | undefined;
   },
 
   async findByPrimaryUserId(primaryUserId: string): Promise<CalendarAccount[]> {
@@ -72,7 +72,7 @@ export const calendarAccountRepositoryAsync = {
       sql: "SELECT * FROM calendar_accounts WHERE user_id = ? OR primary_user_id = ?",
       args: [primaryUserId, primaryUserId],
     });
-    return result.rows as CalendarAccount[];
+    return result.rows as unknown as CalendarAccount[];
   },
 
   async findByExternalEmail(email: string): Promise<CalendarAccount | undefined> {
@@ -81,7 +81,7 @@ export const calendarAccountRepositoryAsync = {
       sql: "SELECT * FROM calendar_accounts WHERE external_email = ?",
       args: [email],
     });
-    return result.rows[0] as CalendarAccount | undefined;
+    return result.rows[0] as unknown as CalendarAccount | undefined;
   },
 
   async findByProviderAndPrimaryUser(
@@ -93,7 +93,7 @@ export const calendarAccountRepositoryAsync = {
       sql: "SELECT * FROM calendar_accounts WHERE provider = ? AND primary_user_id = ?",
       args: [provider, primaryUserId],
     });
-    return result.rows[0] as CalendarAccount | undefined;
+    return result.rows[0] as unknown as CalendarAccount | undefined;
   },
 
   async upsertGoogleAccount(params: CreateGoogleAccountParams): Promise<void> {
@@ -193,7 +193,7 @@ export const calendarAccountRepositoryAsync = {
             WHERE (user_id = ? OR primary_user_id = ?) AND external_email IS NOT NULL`,
       args: [primaryUserId, primaryUserId],
     });
-    return (result.rows as { external_email: string }[])
+    return (result.rows as unknown as { external_email: string }[])
       .map((r) => r.external_email?.toLowerCase().trim())
       .filter((email): email is string => !!email);
   },

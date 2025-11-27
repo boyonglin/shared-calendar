@@ -5,7 +5,8 @@
  * All API routes are handled by this single serverless function.
  */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import app from "../server/src/vercel-app";
+// @ts-ignore - Vercel resolves this at runtime
+import app from "../server/src/vercel-app.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Forward the request to Express
