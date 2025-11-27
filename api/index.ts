@@ -922,7 +922,9 @@ async function handleSyncPending(
 }
 
 function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // Use the same comprehensive regex as server/src/middleware/validation.ts
+  const emailRegex =
+    /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
   return emailRegex.test(email);
 }
 
@@ -955,9 +957,9 @@ async function handleAddFriend(
     args: [user.userId, user.userId],
   });
 
-  const userEmails = userAccountResult.rows.map((row) =>
-    (row.external_email as string)?.toLowerCase(),
-  );
+  const userEmails = userAccountResult.rows
+    .map((row) => (row.external_email as string)?.toLowerCase())
+    .filter((email): email is string => !!email);
 
   if (userEmails.includes(normalizedEmail)) {
     return res
