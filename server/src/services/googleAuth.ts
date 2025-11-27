@@ -1,16 +1,14 @@
 import { google } from "googleapis";
-import { db } from "../db";
+import {
+  calendarAccountRepository,
+  type CalendarAccount,
+} from "../repositories/calendarAccountRepository";
 import { userConnectionRepository } from "../repositories/userConnectionRepository";
+import { env } from "../config/env";
 
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const REDIRECT_URI =
-  process.env.GOOGLE_REDIRECT_URI ||
-  "http://localhost:3001/api/auth/google/callback";
-
-if (!CLIENT_ID || !CLIENT_SECRET) {
-  console.warn("Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET");
-}
+const CLIENT_ID = env.GOOGLE_CLIENT_ID;
+const CLIENT_SECRET = env.GOOGLE_CLIENT_SECRET;
+const REDIRECT_URI = env.GOOGLE_REDIRECT_URI;
 
 const oauth2Client = new google.auth.OAuth2(
   CLIENT_ID,
@@ -25,18 +23,19 @@ function createOAuth2ClientForUser(
   const client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
   client.setCredentials(credentials);
 
-  client.on("tokens", (tokens) => {
+  client.on("tokens", async (tokens) => {
+    // Update tokens asynchronously
     if (tokens.access_token) {
-      const updateStmt = db.prepare(
-        "UPDATE calendar_accounts SET access_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+      await calendarAccountRepository.updateAccessToken(
+        userId,
+        tokens.access_token,
       );
-      updateStmt.run(tokens.access_token, userId);
     }
     if (tokens.refresh_token) {
-      const updateStmt = db.prepare(
-        "UPDATE calendar_accounts SET refresh_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+      await calendarAccountRepository.updateRefreshToken(
+        userId,
+        tokens.refresh_token,
       );
-      updateStmt.run(tokens.refresh_token, userId);
     }
   });
 
@@ -71,19 +70,7 @@ export const googleAuthService = {
       throw new Error("Failed to get user info");
     }
 
-    // Store or update account in DB
-    const stmt = db.prepare(`
-      INSERT INTO calendar_accounts (
-        user_id, provider, external_email, access_token, refresh_token, metadata, updated_at
-      ) VALUES (?, 'google', ?, ?, ?, ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(user_id) DO UPDATE SET
-        access_token = excluded.access_token,
-        refresh_token = COALESCE(excluded.refresh_token, calendar_accounts.refresh_token),
-        updated_at = CURRENT_TIMESTAMP
-    `);
-
     // For now, we'll use the Google ID as the user_id since we don't have a separate user system yet
-    // In a real app, we'd map this to an internal user ID
     const userId = userInfo.id;
 
     const metadata = JSON.stringify({
@@ -91,66 +78,53 @@ export const googleAuthService = {
       picture: userInfo.picture,
     });
 
-    // Note: tokens.refresh_token might be undefined if the user has already authorized the app
-    // and we didn't force consent. But we are forcing consent above.
-    // If it's still missing, we should probably keep the old one (handled by COALESCE above)
-
-    stmt.run(
+    // Store or update account in DB using async repository
+    await calendarAccountRepository.upsertGoogleAccount({
       userId,
-      userInfo.email,
-      tokens.access_token,
-      tokens.refresh_token || null,
-      // Schema allows NULL (required for iCloud), but we prefer having one for Google.
-      // We force 'prompt: consent' to try and get one.
+      email: userInfo.email,
+      accessToken: tokens.access_token!,
+      refreshToken: tokens.refresh_token || null,
       metadata,
-    );
+    });
 
     // Process any pending friend requests that were sent to this user before they registered
     const normalizedEmail = userInfo.email.toLowerCase();
     const pendingRequests =
-      userConnectionRepository.findPendingRequestsByFriendEmail(
+      await userConnectionRepository.findPendingRequestsByFriendEmail(
         normalizedEmail,
       );
 
-    // Wrap all pending request updates in a single atomic transaction
-    if (pendingRequests.length > 0) {
-      userConnectionRepository.transaction(() => {
-        for (const request of pendingRequests) {
-          // Update the requester's connection to 'requested' status with the new user's ID
-          userConnectionRepository.updateFriendUserIdAndStatus(
-            request.id,
+    // Process pending requests
+    for (const request of pendingRequests) {
+      // Update the requester's connection to 'requested' status with the new user's ID
+      await userConnectionRepository.updateFriendUserIdAndStatus(
+        request.id,
+        userId,
+        "requested",
+      );
+
+      // Get the requester's account to find their email
+      const requesterAccount =
+        await calendarAccountRepository.findByUserId(request.user_id);
+
+      if (requesterAccount?.external_email) {
+        // Check if the new user already has a connection for the requester
+        const existingIncoming =
+          await userConnectionRepository.findByUserIdAndFriendEmail(
             userId,
-            "requested",
+            requesterAccount.external_email.toLowerCase(),
           );
 
-          // Get the requester's email from their calendar account
-          const requesterStmt = db.prepare(
-            "SELECT external_email FROM calendar_accounts WHERE user_id = ?",
+        if (!existingIncoming) {
+          // Create the incoming request for the new user
+          await userConnectionRepository.createOrIgnore(
+            userId,
+            requesterAccount.external_email.toLowerCase(),
+            request.user_id,
+            "incoming",
           );
-          const requesterAccount = requesterStmt.get(request.user_id) as
-            | { external_email: string }
-            | undefined;
-
-          if (requesterAccount?.external_email) {
-            // Check if the new user already has a connection for the requester
-            const existingIncoming =
-              userConnectionRepository.findByUserIdAndFriendEmail(
-                userId,
-                requesterAccount.external_email.toLowerCase(),
-              );
-
-            if (!existingIncoming) {
-              // Create the incoming request for the new user
-              userConnectionRepository.createOrIgnore(
-                userId,
-                requesterAccount.external_email.toLowerCase(),
-                request.user_id,
-                "incoming",
-              );
-            }
-          }
         }
-      });
+      }
     }
 
     return {
@@ -164,18 +138,11 @@ export const googleAuthService = {
     };
   },
 
-  getUser: (userId: string) => {
-    const stmt = db.prepare(
-      "SELECT * FROM calendar_accounts WHERE user_id = ? AND provider = 'google'",
+  getUser: async (userId: string) => {
+    const account = await calendarAccountRepository.findByUserIdAndProvider(
+      userId,
+      "google",
     );
-    const account = stmt.get(userId) as
-      | {
-          user_id: string;
-          metadata?: string;
-          external_email?: string;
-          access_token: string;
-        }
-      | undefined;
 
     if (!account) return null;
 
@@ -193,12 +160,7 @@ export const googleAuthService = {
   },
 
   getCalendarEvents: async (userId: string, timeMin?: Date, timeMax?: Date) => {
-    const stmt = db.prepare(
-      "SELECT * FROM calendar_accounts WHERE user_id = ?",
-    );
-    const account = stmt.get(userId) as
-      | { user_id: string; access_token: string; refresh_token?: string }
-      | undefined;
+    const account = await calendarAccountRepository.findByUserId(userId);
 
     if (!account) {
       console.error(`User not found in DB for userId: ${userId}`);
@@ -206,8 +168,8 @@ export const googleAuthService = {
     }
 
     const userClient = createOAuth2ClientForUser(userId, {
-      access_token: account.access_token,
-      refresh_token: account.refresh_token,
+      access_token: account.access_token!,
+      refresh_token: account.refresh_token || undefined,
     });
 
     const calendar = google.calendar({ version: "v3", auth: userClient });
@@ -238,15 +200,10 @@ export const googleAuthService = {
       end: { dateTime?: string; date?: string };
       attendees?: { email: string }[];
     },
-    account?: { access_token: string; refresh_token?: string },
+    account?: CalendarAccount,
   ) => {
     if (!account) {
-      const stmt = db.prepare(
-        "SELECT * FROM calendar_accounts WHERE user_id = ?",
-      );
-      const dbAccount = stmt.get(userId) as
-        | { user_id: string; access_token: string; refresh_token?: string }
-        | undefined;
+      const dbAccount = await calendarAccountRepository.findByUserId(userId);
 
       if (!dbAccount) {
         throw new Error("User not found");
@@ -255,8 +212,8 @@ export const googleAuthService = {
     }
 
     const userClient = createOAuth2ClientForUser(userId, {
-      access_token: account.access_token,
-      refresh_token: account.refresh_token,
+      access_token: account.access_token!,
+      refresh_token: account.refresh_token || undefined,
     });
 
     const calendar = google.calendar({ version: "v3", auth: userClient });

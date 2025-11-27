@@ -5,7 +5,6 @@
  * It removes the server.listen() call and exports the app for use as a serverless function.
  *
  * NOTE: This version uses Turso (async) for database operations.
- * Routes that require database access must use async repositories.
  */
 import "dotenv/config";
 import express from "express";
@@ -14,7 +13,7 @@ import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
-import { calendarAccountRepositoryAsync } from "./repositories/calendarAccountRepositoryAsync";
+import { calendarAccountRepository } from "./repositories/calendarAccountRepository";
 import { RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX_REQUESTS } from "./constants";
 
 const app = express();
@@ -66,7 +65,7 @@ app.use(express.json({ limit: "10kb" }));
 // Health check - This is the primary endpoint for verifying the API works
 app.get("/api/health", async (_req: Request, res: Response) => {
   try {
-    const dbHealthy = await calendarAccountRepositoryAsync.healthCheck();
+    const dbHealthy = await calendarAccountRepository.healthCheck();
     const status = dbHealthy ? "ok" : "degraded";
     const statusCode = dbHealthy ? 200 : 503;
 
