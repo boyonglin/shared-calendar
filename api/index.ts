@@ -10,6 +10,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { DAVClient } from "tsdav";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import * as ical from "node-ical";
 
 // =============================================================================
 // Environment Variables
@@ -210,8 +211,19 @@ function encrypt(text: string): string {
   return iv.toString("hex") + ":" + encrypted.toString("hex");
 }
 
-// Note: decrypt function will be needed when iCloud calendar event fetching is implemented.
-// See server/src/services/icloudAuth.ts for reference implementation.
+function decrypt(text: string): string {
+  const textParts = text.split(":");
+  const iv = Buffer.from(textParts.shift()!, "hex");
+  const encryptedText = Buffer.from(textParts.join(":"), "hex");
+  const decipher = crypto.createDecipheriv(
+    "aes-256-cbc",
+    getEncryptionKey(),
+    iv,
+  );
+  let decrypted = decipher.update(encryptedText);
+  decrypted = Buffer.concat([decrypted, decipher.final()]);
+  return decrypted.toString();
+}
 
 // =============================================================================
 // AI Helpers
@@ -598,6 +610,73 @@ async function handleGetAllEvents(
       } catch (err) {
         console.error(
           `Error fetching Outlook events for ${account.user_id}:`,
+          err,
+        );
+      }
+    }
+
+    // Fetch iCloud events via CalDAV
+    if (account.provider === "icloud" && account.encrypted_password) {
+      try {
+        // Decrypt the stored password
+        const password = decrypt(account.encrypted_password as string);
+
+        // Create CalDAV client
+        const davClient = new DAVClient({
+          serverUrl: "https://caldav.icloud.com",
+          credentials: {
+            username: account.external_email as string,
+            password: password,
+          },
+          authMethod: "Basic",
+          defaultAccountType: "caldav",
+        });
+
+        await davClient.login();
+        const calendars = await davClient.fetchCalendars();
+
+        for (const calendar of calendars) {
+          const objects = await davClient.fetchCalendarObjects({ calendar });
+
+          for (const obj of objects) {
+            if (obj.data) {
+              const parsed = ical.parseICS(obj.data);
+
+              for (const key in parsed) {
+                const event = parsed[key];
+                if (event.type === "VEVENT") {
+                  const startDate = event.start;
+                  const endDate = event.end;
+
+                  // Filter to only events within the time range
+                  if (
+                    startDate &&
+                    startDate >= timeMin &&
+                    startDate <= timeMax
+                  ) {
+                    allEvents.push({
+                      id: event.uid || key,
+                      summary: event.summary || "Untitled Event",
+                      start: { dateTime: startDate.toISOString() },
+                      end: {
+                        dateTime: endDate
+                          ? endDate.toISOString()
+                          : startDate.toISOString(),
+                      },
+                      calendarId: calendar.url,
+                      accountType: "icloud",
+                      accountEmail: account.external_email,
+                      userId: account.user_id,
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error(
+          `Error fetching iCloud events for ${account.user_id}:`,
           err,
         );
       }
@@ -1628,6 +1707,74 @@ async function handleGetFriendEvents(
       } catch (err) {
         console.error(
           `Error fetching Outlook events for friend ${friendUserId}:`,
+          err,
+        );
+      }
+    }
+
+    // Fetch iCloud events via CalDAV
+    if (account.provider === "icloud" && account.encrypted_password) {
+      try {
+        // Decrypt the stored password
+        const password = decrypt(account.encrypted_password as string);
+
+        // Create CalDAV client
+        const davClient = new DAVClient({
+          serverUrl: "https://caldav.icloud.com",
+          credentials: {
+            username: account.external_email as string,
+            password: password,
+          },
+          authMethod: "Basic",
+          defaultAccountType: "caldav",
+        });
+
+        await davClient.login();
+        const calendars = await davClient.fetchCalendars();
+
+        for (const calendar of calendars) {
+          const objects = await davClient.fetchCalendarObjects({ calendar });
+
+          for (const obj of objects) {
+            if (obj.data) {
+              const parsed = ical.parseICS(obj.data);
+
+              for (const key in parsed) {
+                const event = parsed[key];
+                if (event.type === "VEVENT") {
+                  const startDate = event.start;
+                  const endDate = event.end;
+
+                  // Filter to only events within the time range
+                  if (
+                    startDate &&
+                    startDate >= timeMin &&
+                    startDate <= timeMax
+                  ) {
+                    allEvents.push({
+                      id: event.uid || key,
+                      summary: event.summary || "Untitled Event",
+                      start: { dateTime: startDate.toISOString() },
+                      end: {
+                        dateTime: endDate
+                          ? endDate.toISOString()
+                          : startDate.toISOString(),
+                      },
+                      calendarId: calendar.url,
+                      accountType: "icloud",
+                      accountEmail: account.external_email,
+                      userId: account.user_id,
+                      friendConnectionId: friendId,
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error(
+          `Error fetching iCloud events for friend ${friendUserId}:`,
           err,
         );
       }
