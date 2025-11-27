@@ -12,6 +12,7 @@
     "@vercel/node": "^5.1.8",
     "googleapis": "^146.0.0",
     "jsonwebtoken": "^9.0.2",
+    "node-ical": "^0.20.1",
     "tsdav": "^2.1.6"
   },
   "devDependencies": {
