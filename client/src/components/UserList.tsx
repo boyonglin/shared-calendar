@@ -45,10 +45,13 @@ export function UserList({
                       : "h-2 w-2"
                   } rounded-full bg-orange-400`}
                 >
-                  {incomingRequestCount > 9 && incomingRequestCount}
-                  <span className="sr-only">
-                    {incomingRequestCount} pending friend requests
-                  </span>
+                  {incomingRequestCount > 9 ? (
+                    incomingRequestCount
+                  ) : (
+                    <span className="sr-only">
+                      {incomingRequestCount} pending friend requests
+                    </span>
+                  )}
                 </span>
               )}
             </Button>

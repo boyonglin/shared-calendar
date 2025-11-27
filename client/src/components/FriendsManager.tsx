@@ -56,13 +56,14 @@ function UserAvatar({
   email: string;
   color?: string;
 }) {
-  const displayName = name || email;
-  const initials = displayName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  const initials = name
+    ? name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : email.slice(0, 2).toUpperCase();
 
   return (
     <div
