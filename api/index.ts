@@ -18,6 +18,11 @@ const JWT_SECRET = process.env.JWT_SECRET || "default-secret-change-me";
 const CLIENT_URL =
   process.env.CLIENT_URL || "https://shared-calendar-vibe.vercel.app";
 
+// OneCal Configuration (for Outlook Calendar integration)
+const ONECAL_APP_ID = process.env.ONECAL_APP_ID;
+const ONECAL_API_KEY = process.env.ONECAL_API_KEY;
+const ONECAL_API_BASE = "https://api.onecalunified.com/api/v1";
+
 // =============================================================================
 // Database
 // =============================================================================
@@ -540,6 +545,158 @@ async function handleRemoveOutlook(
 }
 
 // =============================================================================
+// Outlook OAuth Handlers (via OneCal)
+// =============================================================================
+
+interface OnecalEndUserAccount {
+  id: string;
+  email: string;
+  providerType: "MICROSOFT" | "GOOGLE";
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+async function handleOutlookAuth(
+  req: VercelRequest,
+  res: VercelResponse,
+): Promise<VercelResponse | void> {
+  const user = verifyToken(req);
+  if (!user) {
+    return res
+      .status(401)
+      .json({ error: "Unauthorized - please sign in first" });
+  }
+
+  if (!ONECAL_APP_ID) {
+    return res.status(500).json({ error: "ONECAL_APP_ID is not configured" });
+  }
+
+  // Generate a signed JWT state token that contains the user ID
+  const stateToken = jwt.sign({ userId: user.userId }, JWT_SECRET, {
+    expiresIn: "10m",
+  });
+
+  // Store the signed state token in a secure cookie
+  res.setHeader(
+    "Set-Cookie",
+    `outlook_auth_state=${stateToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`,
+  );
+
+  const url = `${ONECAL_API_BASE}/oauth/authorize/${ONECAL_APP_ID}/microsoft`;
+  return res.redirect(url);
+}
+
+async function handleOutlookCallback(
+  req: VercelRequest,
+  res: VercelResponse,
+): Promise<VercelResponse> {
+  const { endUserAccountId } = req.query;
+
+  // Get state token from cookie
+  const cookieHeader = req.headers.cookie || "";
+  const stateMatch = cookieHeader.match(/outlook_auth_state=([^;]+)/);
+  const stateToken = stateMatch?.[1];
+
+  // Clear the temporary cookie
+  res.setHeader(
+    "Set-Cookie",
+    "outlook_auth_state=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0",
+  );
+
+  if (!endUserAccountId || typeof endUserAccountId !== "string") {
+    return res.redirect(
+      `${CLIENT_URL}?auth=error&message=missing_endUserAccountId`,
+    );
+  }
+
+  // Validate the signed state token and extract the user ID
+  let primaryUserId: string | undefined;
+  if (stateToken) {
+    try {
+      const payload = jwt.verify(stateToken, JWT_SECRET) as { userId: string };
+      primaryUserId = payload.userId;
+    } catch (err) {
+      console.error("JWT verification failed:", err);
+    }
+  }
+
+  if (!primaryUserId) {
+    return res.redirect(
+      `${CLIENT_URL}?auth=error&message=invalid_or_expired_state`,
+    );
+  }
+
+  if (!ONECAL_API_KEY) {
+    return res.redirect(
+      `${CLIENT_URL}?auth=error&message=onecal_not_configured`,
+    );
+  }
+
+  try {
+    // Fetch account info from OneCal
+    const response = await fetch(
+      `${ONECAL_API_BASE}/endUserAccounts/${endUserAccountId}`,
+      {
+        headers: { "x-api-key": ONECAL_API_KEY },
+      },
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("Failed to fetch OneCal account:", error);
+      return res.redirect(
+        `${CLIENT_URL}?auth=error&message=onecal_fetch_failed`,
+      );
+    }
+
+    const account = (await response.json()) as OnecalEndUserAccount;
+
+    const metadata = JSON.stringify({
+      name: account.email,
+      providerType: account.providerType,
+      status: account.status,
+    });
+
+    // Store the Outlook account in database
+    const client = getTursoClient();
+    await client.execute({
+      sql: `INSERT INTO calendar_accounts (
+        user_id, provider, external_email, access_token, metadata, primary_user_id, updated_at
+      ) VALUES (?, 'outlook', ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id) DO UPDATE SET
+        access_token = excluded.access_token,
+        metadata = excluded.metadata,
+        updated_at = CURRENT_TIMESTAMP`,
+      args: [
+        endUserAccountId,
+        account.email,
+        endUserAccountId, // Store endUserAccountId as access_token for OneCal API calls
+        metadata,
+        primaryUserId,
+      ],
+    });
+
+    // Create auth code for client
+    const authCode = createAuthCode({
+      userId: endUserAccountId,
+      email: account.email,
+      provider: "outlook",
+    });
+
+    return res.redirect(
+      `${CLIENT_URL}?auth=success&provider=outlook&code=${authCode}`,
+    );
+  } catch (error) {
+    console.error("Outlook callback error:", error);
+    const message = error instanceof Error ? error.message : "unknown_error";
+    return res.redirect(
+      `${CLIENT_URL}?auth=error&message=${encodeURIComponent(message)}`,
+    );
+  }
+}
+
+// =============================================================================
 // Main Handler
 // =============================================================================
 export default async function handler(
@@ -589,6 +746,16 @@ export default async function handler(
     }
     if (path === "/api/auth/exchange" || path === "/api/auth/exchange/") {
       return handleAuthExchange(req, res);
+    }
+    // Outlook OAuth routes
+    if (path === "/api/auth/outlook" || path === "/api/auth/outlook/") {
+      return handleOutlookAuth(req, res);
+    }
+    if (
+      path === "/api/auth/outlook/callback" ||
+      path === "/api/auth/outlook/callback/"
+    ) {
+      return handleOutlookCallback(req, res);
     }
 
     // ===================
@@ -661,6 +828,8 @@ export default async function handler(
           "GET /api/health",
           "GET /api/auth/google",
           "GET /api/auth/google/callback",
+          "GET /api/auth/outlook",
+          "GET /api/auth/outlook/callback",
           "POST /api/auth/exchange",
           "GET /api/users/:id",
           "GET /api/calendar/all-events/:userId",
