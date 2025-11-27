@@ -49,7 +49,7 @@ interface OnecalEvent {
   };
 }
 
-interface CalendarAccount {
+interface _CalendarAccount {
   user_id: string;
   provider: string;
   access_token: string;

@@ -133,7 +133,7 @@ export const icloudAuthService = {
     const client = new DAVClient({
       serverUrl: "https://caldav.icloud.com",
       credentials: {
-        username: account.external_email,
+        username: account.external_email ?? undefined,
         password: password,
       },
       authMethod: "Basic",
