@@ -36,5 +36,9 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "prettier": "^3.6.2"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "googleapis": "^166.0.0",
+    "jsonwebtoken": "^9.0.2"
+  }
 }
