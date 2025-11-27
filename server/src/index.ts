@@ -1,4 +1,6 @@
-// Note: dotenv is loaded in ./config/env.ts before validation
+// IMPORTANT: Import env first to ensure dotenv is loaded before any other modules
+// that read process.env at module level (e.g., googleAuth.ts)
+import { env } from "./config/env";
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import cors from "cors";
@@ -7,7 +9,6 @@ import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
 import authRoutes from "./routes/auth";
 import apiRoutes from "./routes/index";
-import { env } from "./config/env";
 import logger from "./utils/logger";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { calendarAccountRepository } from "./repositories";
@@ -17,7 +18,15 @@ import {
   RATE_LIMIT_AUTH_MAX_REQUESTS,
   GRACEFUL_SHUTDOWN_TIMEOUT_MS,
 } from "./constants";
-import "./db"; // Initialize database
+import { getDb } from "./db"; // Initialize database on startup
+
+// Initialize database connection
+getDb().then(() => {
+  logger.info("Database connection established");
+}).catch((err) => {
+  logger.error({ err }, "Failed to initialize database");
+  process.exit(1);
+});
 
 const app = express();
 const PORT = env.PORT;
@@ -79,8 +88,8 @@ app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api", apiRoutes);
 
 // Health check (excluded from rate limiting for monitoring)
-app.get("/api/health", (_req, res) => {
-  const dbHealthy = calendarAccountRepository.healthCheck();
+app.get("/api/health", async (_req, res) => {
+  const dbHealthy = await calendarAccountRepository.healthCheck();
   const status = dbHealthy ? "ok" : "degraded";
   const statusCode = dbHealthy ? 200 : 503;
 
