@@ -29,11 +29,6 @@ export interface CalendarEvent {
   provider?: CalendarProvider;
   /** For friend events, the connection ID */
   friendConnectionId?: number;
-  /**
-   * Original timezone of the event (IANA format, e.g., "America/New_York")
-   * Used for cross-timezone event display
-   */
-  originalTimezone?: string;
 }
 
 export interface TimeSlot {

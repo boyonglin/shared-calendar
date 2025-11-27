@@ -20,14 +20,6 @@ export function getUserTimezone(): string {
 }
 
 /**
- * Get the timezone offset in minutes for the user's local timezone
- * @returns Offset in minutes (negative for west of UTC, positive for east)
- */
-export function getTimezoneOffset(): number {
-  return new Date().getTimezoneOffset();
-}
-
-/**
  * Parse a date string and ensure it's interpreted in the viewer's local timezone
  *
  * ISO 8601 date strings like "2024-11-26T14:00:00-05:00" (EST) or

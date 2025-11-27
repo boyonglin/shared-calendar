@@ -44,6 +44,37 @@ const FRIEND_COLORS = [
   "#a855f7",
 ];
 
+/**
+ * Reusable avatar component for displaying user initials
+ */
+function UserAvatar({
+  name,
+  email,
+  color,
+}: {
+  name?: string | null;
+  email: string;
+  color?: string;
+}) {
+  const initials = name
+    ? name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : email.slice(0, 2).toUpperCase();
+
+  return (
+    <div
+      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium text-sm"
+      style={{ backgroundColor: color || "#3b82f6" }}
+    >
+      {initials}
+    </div>
+  );
+}
+
 interface FriendsManagerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -267,7 +298,14 @@ export function FriendsManager({
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="friends">My Friends</TabsTrigger>
             <TabsTrigger value="add">Add Friend</TabsTrigger>
-            <TabsTrigger value="requests">Requests</TabsTrigger>
+            <TabsTrigger value="requests">
+              Requests
+              {incomingRequests.length > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {incomingRequests.length}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           {/* Messages - shown on all tabs */}
@@ -320,17 +358,11 @@ export function FriendsManager({
                         className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50"
                       >
                         <div className="flex items-center gap-3">
-                          <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium text-sm"
-                            style={{ backgroundColor: friend.friendColor }}
-                          >
-                            {(friend.friendName || friend.friendEmail)
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .toUpperCase()
-                              .slice(0, 2)}
-                          </div>
+                          <UserAvatar
+                            name={friend.friendName}
+                            email={friend.friendEmail}
+                            color={friend.friendColor}
+                          />
                           <div>
                             <div className="text-sm font-medium text-gray-900">
                               {friend.friendName || friend.friendEmail}
@@ -437,14 +469,10 @@ export function FriendsManager({
                       className="flex items-center justify-between p-3 rounded-lg border"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-medium text-sm">
-                          {(request.friendName || request.friendEmail)
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .toUpperCase()
-                            .slice(0, 2)}
-                        </div>
+                        <UserAvatar
+                          name={request.friendName}
+                          email={request.friendEmail}
+                        />
                         <div>
                           <div className="text-sm font-medium text-gray-900">
                             {request.friendName || request.friendEmail}

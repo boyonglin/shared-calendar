@@ -50,9 +50,9 @@ export function useAppState({
     return initialSelectedUsers;
   });
 
-  // Track user IDs that have been auto-added (to avoid re-adding after manual removal)
-  const [autoAddedUsers, setAutoAddedUsers] = useState<Set<string>>(
-    () => new Set(currentUser ? [currentUser.id] : []),
+  // Track user IDs that have been manually removed (to prevent re-adding automatically)
+  const [manuallyRemovedUsers, setManuallyRemovedUsers] = useState<Set<string>>(
+    new Set(),
   );
 
   // Modal states consolidated into a single object
@@ -73,23 +73,23 @@ export function useAppState({
       return selectedUsers;
     }
 
-    // If this user was previously auto-added and then manually removed, don't re-add
-    if (autoAddedUsers.has(currentUser.id)) {
+    // If this user was manually removed, don't re-add
+    if (manuallyRemovedUsers.has(currentUser.id)) {
       return selectedUsers;
     }
 
-    // Auto-add new current user - need to update autoAddedUsers state
+    // Auto-add new current user
     return [...selectedUsers, currentUser.id];
-  }, [currentUser, selectedUsers, autoAddedUsers]);
+  }, [currentUser, selectedUsers, manuallyRemovedUsers]);
 
   /**
    * Toggle a user's selection in the calendar view
    */
   const toggleUser = useCallback(
     (userId: string) => {
-      // If this is the current user being toggled, mark as auto-added so we don't re-add
-      if (currentUser?.id === userId) {
-        setAutoAddedUsers((prev) => new Set(prev).add(userId));
+      // If this is the current user being removed, mark as manually removed so we don't re-add
+      if (currentUser?.id === userId && selectedUsers.includes(userId)) {
+        setManuallyRemovedUsers((prev) => new Set(prev).add(userId));
       }
       setSelectedUsers((prev) =>
         prev.includes(userId)
@@ -97,7 +97,7 @@ export function useAppState({
           : [...prev, userId],
       );
     },
-    [currentUser?.id],
+    [currentUser?.id, selectedUsers],
   );
 
   /**

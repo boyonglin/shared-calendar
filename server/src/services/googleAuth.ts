@@ -112,23 +112,17 @@ export const googleAuthService = {
         normalizedEmail,
       );
 
-    for (const request of pendingRequests) {
+    // Wrap all pending request updates in a single atomic transaction
+    if (pendingRequests.length > 0) {
       userConnectionRepository.transaction(() => {
-        // Update the requester's connection to 'requested' status with the new user's ID
-        userConnectionRepository.updateFriendUserIdAndStatus(
-          request.id,
-          userId,
-          "requested",
-        );
-
-        // Create the incoming request for the new user
-        const existingIncoming =
-          userConnectionRepository.findByUserIdAndFriendEmail(
+        for (const request of pendingRequests) {
+          // Update the requester's connection to 'requested' status with the new user's ID
+          userConnectionRepository.updateFriendUserIdAndStatus(
+            request.id,
             userId,
-            request.friend_email, // The requester's email - need to get it from calendar_accounts
+            "requested",
           );
 
-        if (!existingIncoming) {
           // Get the requester's email from their calendar account
           const requesterStmt = db.prepare(
             "SELECT external_email FROM calendar_accounts WHERE user_id = ?",
@@ -138,12 +132,22 @@ export const googleAuthService = {
             | undefined;
 
           if (requesterAccount?.external_email) {
-            userConnectionRepository.createOrIgnore(
-              userId,
-              requesterAccount.external_email.toLowerCase(),
-              request.user_id,
-              "incoming",
-            );
+            // Check if the new user already has a connection for the requester
+            const existingIncoming =
+              userConnectionRepository.findByUserIdAndFriendEmail(
+                userId,
+                requesterAccount.external_email.toLowerCase(),
+              );
+
+            if (!existingIncoming) {
+              // Create the incoming request for the new user
+              userConnectionRepository.createOrIgnore(
+                userId,
+                requesterAccount.external_email.toLowerCase(),
+                request.user_id,
+                "incoming",
+              );
+            }
           }
         }
       });
