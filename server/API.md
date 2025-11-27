@@ -644,8 +644,8 @@ Health check endpoint (no rate limiting).
 
 | Endpoint Pattern   | Limit        | Window     |
 | ------------------ | ------------ | ---------- |
-| `/api/auth/*`      | 20 requests  | 15 minutes |
-| All other `/api/*` | 100 requests | 15 minutes |
+| `/api/auth/*`      | 20 requests  | 10 minutes |
+| All other `/api/*` | 100 requests | 10 minutes |
 
 Rate limit headers are included in responses:
 

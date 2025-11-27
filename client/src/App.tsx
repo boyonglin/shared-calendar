@@ -250,6 +250,7 @@ function AppContent({
         onClose={() => closeModal("friends")}
         onFriendsChange={refetchFriends}
         onIncomingRequestsChange={setIncomingRequestCount}
+        initialTab={incomingRequestCount > 0 ? "requests" : "friends"}
       />
 
       <Toaster />

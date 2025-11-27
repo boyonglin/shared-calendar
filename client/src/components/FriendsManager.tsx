@@ -4,10 +4,9 @@ import {
   Users,
   X,
   Loader2,
-  Check,
-  Clock,
   UserCheck,
   UserX,
+  Mail,
   Inbox,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   friendsApi,
   type FriendWithColor,
@@ -49,19 +49,25 @@ interface FriendsManagerProps {
   onClose: () => void;
   onFriendsChange?: () => void;
   onIncomingRequestsChange?: (count: number) => void;
+  initialTab?: TabValue;
 }
+
+type TabValue = "friends" | "add" | "requests";
 
 export function FriendsManager({
   isOpen,
   onClose,
   onFriendsChange,
   onIncomingRequestsChange,
+  initialTab = "friends",
 }: FriendsManagerProps) {
+  const [activeTab, setActiveTab] = useState<TabValue>(initialTab);
   const [friends, setFriends] = useState<FriendWithColor[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<IncomingRequest[]>(
     [],
   );
   const [newFriendEmail, setNewFriendEmail] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [processingRequestId, setProcessingRequestId] = useState<number | null>(
@@ -96,10 +102,11 @@ export function FriendsManager({
 
   useEffect(() => {
     if (isOpen) {
+      setActiveTab(initialTab);
       fetchFriends();
       fetchIncomingRequests();
     }
-  }, [isOpen, fetchFriends, fetchIncomingRequests]);
+  }, [isOpen, initialTab, fetchFriends, fetchIncomingRequests]);
 
   const handleAddFriend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -223,8 +230,21 @@ export function FriendsManager({
   const handleClose = () => {
     setSuccessMessage(null);
     setError(null);
+    setActiveTab("friends");
+    setSearchQuery("");
+    setNewFriendEmail("");
     onClose();
   };
+
+  // Filter friends based on search query
+  const filteredFriends = friends.filter((friend) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      friend.friendEmail.toLowerCase().includes(query) ||
+      (friend.friendName?.toLowerCase().includes(query) ?? false)
+    );
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -232,170 +252,235 @@ export function FriendsManager({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="w-5 h-5" />
-            Manage Friends
+            Friends & Connections
           </DialogTitle>
           <DialogDescription>
-            Add friends by email to see their calendar availability.
+            Manage who you share your calendar with.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Add Friend Form */}
-          <form onSubmit={handleAddFriend} className="flex gap-2">
-            <div className="relative flex-1">
-              <Input
-                type="email"
-                placeholder="Enter email address"
-                value={newFriendEmail}
-                onChange={(e) => setNewFriendEmail(e.target.value)}
-                disabled={isAdding}
-              />
-            </div>
-            <Button type="submit" disabled={isAdding || !newFriendEmail.trim()}>
-              {isAdding ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <UserPlus className="w-4 h-4" />
-              )}
-            </Button>
-          </form>
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as TabValue)}
+          className="w-full"
+        >
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="friends">My Friends</TabsTrigger>
+            <TabsTrigger value="add">Add Friend</TabsTrigger>
+            <TabsTrigger value="requests">Requests</TabsTrigger>
+          </TabsList>
 
-          {/* Messages */}
+          {/* Messages - shown on all tabs */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm">
+            <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm">
               {error}
             </div>
           )}
           {successMessage && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-md text-sm">
+            <div className="mt-4 bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-md text-sm">
               {successMessage}
             </div>
           )}
 
-          {/* Incoming Friend Requests */}
-          {incomingRequests.length > 0 && (
-            <div className="border rounded-lg border-orange-200 bg-orange-50/50">
-              <div className="px-3 py-2 bg-orange-100 border-b border-orange-200 text-sm font-medium text-orange-800 flex items-center gap-2">
-                <Inbox className="w-4 h-4" />
-                Friend Requests ({incomingRequests.length})
-              </div>
-              <div className="divide-y divide-orange-100">
-                {incomingRequests.map((request) => (
-                  <div
-                    key={request.id}
-                    className="flex items-center justify-between px-3 py-2"
-                  >
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">
-                        {request.friendName || request.friendEmail}
-                      </div>
-                      {request.friendName &&
-                        request.friendName !== request.friendEmail && (
-                          <div className="text-xs text-gray-500">
-                            {request.friendEmail}
-                          </div>
-                        )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleAcceptRequest(request.id)}
-                        disabled={processingRequestId === request.id}
-                        className="h-7"
-                      >
-                        {processingRequestId === request.id ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <UserCheck className="w-3 h-3 mr-1" />
-                        )}
-                        Accept
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRejectRequest(request.id)}
-                        disabled={processingRequestId === request.id}
-                        className="h-7"
-                      >
-                        <UserX className="w-3 h-3 mr-1" />
-                        Reject
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* My Friends Tab */}
+          <TabsContent value="friends" className="mt-4">
+            <div className="space-y-4">
+              {/* Search Input */}
+              <Input
+                type="text"
+                placeholder="Search friends by name or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
 
-          {/* Friends List */}
-          <div className="border rounded-lg">
-            <div className="px-3 py-2 bg-gray-50 border-b text-sm font-medium text-gray-700">
-              Your Friends ({friends.length})
-            </div>
-            <ScrollArea className="h-[250px]">
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-                </div>
-              ) : friends.length === 0 ? (
-                <div className="py-8 text-center text-gray-500 text-sm">
-                  <Users className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                  No friends added yet.
-                  <br />
-                  Add friends to see their availability!
-                </div>
-              ) : (
-                <div className="divide-y">
-                  {friends.map((friend) => (
-                    <div
-                      key={friend.id}
-                      className="flex items-center justify-between px-3 py-2 hover:bg-gray-50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: friend.friendColor }}
-                        />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {friend.friendName || friend.friendEmail}
+              {/* Friends List */}
+              <ScrollArea className="h-[280px]">
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                  </div>
+                ) : filteredFriends.length === 0 ? (
+                  <div className="py-8 text-center text-gray-500 text-sm">
+                    <Users className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                    {searchQuery ? (
+                      <>No friends matching &quot;{searchQuery}&quot;</>
+                    ) : (
+                      <>
+                        No friends added yet.
+                        <br />
+                        Add friends to see their availability!
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredFriends.map((friend) => (
+                      <div
+                        key={friend.id}
+                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium text-sm"
+                            style={{ backgroundColor: friend.friendColor }}
+                          >
+                            {(friend.friendName || friend.friendEmail)
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")
+                              .toUpperCase()
+                              .slice(0, 2)}
                           </div>
-                          {friend.friendName && (
-                            <div className="text-xs text-gray-500">
-                              {friend.friendEmail}
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {friend.friendName || friend.friendEmail}
                             </div>
-                          )}
+                            {friend.friendName && (
+                              <div className="text-xs text-gray-500">
+                                {friend.friendEmail}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={
+                              friend.status === "accepted"
+                                ? "default"
+                                : "secondary"
+                            }
+                            className={`text-xs ${
+                              friend.status === "accepted"
+                                ? "bg-green-100 text-green-700 hover:bg-green-100"
+                                : friend.status === "requested"
+                                  ? "bg-orange-100 text-orange-700 hover:bg-orange-100"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-100"
+                            }`}
+                          >
+                            {friend.status === "accepted"
+                              ? "Connected"
+                              : friend.status === "requested"
+                                ? "Pending"
+                                : "Pending Signup"}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveFriend(friend.id)}
+                            className="h-7 w-7 p-0 text-gray-400 hover:text-red-500"
+                            aria-label="Remove friend"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant={
-                            friend.status === "accepted"
-                              ? "default"
-                              : "secondary"
-                          }
-                          className="text-xs"
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+          </TabsContent>
+
+          {/* Add Friend Tab */}
+          <TabsContent value="add" className="mt-4">
+            <div className="flex flex-col items-center py-6 space-y-4">
+              <UserPlus className="w-12 h-12 text-gray-400" />
+              <div className="text-center">
+                <h3 className="font-medium text-gray-900">Add a Friend</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Enter your friend&apos;s email address to send them an
+                  <br />
+                  invitation to share calendars.
+                </p>
+              </div>
+              <form onSubmit={handleAddFriend} className="w-full space-y-3">
+                <Input
+                  type="email"
+                  placeholder="friend@example.com"
+                  value={newFriendEmail}
+                  onChange={(e) => setNewFriendEmail(e.target.value)}
+                  disabled={isAdding}
+                  className="text-center"
+                />
+                <Button
+                  type="submit"
+                  disabled={isAdding || !newFriendEmail.trim()}
+                  className="w-full"
+                >
+                  {isAdding ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Mail className="w-4 h-4 mr-2" />
+                  )}
+                  Send Invitation
+                </Button>
+              </form>
+            </div>
+          </TabsContent>
+
+          {/* Requests Tab */}
+          <TabsContent value="requests" className="mt-4">
+            <ScrollArea className="h-[280px]">
+              {incomingRequests.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                  <Inbox className="w-12 h-12 text-gray-300 mb-3" />
+                  <p className="font-medium">No pending requests.</p>
+                  <p className="text-sm text-gray-400">
+                    Requests sent to you will appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {incomingRequests.map((request) => (
+                    <div
+                      key={request.id}
+                      className="flex items-center justify-between p-3 rounded-lg border"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-medium text-sm">
+                          {(request.friendName || request.friendEmail)
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()
+                            .slice(0, 2)}
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {request.friendName || request.friendEmail}
+                          </div>
+                          {request.friendName &&
+                            request.friendName !== request.friendEmail && (
+                              <div className="text-xs text-gray-500">
+                                {request.friendEmail}
+                              </div>
+                            )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAcceptRequest(request.id)}
+                          disabled={processingRequestId === request.id}
+                          className="h-8 w-8 p-0"
+                          aria-label="Accept request"
                         >
-                          {friend.status === "accepted" ? (
-                            <Check className="w-3 h-3 mr-1" />
+                          {processingRequestId === request.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
-                            <Clock className="w-3 h-3 mr-1" />
+                            <UserCheck className="w-4 h-4" />
                           )}
-                          {friend.status === "accepted"
-                            ? "Connected"
-                            : friend.status === "requested"
-                              ? "Request Sent"
-                              : "Pending Signup"}
-                        </Badge>
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleRemoveFriend(friend.id)}
-                          className="h-7 w-7 p-0 text-gray-400 hover:text-red-500"
-                          aria-label="Remove friend"
+                          onClick={() => handleRejectRequest(request.id)}
+                          disabled={processingRequestId === request.id}
+                          className="h-8 w-8 p-0 text-gray-400 hover:text-red-500"
+                          aria-label="Decline request"
                         >
-                          <X className="w-4 h-4" />
+                          <UserX className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
@@ -403,19 +488,8 @@ export function FriendsManager({
                 </div>
               )}
             </ScrollArea>
-          </div>
-
-          {/* Info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-blue-800 text-sm">
-              <strong>How it works:</strong>
-              <br />• Add a friend&apos;s email address to send a request
-              <br />• They&apos;ll need to accept your request to share
-              calendars
-              <br />• Once accepted, you can see each other&apos;s availability
-            </p>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

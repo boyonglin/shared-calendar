@@ -29,8 +29,8 @@ export const ONE_WEEK_MS = 7 * ONE_DAY_MS;
 // Rate Limiting
 // =============================================================================
 
-/** Rate limit window duration (15 minutes) */
-export const RATE_LIMIT_WINDOW_MS = 15 * ONE_MINUTE_MS;
+/** Rate limit window duration (10 minutes) */
+export const RATE_LIMIT_WINDOW_MS = 10 * ONE_MINUTE_MS;
 
 /** Maximum requests per IP in the rate limit window */
 export const RATE_LIMIT_MAX_REQUESTS = 100;
