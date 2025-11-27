@@ -6,12 +6,8 @@ import express from "express";
 import { googleAuthService } from "../services/googleAuth";
 import { icloudAuthService } from "../services/icloudAuth";
 import { onecalAuthService } from "../services/onecalAuth";
-import {
-  calendarAccountRepository,
-} from "../repositories/calendarAccountRepository";
-import {
-  userConnectionRepository,
-} from "../repositories/userConnectionRepository";
+import { calendarAccountRepository } from "../repositories/calendarAccountRepository";
+import { userConnectionRepository } from "../repositories/userConnectionRepository";
 import { isValidEmail } from "../middleware/validation";
 import { authenticateUser } from "../middleware/auth";
 import type { AuthRequest } from "../middleware/auth";
@@ -106,10 +102,11 @@ router.post(
       }
 
       // Check if connection already exists
-      const existing = await userConnectionRepository.findByUserIdAndFriendEmail(
-        userId,
-        normalizedEmail,
-      );
+      const existing =
+        await userConnectionRepository.findByUserIdAndFriendEmail(
+          userId,
+          normalizedEmail,
+        );
 
       if (existing) {
         const errorMessages: Record<string, string> = {
@@ -131,7 +128,8 @@ router.post(
       const friendUserId = friendAccount?.user_id || null;
 
       // Get current user's email for reverse connection
-      const primaryUserAccount = await calendarAccountRepository.findByUserId(userId);
+      const primaryUserAccount =
+        await calendarAccountRepository.findByUserId(userId);
 
       try {
         await userConnectionRepository.create(
@@ -169,10 +167,11 @@ router.post(
       }
 
       // Get the inserted connection
-      const connection = await userConnectionRepository.findByUserIdAndFriendEmail(
-        userId,
-        normalizedEmail,
-      );
+      const connection =
+        await userConnectionRepository.findByUserIdAndFriendEmail(
+          userId,
+          normalizedEmail,
+        );
 
       res.status(201).json({
         success: true,
@@ -210,7 +209,8 @@ router.get(
     try {
       const userId = req.user!.userId;
 
-      const connections = await userConnectionRepository.findAllByUserId(userId);
+      const connections =
+        await userConnectionRepository.findAllByUserId(userId);
 
       const friends = connections.map((conn) => ({
         id: conn.id,
@@ -249,9 +249,10 @@ router.post(
       let updatedCount = 0;
 
       for (const conn of pendingConnections) {
-        const friendAccount = await calendarAccountRepository.findByExternalEmail(
-          conn.friend_email,
-        );
+        const friendAccount =
+          await calendarAccountRepository.findByExternalEmail(
+            conn.friend_email,
+          );
 
         if (friendAccount) {
           // Update to 'requested' status
@@ -262,7 +263,8 @@ router.post(
           );
 
           // Create incoming request for friend
-          const currentUser = await calendarAccountRepository.findByUserId(userId);
+          const currentUser =
+            await calendarAccountRepository.findByUserId(userId);
 
           if (currentUser?.external_email) {
             const reverseExisting =
@@ -324,7 +326,8 @@ router.delete(
 
       // Remove reverse connection
       if (connection.friend_user_id) {
-        const userAccount = await calendarAccountRepository.findByUserId(userId);
+        const userAccount =
+          await calendarAccountRepository.findByUserId(userId);
 
         if (userAccount?.external_email) {
           await userConnectionRepository.deleteByUserIdAndFriendEmail(
@@ -352,7 +355,8 @@ router.get(
     try {
       const userId = req.user!.userId;
 
-      const connections = await userConnectionRepository.findIncomingRequests(userId);
+      const connections =
+        await userConnectionRepository.findIncomingRequests(userId);
 
       const requests = connections.map((conn) => ({
         id: conn.id,

@@ -104,8 +104,9 @@ export const googleAuthService = {
       );
 
       // Get the requester's account to find their email
-      const requesterAccount =
-        await calendarAccountRepository.findByUserId(request.user_id);
+      const requesterAccount = await calendarAccountRepository.findByUserId(
+        request.user_id,
+      );
 
       if (requesterAccount?.external_email) {
         // Check if the new user already has a connection for the requester

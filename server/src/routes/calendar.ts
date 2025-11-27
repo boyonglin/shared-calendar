@@ -191,7 +191,8 @@ router.get(
       const timeMax = timeMaxResult.date || undefined;
 
       // Check which provider this user is using
-      const account = await calendarAccountRepository.findByUserId(requestedUserId);
+      const account =
+        await calendarAccountRepository.findByUserId(requestedUserId);
 
       if (!account) {
         throw new NotFoundError("User not found");
@@ -298,10 +299,11 @@ router.get(
     try {
       const userId = (req as AuthRequest).user!.userId;
 
-      const account = await calendarAccountRepository.findByProviderAndPrimaryUser(
-        "icloud",
-        userId,
-      );
+      const account =
+        await calendarAccountRepository.findByProviderAndPrimaryUser(
+          "icloud",
+          userId,
+        );
 
       if (!account) {
         res.json({ connected: false });
@@ -363,10 +365,11 @@ router.get(
     try {
       const userId = (req as AuthRequest).user!.userId;
 
-      const account = await calendarAccountRepository.findByProviderAndPrimaryUser(
-        "outlook",
-        userId,
-      );
+      const account =
+        await calendarAccountRepository.findByProviderAndPrimaryUser(
+          "outlook",
+          userId,
+        );
 
       if (!account) {
         res.json({ connected: false });

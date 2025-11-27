@@ -21,12 +21,14 @@ import {
 import { getDb } from "./db"; // Initialize database on startup
 
 // Initialize database connection
-getDb().then(() => {
-  logger.info("Database connection established");
-}).catch((err) => {
-  logger.error({ err }, "Failed to initialize database");
-  process.exit(1);
-});
+getDb()
+  .then(() => {
+    logger.info("Database connection established");
+  })
+  .catch((err) => {
+    logger.error({ err }, "Failed to initialize database");
+    process.exit(1);
+  });
 
 const app = express();
 const PORT = env.PORT;

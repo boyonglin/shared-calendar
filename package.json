@@ -37,6 +37,7 @@
     "prettier": "^3.6.2"
   },
   "dependencies": {
+    "@swc/core-linux-x64-gnu": "^1.15.3",
     "@types/jsonwebtoken": "^9.0.10",
     "googleapis": "^166.0.0",
     "jsonwebtoken": "^9.0.2"

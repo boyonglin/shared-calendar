@@ -79,6 +79,27 @@ export default defineConfig({
   build: {
     target: "esnext",
     outDir: "build",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React 核心
+          "vendor-react": ["react", "react-dom"],
+          // UI 組件庫 (Radix UI)
+          "vendor-ui": [
+            "@radix-ui/react-checkbox",
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-label",
+            "@radix-ui/react-scroll-area",
+            "@radix-ui/react-select",
+            "@radix-ui/react-slot",
+            "@radix-ui/react-tabs",
+          ],
+          // 日期處理
+          "vendor-date": ["date-fns"],
+        },
+      },
+    },
   },
   server: {
     port: 5173,
