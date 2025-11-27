@@ -921,6 +921,508 @@ async function handleSyncPending(
   });
 }
 
+function isValidEmail(email: string): boolean {
+  // Use the same comprehensive regex as server/src/middleware/validation.ts
+  const emailRegex =
+    /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+  return emailRegex.test(email);
+}
+
+async function handleAddFriend(
+  req: VercelRequest,
+  res: VercelResponse,
+): Promise<VercelResponse> {
+  const user = verifyToken(req);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const { friendEmail } = req.body || {};
+
+  if (!friendEmail || typeof friendEmail !== "string") {
+    return res.status(400).json({ error: "Friend email is required" });
+  }
+
+  const normalizedEmail = friendEmail.toLowerCase().trim();
+
+  if (!isValidEmail(normalizedEmail)) {
+    return res.status(400).json({ error: "Invalid email format" });
+  }
+
+  const client = getTursoClient();
+
+  // Check if user is trying to add themselves
+  const userAccountResult = await client.execute({
+    sql: "SELECT external_email FROM calendar_accounts WHERE user_id = ? OR primary_user_id = ?",
+    args: [user.userId, user.userId],
+  });
+
+  const userEmails = userAccountResult.rows
+    .map((row) => (row.external_email as string)?.toLowerCase())
+    .filter((email): email is string => !!email);
+
+  if (userEmails.includes(normalizedEmail)) {
+    return res
+      .status(400)
+      .json({ error: "You cannot add yourself as a friend" });
+  }
+
+  // Check if connection already exists
+  const existingResult = await client.execute({
+    sql: "SELECT * FROM user_connections WHERE user_id = ? AND friend_email = ?",
+    args: [user.userId, normalizedEmail],
+  });
+
+  if (existingResult.rows.length > 0) {
+    const existing = existingResult.rows[0];
+    const status = existing.status as string;
+    const errorMessages: Record<string, string> = {
+      accepted: "You are already friends",
+      pending: "Friend request pending",
+      requested: "Friend request pending",
+      incoming: "You have a pending friend request from this user",
+    };
+    return res.status(409).json({
+      error: errorMessages[status] || "Friend request already sent",
+    });
+  }
+
+  // Check if friend has an account
+  const friendAccountResult = await client.execute({
+    sql: "SELECT user_id, metadata FROM calendar_accounts WHERE LOWER(external_email) = ?",
+    args: [normalizedEmail],
+  });
+
+  const friendAccount =
+    friendAccountResult.rows.length > 0 ? friendAccountResult.rows[0] : null;
+  const status = friendAccount ? "requested" : "pending";
+  const friendUserId = friendAccount ? (friendAccount.user_id as string) : null;
+
+  // Get current user's email for reverse connection
+  const primaryUserResult = await client.execute({
+    sql: "SELECT external_email FROM calendar_accounts WHERE user_id = ?",
+    args: [user.userId],
+  });
+
+  const primaryUserEmail =
+    primaryUserResult.rows.length > 0
+      ? (primaryUserResult.rows[0].external_email as string)
+      : null;
+
+  try {
+    // Create the friend connection
+    await client.execute({
+      sql: `INSERT INTO user_connections (user_id, friend_email, friend_user_id, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      args: [user.userId, normalizedEmail, friendUserId, status],
+    });
+
+    // Create incoming request for friend if they have an account
+    if (friendAccount && primaryUserEmail) {
+      const reverseExistingResult = await client.execute({
+        sql: "SELECT id FROM user_connections WHERE user_id = ? AND friend_email = ?",
+        args: [friendUserId, primaryUserEmail.toLowerCase()],
+      });
+
+      if (reverseExistingResult.rows.length === 0) {
+        await client.execute({
+          sql: `INSERT OR IGNORE INTO user_connections (user_id, friend_email, friend_user_id, status, created_at, updated_at)
+                VALUES (?, ?, ?, 'incoming', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          args: [friendUserId, primaryUserEmail.toLowerCase(), user.userId],
+        });
+      }
+    }
+  } catch (dbError: unknown) {
+    if (
+      dbError instanceof Error &&
+      dbError.message.includes("UNIQUE constraint failed")
+    ) {
+      return res.status(409).json({ error: "Friend request already sent" });
+    }
+    throw dbError;
+  }
+
+  // Get the inserted connection
+  const connectionResult = await client.execute({
+    sql: "SELECT * FROM user_connections WHERE user_id = ? AND friend_email = ?",
+    args: [user.userId, normalizedEmail],
+  });
+
+  const connection = connectionResult.rows[0];
+
+  return res.status(201).json({
+    success: true,
+    connection: {
+      id: connection.id,
+      userId: connection.user_id,
+      friendEmail: connection.friend_email,
+      friendUserId: connection.friend_user_id,
+      friendName: extractFriendName(
+        friendAccount?.metadata as string | null,
+        normalizedEmail,
+      ),
+      status: connection.status,
+      createdAt: connection.created_at,
+    },
+    message:
+      status === "requested"
+        ? "Friend request sent! They need to accept it."
+        : "Friend request sent. They will see it once they sign up.",
+  });
+}
+
+async function handleRemoveFriend(
+  req: VercelRequest,
+  res: VercelResponse,
+  friendId: number,
+): Promise<VercelResponse> {
+  const user = verifyToken(req);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const client = getTursoClient();
+
+  // Find the connection
+  const connectionResult = await client.execute({
+    sql: "SELECT * FROM user_connections WHERE id = ? AND user_id = ?",
+    args: [friendId, user.userId],
+  });
+
+  if (connectionResult.rows.length === 0) {
+    return res.status(404).json({ error: "Friend connection not found" });
+  }
+
+  const connection = connectionResult.rows[0];
+
+  // Delete the connection
+  await client.execute({
+    sql: "DELETE FROM user_connections WHERE id = ?",
+    args: [friendId],
+  });
+
+  // Remove reverse connection
+  if (connection.friend_user_id) {
+    const userAccountResult = await client.execute({
+      sql: "SELECT external_email FROM calendar_accounts WHERE user_id = ?",
+      args: [user.userId],
+    });
+
+    if (userAccountResult.rows.length > 0) {
+      const userEmail = (
+        userAccountResult.rows[0].external_email as string
+      )?.toLowerCase();
+      if (userEmail) {
+        await client.execute({
+          sql: "DELETE FROM user_connections WHERE user_id = ? AND friend_email = ?",
+          args: [connection.friend_user_id, userEmail],
+        });
+      }
+    }
+  }
+
+  return res
+    .status(200)
+    .json({ success: true, message: "Friend removed successfully" });
+}
+
+async function handleAcceptFriend(
+  req: VercelRequest,
+  res: VercelResponse,
+  friendId: number,
+): Promise<VercelResponse> {
+  const user = verifyToken(req);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const client = getTursoClient();
+
+  // Find the incoming request
+  const requestResult = await client.execute({
+    sql: "SELECT * FROM user_connections WHERE id = ? AND user_id = ? AND status = 'incoming'",
+    args: [friendId, user.userId],
+  });
+
+  if (requestResult.rows.length === 0) {
+    return res.status(404).json({ error: "Friend request not found" });
+  }
+
+  const request = requestResult.rows[0];
+
+  // Update this connection to accepted
+  await client.execute({
+    sql: "UPDATE user_connections SET status = 'accepted', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    args: [friendId],
+  });
+
+  // Update reverse connection to accepted
+  if (request.friend_user_id) {
+    await client.execute({
+      sql: `UPDATE user_connections 
+            SET status = 'accepted', updated_at = CURRENT_TIMESTAMP 
+            WHERE user_id = ? AND friend_user_id = ? AND status = 'requested'`,
+      args: [request.friend_user_id, user.userId],
+    });
+  }
+
+  return res
+    .status(200)
+    .json({ success: true, message: "Friend request accepted!" });
+}
+
+async function handleRejectFriend(
+  req: VercelRequest,
+  res: VercelResponse,
+  friendId: number,
+): Promise<VercelResponse> {
+  const user = verifyToken(req);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const client = getTursoClient();
+
+  // Find the incoming request
+  const requestResult = await client.execute({
+    sql: "SELECT * FROM user_connections WHERE id = ? AND user_id = ? AND status = 'incoming'",
+    args: [friendId, user.userId],
+  });
+
+  if (requestResult.rows.length === 0) {
+    return res.status(404).json({ error: "Friend request not found" });
+  }
+
+  const request = requestResult.rows[0];
+
+  // Delete this connection
+  await client.execute({
+    sql: "DELETE FROM user_connections WHERE id = ?",
+    args: [friendId],
+  });
+
+  // Delete reverse connection
+  if (request.friend_user_id) {
+    await client.execute({
+      sql: "DELETE FROM user_connections WHERE user_id = ? AND friend_user_id = ? AND status = 'requested'",
+      args: [request.friend_user_id, user.userId],
+    });
+  }
+
+  return res
+    .status(200)
+    .json({ success: true, message: "Friend request rejected" });
+}
+
+async function handleGetFriendEvents(
+  req: VercelRequest,
+  res: VercelResponse,
+  friendId: number,
+): Promise<VercelResponse> {
+  const user = verifyToken(req);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const client = getTursoClient();
+
+  // Check if connection exists and is accepted
+  const connectionResult = await client.execute({
+    sql: "SELECT * FROM user_connections WHERE id = ? AND user_id = ? AND status = 'accepted'",
+    args: [friendId, user.userId],
+  });
+
+  if (
+    connectionResult.rows.length === 0 ||
+    !connectionResult.rows[0].friend_user_id
+  ) {
+    return res
+      .status(404)
+      .json({ error: "Friend not found or connection not accepted" });
+  }
+
+  const connection = connectionResult.rows[0];
+  const friendUserId = connection.friend_user_id as string;
+
+  // Verify mutual acceptance
+  const reverseResult = await client.execute({
+    sql: "SELECT id FROM user_connections WHERE user_id = ? AND friend_user_id = ? AND status = 'accepted'",
+    args: [friendUserId, user.userId],
+  });
+
+  if (reverseResult.rows.length === 0) {
+    return res
+      .status(404)
+      .json({ error: "Friend not found or connection not mutually accepted" });
+  }
+
+  // Parse query parameters
+  const queryString = req.url?.split("?")[1] || "";
+  const params = new URLSearchParams(queryString);
+  const timeMinParam = params.get("timeMin");
+  const timeMaxParam = params.get("timeMax");
+
+  const timeMin = timeMinParam ? new Date(timeMinParam) : new Date();
+  const timeMax = timeMaxParam
+    ? new Date(timeMaxParam)
+    : new Date(Date.now() + 28 * 24 * 60 * 60 * 1000);
+
+  if (timeMinParam && isNaN(timeMin.getTime())) {
+    return res.status(400).json({ error: "Invalid timeMin parameter" });
+  }
+  if (timeMaxParam && isNaN(timeMax.getTime())) {
+    return res.status(400).json({ error: "Invalid timeMax parameter" });
+  }
+
+  // Get friend's calendar accounts
+  const accountsResult = await client.execute({
+    sql: "SELECT * FROM calendar_accounts WHERE user_id = ? OR primary_user_id = ?",
+    args: [friendUserId, friendUserId],
+  });
+
+  const allEvents: Array<Record<string, unknown>> = [];
+
+  for (const account of accountsResult.rows) {
+    if (account.provider === "google" && account.access_token) {
+      try {
+        const oauth2Client = getOAuth2Client();
+        oauth2Client.setCredentials({
+          access_token: account.access_token as string,
+          refresh_token: (account.refresh_token as string) || undefined,
+        });
+
+        // Handle token refresh
+        oauth2Client.on("tokens", async (tokens) => {
+          if (tokens.access_token) {
+            await client.execute({
+              sql: "UPDATE calendar_accounts SET access_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+              args: [tokens.access_token, account.user_id],
+            });
+          }
+        });
+
+        const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+        const response = await calendar.events.list({
+          calendarId: "primary",
+          timeMin: timeMin.toISOString(),
+          timeMax: timeMax.toISOString(),
+          singleEvents: true,
+          orderBy: "startTime",
+        });
+
+        const events = (response.data.items || []).map((event) => ({
+          ...event,
+          calendarId: "primary",
+          accountType: "google",
+          accountEmail: account.external_email,
+          userId: account.user_id,
+          friendConnectionId: friendId,
+        }));
+        allEvents.push(...events);
+      } catch (err) {
+        console.error(
+          `Error fetching Google events for friend ${friendUserId}:`,
+          err,
+        );
+      }
+    }
+
+    // Fetch Outlook events via OneCal
+    if (
+      account.provider === "outlook" &&
+      account.access_token &&
+      ONECAL_API_KEY
+    ) {
+      try {
+        const endUserAccountId = account.access_token as string;
+
+        // First, get calendars for this account
+        const calendarsResponse = await fetch(
+          `${ONECAL_API_BASE}/calendars/${endUserAccountId}`,
+          {
+            headers: { "x-api-key": ONECAL_API_KEY },
+          },
+        );
+
+        if (!calendarsResponse.ok) {
+          console.error(
+            `Failed to fetch Outlook calendars: ${await calendarsResponse.text()}`,
+          );
+          continue;
+        }
+
+        const calendarsData = (await calendarsResponse.json()) as {
+          data?: Array<{ id: string; name: string; isPrimary?: boolean }>;
+        };
+        const calendars = calendarsData.data || [];
+
+        const primaryCalendar = calendars.find((cal) => cal.isPrimary);
+        const calendarsToFetch = primaryCalendar
+          ? [primaryCalendar]
+          : calendars.slice(0, 1);
+
+        for (const cal of calendarsToFetch) {
+          const eventsParams = new URLSearchParams({
+            startDateTime: timeMin.toISOString(),
+            endDateTime: timeMax.toISOString(),
+            expandRecurrences: "true",
+          });
+
+          const eventsResponse = await fetch(
+            `${ONECAL_API_BASE}/events/${endUserAccountId}/${cal.id}?${eventsParams}`,
+            { headers: { "x-api-key": ONECAL_API_KEY } },
+          );
+
+          if (!eventsResponse.ok) {
+            console.error(
+              `Failed to fetch Outlook events: ${await eventsResponse.text()}`,
+            );
+            continue;
+          }
+
+          const eventsData = (await eventsResponse.json()) as {
+            data?: Array<{
+              id: string;
+              title?: string;
+              summary?: string;
+              start?: { dateTime?: string; date?: string };
+              end?: { dateTime?: string; date?: string };
+            }>;
+          };
+          const onecalEvents = eventsData.data || [];
+
+          for (const event of onecalEvents) {
+            allEvents.push({
+              id: event.id,
+              summary: event.title || event.summary || "Untitled Event",
+              start: {
+                dateTime: event.start?.dateTime,
+                date: event.start?.date,
+              },
+              end: {
+                dateTime: event.end?.dateTime,
+                date: event.end?.date,
+              },
+              calendarId: cal.id,
+              accountType: "outlook",
+              accountEmail: account.external_email,
+              userId: account.user_id,
+              friendConnectionId: friendId,
+            });
+          }
+        }
+      } catch (err) {
+        console.error(
+          `Error fetching Outlook events for friend ${friendUserId}:`,
+          err,
+        );
+      }
+    }
+  }
+
+  return res.status(200).json(allEvents);
+}
+
 // =============================================================================
 // Main Handler
 // =============================================================================
@@ -1055,6 +1557,14 @@ export default async function handler(
       return handleGetFriends(req, res);
     }
 
+    // POST /api/friends
+    if (
+      (path === "/api/friends" || path === "/api/friends/") &&
+      req.method === "POST"
+    ) {
+      return handleAddFriend(req, res);
+    }
+
     // GET /api/friends/requests/incoming
     if (
       path === "/api/friends/requests/incoming" ||
@@ -1070,6 +1580,34 @@ export default async function handler(
       req.method === "POST"
     ) {
       return handleSyncPending(req, res);
+    }
+
+    // POST /api/friends/:friendId/accept
+    const acceptMatch = path.match(/^\/api\/friends\/(\d+)\/accept\/?$/);
+    if (acceptMatch && req.method === "POST") {
+      const friendId = parseInt(acceptMatch[1], 10);
+      return handleAcceptFriend(req, res, friendId);
+    }
+
+    // POST /api/friends/:friendId/reject
+    const rejectMatch = path.match(/^\/api\/friends\/(\d+)\/reject\/?$/);
+    if (rejectMatch && req.method === "POST") {
+      const friendId = parseInt(rejectMatch[1], 10);
+      return handleRejectFriend(req, res, friendId);
+    }
+
+    // GET /api/friends/:friendId/events
+    const friendEventsMatch = path.match(/^\/api\/friends\/(\d+)\/events\/?$/);
+    if (friendEventsMatch && req.method === "GET") {
+      const friendId = parseInt(friendEventsMatch[1], 10);
+      return handleGetFriendEvents(req, res, friendId);
+    }
+
+    // DELETE /api/friends/:friendId
+    const friendDeleteMatch = path.match(/^\/api\/friends\/(\d+)\/?$/);
+    if (friendDeleteMatch && req.method === "DELETE") {
+      const friendId = parseInt(friendDeleteMatch[1], 10);
+      return handleRemoveFriend(req, res, friendId);
     }
 
     // Root endpoint
@@ -1093,8 +1631,13 @@ export default async function handler(
           "GET /api/calendar/outlook/status",
           "DELETE /api/calendar/outlook/:userId",
           "GET /api/friends",
+          "POST /api/friends",
+          "DELETE /api/friends/:friendId",
           "GET /api/friends/requests/incoming",
           "POST /api/friends/sync-pending",
+          "POST /api/friends/:friendId/accept",
+          "POST /api/friends/:friendId/reject",
+          "GET /api/friends/:friendId/events",
         ],
       });
     }
