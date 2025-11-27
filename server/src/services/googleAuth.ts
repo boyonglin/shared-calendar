@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { db } from "../db";
+import { userConnectionRepository } from "../repositories/userConnectionRepository";
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -103,6 +104,54 @@ export const googleAuthService = {
       // We force 'prompt: consent' to try and get one.
       metadata,
     );
+
+    // Process any pending friend requests that were sent to this user before they registered
+    const normalizedEmail = userInfo.email.toLowerCase();
+    const pendingRequests =
+      userConnectionRepository.findPendingRequestsByFriendEmail(
+        normalizedEmail,
+      );
+
+    // Wrap all pending request updates in a single atomic transaction
+    if (pendingRequests.length > 0) {
+      userConnectionRepository.transaction(() => {
+        for (const request of pendingRequests) {
+          // Update the requester's connection to 'requested' status with the new user's ID
+          userConnectionRepository.updateFriendUserIdAndStatus(
+            request.id,
+            userId,
+            "requested",
+          );
+
+          // Get the requester's email from their calendar account
+          const requesterStmt = db.prepare(
+            "SELECT external_email FROM calendar_accounts WHERE user_id = ?",
+          );
+          const requesterAccount = requesterStmt.get(request.user_id) as
+            | { external_email: string }
+            | undefined;
+
+          if (requesterAccount?.external_email) {
+            // Check if the new user already has a connection for the requester
+            const existingIncoming =
+              userConnectionRepository.findByUserIdAndFriendEmail(
+                userId,
+                requesterAccount.external_email.toLowerCase(),
+              );
+
+            if (!existingIncoming) {
+              // Create the incoming request for the new user
+              userConnectionRepository.createOrIgnore(
+                userId,
+                requesterAccount.external_email.toLowerCase(),
+                request.user_id,
+                "incoming",
+              );
+            }
+          }
+        }
+      });
+    }
 
     return {
       user: {

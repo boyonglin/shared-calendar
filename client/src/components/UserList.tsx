@@ -2,7 +2,7 @@ import type { User } from "../types";
 import { Checkbox } from "./ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-import { UserPlus } from "lucide-react";
+import { Users } from "lucide-react";
 
 interface UserListProps {
   users: User[];
@@ -35,13 +35,24 @@ export function UserList({
               onClick={onManageFriends}
               className="h-8 lg:h-9 lg:w-full relative"
             >
-              <UserPlus className="w-4 h-4 mr-1 lg:mr-2" />
-              Add Friends
+              <Users className="w-4 h-4 mr-1 lg:mr-2" />
+              Manage Friends
               {incomingRequestCount > 0 && (
                 <span
-                  className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-orange-400"
-                  aria-label={`${incomingRequestCount} pending friend requests`}
-                />
+                  className={`absolute -top-0.5 -right-0.5 ${
+                    incomingRequestCount > 9
+                      ? "min-w-4 h-4 px-1 text-xs text-white flex items-center justify-center"
+                      : "h-2 w-2"
+                  } rounded-full bg-orange-400`}
+                >
+                  {incomingRequestCount > 9 ? (
+                    incomingRequestCount
+                  ) : (
+                    <span className="sr-only">
+                      {incomingRequestCount} pending friend requests
+                    </span>
+                  )}
+                </span>
               )}
             </Button>
           )}

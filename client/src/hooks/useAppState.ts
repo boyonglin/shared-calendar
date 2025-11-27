@@ -4,7 +4,7 @@
  * Centralizes modal states and user selection logic
  * to reduce complexity in App.tsx
  */
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import type { User } from "../types";
 
 export interface ModalState {
@@ -50,6 +50,11 @@ export function useAppState({
     return initialSelectedUsers;
   });
 
+  // Track user IDs that have been manually removed (to prevent re-adding automatically)
+  const [manuallyRemovedUsers, setManuallyRemovedUsers] = useState<Set<string>>(
+    new Set(),
+  );
+
   // Modal states consolidated into a single object
   const [modals, setModals] = useState<ModalState>({
     settings: false,
@@ -57,29 +62,43 @@ export function useAppState({
     icloud: false,
   });
 
-  // Track previous user ID to detect changes
-  const [prevUserId, setPrevUserId] = useState<string | null>(
-    currentUser?.id ?? null,
-  );
-
-  // Handle user changes (login/logout) - update derived state
-  if (currentUser?.id !== prevUserId) {
-    setPrevUserId(currentUser?.id ?? null);
-    if (currentUser && !selectedUsers.includes(currentUser.id)) {
-      setSelectedUsers((prev) => [...prev, currentUser.id]);
+  // Derive selectedUsers with current user included (if logged in and not already selected)
+  const selectedUsersWithCurrentUser = useMemo(() => {
+    if (!currentUser) {
+      return selectedUsers;
     }
-  }
+
+    // If user is already in the list, return as-is
+    if (selectedUsers.includes(currentUser.id)) {
+      return selectedUsers;
+    }
+
+    // If this user was manually removed, don't re-add
+    if (manuallyRemovedUsers.has(currentUser.id)) {
+      return selectedUsers;
+    }
+
+    // Auto-add new current user
+    return [...selectedUsers, currentUser.id];
+  }, [currentUser, selectedUsers, manuallyRemovedUsers]);
 
   /**
    * Toggle a user's selection in the calendar view
    */
-  const toggleUser = useCallback((userId: string) => {
-    setSelectedUsers((prev) =>
-      prev.includes(userId)
-        ? prev.filter((id) => id !== userId)
-        : [...prev, userId],
-    );
-  }, []);
+  const toggleUser = useCallback(
+    (userId: string) => {
+      // If this is the current user being removed, mark as manually removed so we don't re-add
+      if (currentUser?.id === userId && selectedUsers.includes(userId)) {
+        setManuallyRemovedUsers((prev) => new Set(prev).add(userId));
+      }
+      setSelectedUsers((prev) =>
+        prev.includes(userId)
+          ? prev.filter((id) => id !== userId)
+          : [...prev, userId],
+      );
+    },
+    [currentUser?.id, selectedUsers],
+  );
 
   /**
    * Open a specific modal
@@ -107,7 +126,7 @@ export function useAppState({
   }, []);
 
   return {
-    selectedUsers,
+    selectedUsers: selectedUsersWithCurrentUser,
     toggleUser,
     setSelectedUsers,
     modals,

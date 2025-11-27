@@ -2,6 +2,8 @@
  * Calendar utilities for time range calculations and event parsing
  */
 
+import { convertToViewerTimezone } from "@/utils/timezone";
+
 /**
  * Calculate time range for fetching calendar events
  * @param weekStart - The start date of the current week
@@ -39,15 +41,17 @@ export interface CalendarEventDateTime {
 /**
  * Parse calendar event times from various formats
  * Handles both string and object formats (with dateTime or date properties)
+ *
+ * This function now uses timezone-aware conversion to ensure events
+ * are displayed correctly in the viewer's local timezone.
+ *
+ * @param value - Event time in string or object format
+ * @returns Date object in the viewer's local timezone
  */
 export function parseEventTime(
   value: string | CalendarEventDateTime | undefined,
 ): Date {
-  if (!value) return new Date();
-  if (typeof value === "string") {
-    return new Date(value);
-  }
-  return new Date(value.dateTime || value.date || "");
+  return convertToViewerTimezone(value);
 }
 
 /**

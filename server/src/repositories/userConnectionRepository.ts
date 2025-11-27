@@ -284,4 +284,20 @@ export const userConnectionRepository = {
     const result = stmt.run(userId, friendUserId, status) as DBRunResult;
     return result.changes > 0;
   },
+
+  /**
+   * Find all pending/requested connections where friend_email matches a specific email
+   * Used when a new user registers to find requests sent to them before they signed up
+   */
+  findPendingRequestsByFriendEmail(
+    friendEmail: string,
+  ): UserConnectionWithMetadata[] {
+    const stmt = db.prepare(`
+      SELECT uc.*, ca.metadata
+      FROM user_connections uc
+      LEFT JOIN calendar_accounts ca ON ca.user_id = uc.user_id
+      WHERE uc.friend_email = ? AND uc.status IN ('pending', 'requested')
+    `);
+    return stmt.all(friendEmail) as UserConnectionWithMetadata[];
+  },
 };
