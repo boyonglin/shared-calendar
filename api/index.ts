@@ -1671,11 +1671,9 @@ async function handleDraftInvitation(
   if (typeof geminiApiKey !== "string" || geminiApiKey.trim().length === 0) {
     return res.status(400).json({ error: "Invalid Gemini API key format" });
   }
-  // Only allow alphanumeric, dash, and underscore characters
-  const sanitizedGeminiApiKey = geminiApiKey
-    .trim()
-    .replace(/[^A-Za-z0-9_-]/g, "");
-  if (sanitizedGeminiApiKey.length === 0) {
+  // Validate API key format - Google API keys are alphanumeric with underscores and dashes
+  const trimmedGeminiApiKey = geminiApiKey.trim();
+  if (!/^[A-Za-z0-9_-]+$/.test(trimmedGeminiApiKey)) {
     return res
       .status(400)
       .json({ error: "Gemini API key contains invalid characters" });
@@ -1707,21 +1705,24 @@ async function handleDraftInvitation(
       .status(400)
       .json({ error: "Invalid datetime format. Use ISO 8601 format." });
   }
-  if (endDate <= startDate) {
-    return res.status(400).json({ error: "End time must be after start time" });
+  if (endDate < startDate) {
+    return res
+      .status(400)
+      .json({ error: "End time must not be before start time" });
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(sanitizedGeminiApiKey);
+    const genAI = new GoogleGenerativeAI(trimmedGeminiApiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
+    // Use validated datetime strings directly (already validated by Date parsing)
     const prompt = buildAIPrompt({
       title: safeTitle,
       description: safeDescription,
       location: safeLocation,
       attendees: safeAttendees,
-      start: sanitizeInput(start, 100),
-      end: sanitizeInput(end, 100),
+      start: start,
+      end: end,
       tone: selectedTone,
     });
 
