@@ -41,12 +41,16 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        // IMPORTANT: Don't cache API routes - they should always go to server
+        navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
+            // Only cache external API calls, not our own /api routes
             urlPattern: /^https:\/\/api\..*/i,
             handler: "NetworkFirst",
             options: {
-              cacheName: "api-cache",
+              cacheName: "external-api-cache",
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 60 * 24, // 24 hours
