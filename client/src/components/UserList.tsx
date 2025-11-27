@@ -39,9 +39,17 @@ export function UserList({
               Manage Friends
               {incomingRequestCount > 0 && (
                 <span
-                  className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-orange-400"
-                  aria-label={`${incomingRequestCount} pending friend requests`}
-                />
+                  className={`absolute -top-0.5 -right-0.5 ${
+                    incomingRequestCount > 9
+                      ? "min-w-4 h-4 px-1 text-xs text-white flex items-center justify-center"
+                      : "h-2 w-2"
+                  } rounded-full bg-orange-400`}
+                >
+                  {incomingRequestCount > 9 && incomingRequestCount}
+                  <span className="sr-only">
+                    {incomingRequestCount} pending friend requests
+                  </span>
+                </span>
               )}
             </Button>
           )}
