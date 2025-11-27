@@ -3,7 +3,7 @@
  *
  * This is a simplified version of the Express server for Vercel serverless deployment.
  * It removes the server.listen() call and exports the app for use as a serverless function.
- * 
+ *
  * NOTE: This version uses Turso (async) for database operations.
  * Routes that require database access must use async repositories.
  */
@@ -15,10 +15,7 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
 import { calendarAccountRepositoryAsync } from "./repositories/calendarAccountRepositoryAsync";
-import {
-  RATE_LIMIT_WINDOW_MS,
-  RATE_LIMIT_MAX_REQUESTS,
-} from "./constants";
+import { RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX_REQUESTS } from "./constants";
 
 const app = express();
 

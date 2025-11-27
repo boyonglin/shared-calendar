@@ -12,7 +12,8 @@ export default defineConfig({
       manifest: {
         name: "Shared Calendar",
         short_name: "Calendar",
-        description: "A shared calendar app for coordinating schedules with friends",
+        description:
+          "A shared calendar app for coordinating schedules with friends",
         theme_color: "#3b82f6",
         background_color: "#ffffff",
         display: "standalone",

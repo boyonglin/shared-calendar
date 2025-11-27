@@ -13,7 +13,8 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI;
 const JWT_SECRET = process.env.JWT_SECRET || "default-secret-change-me";
-const CLIENT_URL = process.env.CLIENT_URL || "https://shared-calendar-vibe.vercel.app";
+const CLIENT_URL =
+  process.env.CLIENT_URL || "https://shared-calendar-vibe.vercel.app";
 
 // Initialize Turso client
 function getTursoClient() {
@@ -34,15 +35,23 @@ function getOAuth2Client() {
   return new google.auth.OAuth2(
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
-    GOOGLE_REDIRECT_URI
+    GOOGLE_REDIRECT_URI,
   );
 }
 
 // Simple auth code store (in-memory, expires quickly)
-const authCodes = new Map<string, { userId: string; email: string; provider: string; expires: number }>();
+const authCodes = new Map<
+  string,
+  { userId: string; email: string; provider: string; expires: number }
+>();
 
-function createAuthCode(data: { userId: string; email: string; provider: string }): string {
-  const code = Math.random().toString(36).substring(2) + Date.now().toString(36);
+function createAuthCode(data: {
+  userId: string;
+  email: string;
+  provider: string;
+}): string {
+  const code =
+    Math.random().toString(36).substring(2) + Date.now().toString(36);
   authCodes.set(code, { ...data, expires: Date.now() + 60000 }); // 1 minute expiry
   return code;
 }
@@ -102,7 +111,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Google OAuth - Callback
-    if (path === "/api/auth/google/callback" || path === "/api/auth/google/callback/") {
+    if (
+      path === "/api/auth/google/callback" ||
+      path === "/api/auth/google/callback/"
+    ) {
       const code = req.query.code as string;
       if (!code) {
         return res.redirect(`${CLIENT_URL}?auth=error&message=missing_code`);
@@ -148,13 +160,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const token = jwt.sign(
         { userId: userInfo.id, email: userInfo.email },
         JWT_SECRET,
-        { expiresIn: "30d" }
+        { expiresIn: "30d" },
       );
 
       // Set cookie
       res.setHeader(
         "Set-Cookie",
-        `token=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`
+        `token=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`,
       );
 
       // Create auth code for client

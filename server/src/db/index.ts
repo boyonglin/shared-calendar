@@ -9,8 +9,7 @@ import { createClient, type Client } from "@libsql/client";
 import type Database from "better-sqlite3";
 
 // Detect if we're running on Vercel or have Turso configured
-const useTurso =
-  process.env.VERCEL === "1" || !!process.env.TURSO_DATABASE_URL;
+const useTurso = process.env.VERCEL === "1" || !!process.env.TURSO_DATABASE_URL;
 
 // Database client type
 type DbClient = Client | Database.Database;
@@ -60,17 +59,19 @@ export let db: Database.Database;
 // This block will be skipped entirely on Vercel
 function initializeLocalDb() {
   if (useTurso) return;
-  
+
   try {
-    // Dynamic require to avoid loading on Vercel
+    // Dynamic import to avoid loading on Vercel
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const BetterSqlite3 = require("better-sqlite3");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const path = require("path");
     const dbPath = path.join(__dirname, "../../shared-calendar.db");
     db = new BetterSqlite3(dbPath);
     db.pragma("foreign_keys = ON");
     initializeSqliteSchema(db);
     console.log("✅ Database initialized (SQLite sync)");
-  } catch (error) {
+  } catch (_error) {
     console.log("⚠️ better-sqlite3 not available, using Turso only");
   }
 }
@@ -143,7 +144,9 @@ function initializeSqliteSchema(sqliteDb: Database.Database): void {
   `);
 
   try {
-    sqliteDb.exec("ALTER TABLE calendar_accounts ADD COLUMN primary_user_id TEXT");
+    sqliteDb.exec(
+      "ALTER TABLE calendar_accounts ADD COLUMN primary_user_id TEXT",
+    );
   } catch {
     // Column already exists
   }
@@ -175,7 +178,10 @@ function initializeSqliteSchema(sqliteDb: Database.Database): void {
  */
 function createSqliteWrapper(sqliteDb: Database.Database): Client {
   return {
-    execute: async (sql: string | { sql: string; args?: unknown[] }, args?: unknown[]) => {
+    execute: async (
+      sql: string | { sql: string; args?: unknown[] },
+      args?: unknown[],
+    ) => {
       const query = typeof sql === "string" ? sql : sql.sql;
       const params = typeof sql === "string" ? args : sql.args;
 
@@ -186,7 +192,12 @@ function createSqliteWrapper(sqliteDb: Database.Database): Client {
           query.trim().toUpperCase().startsWith("PRAGMA")
         ) {
           const rows = stmt.all(...params);
-          return { rows, columns: [], rowsAffected: 0, lastInsertRowid: BigInt(0) };
+          return {
+            rows,
+            columns: [],
+            rowsAffected: 0,
+            lastInsertRowid: BigInt(0),
+          };
         } else {
           const result = stmt.run(...params);
           return {
@@ -203,7 +214,12 @@ function createSqliteWrapper(sqliteDb: Database.Database): Client {
           query.trim().toUpperCase().startsWith("PRAGMA")
         ) {
           const rows = stmt.all();
-          return { rows, columns: [], rowsAffected: 0, lastInsertRowid: BigInt(0) };
+          return {
+            rows,
+            columns: [],
+            rowsAffected: 0,
+            lastInsertRowid: BigInt(0),
+          };
         } else {
           const result = stmt.run();
           return {

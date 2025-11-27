@@ -4,7 +4,6 @@
  * This version uses Turso's async API for Vercel deployment.
  */
 import { getDb } from "../db";
-import type { Client } from "@libsql/client";
 
 export type CalendarProvider = "google" | "icloud" | "outlook";
 
@@ -75,7 +74,9 @@ export const calendarAccountRepositoryAsync = {
     return result.rows as unknown as CalendarAccount[];
   },
 
-  async findByExternalEmail(email: string): Promise<CalendarAccount | undefined> {
+  async findByExternalEmail(
+    email: string,
+  ): Promise<CalendarAccount | undefined> {
     const db = await getDb();
     const result = await db.execute({
       sql: "SELECT * FROM calendar_accounts WHERE external_email = ?",
@@ -140,7 +141,9 @@ export const calendarAccountRepositoryAsync = {
     });
   },
 
-  async upsertOutlookAccount(params: CreateOutlookAccountParams): Promise<void> {
+  async upsertOutlookAccount(
+    params: CreateOutlookAccountParams,
+  ): Promise<void> {
     const db = await getDb();
     await db.execute({
       sql: `
@@ -153,7 +156,12 @@ export const calendarAccountRepositoryAsync = {
           primary_user_id = excluded.primary_user_id,
           updated_at = CURRENT_TIMESTAMP
       `,
-      args: [params.userId, params.email, params.metadata, params.primaryUserId],
+      args: [
+        params.userId,
+        params.email,
+        params.metadata,
+        params.primaryUserId,
+      ],
     });
   },
 
@@ -165,7 +173,10 @@ export const calendarAccountRepositoryAsync = {
     });
   },
 
-  async updateRefreshToken(userId: string, refreshToken: string): Promise<void> {
+  async updateRefreshToken(
+    userId: string,
+    refreshToken: string,
+  ): Promise<void> {
     const db = await getDb();
     await db.execute({
       sql: "UPDATE calendar_accounts SET refresh_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
