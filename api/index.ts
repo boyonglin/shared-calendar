@@ -115,68 +115,89 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       path === "/api/auth/google/callback" ||
       path === "/api/auth/google/callback/"
     ) {
-      const code = req.query.code as string;
-      if (!code) {
-        return res.redirect(`${CLIENT_URL}?auth=error&message=missing_code`);
+      try {
+        const code = req.query.code as string;
+        const error = req.query.error as string;
+
+        // Handle OAuth errors (user denied, etc.)
+        if (error) {
+          console.error("OAuth error:", error);
+          return res.redirect(
+            `${CLIENT_URL}?auth=error&message=${encodeURIComponent(error)}`,
+          );
+        }
+
+        if (!code) {
+          return res.redirect(`${CLIENT_URL}?auth=error&message=missing_code`);
+        }
+
+        const oauth2Client = getOAuth2Client();
+        const { tokens } = await oauth2Client.getToken(code);
+        oauth2Client.setCredentials(tokens);
+
+        // Get user info
+        const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
+        const { data: userInfo } = await oauth2.userinfo.get();
+
+        if (!userInfo.id || !userInfo.email) {
+          return res.redirect(`${CLIENT_URL}?auth=error&message=no_user_info`);
+        }
+
+        // Store in Turso
+        const client = getTursoClient();
+        const metadata = JSON.stringify({
+          name: userInfo.name,
+          picture: userInfo.picture,
+        });
+
+        await client.execute({
+          sql: `INSERT INTO calendar_accounts (
+            user_id, provider, external_email, access_token, refresh_token, metadata, updated_at
+          ) VALUES (?, 'google', ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(user_id) DO UPDATE SET
+            access_token = excluded.access_token,
+            refresh_token = COALESCE(excluded.refresh_token, calendar_accounts.refresh_token),
+            updated_at = CURRENT_TIMESTAMP`,
+          args: [
+            userInfo.id,
+            userInfo.email,
+            tokens.access_token || null,
+            tokens.refresh_token || null,
+            metadata,
+          ],
+        });
+
+        // Generate JWT
+        const token = jwt.sign(
+          { userId: userInfo.id, email: userInfo.email },
+          JWT_SECRET,
+          { expiresIn: "30d" },
+        );
+
+        // Set cookie
+        res.setHeader(
+          "Set-Cookie",
+          `token=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`,
+        );
+
+        // Create auth code for client
+        const authCode = createAuthCode({
+          userId: userInfo.id,
+          email: userInfo.email,
+          provider: "google",
+        });
+
+        return res.redirect(`${CLIENT_URL}?auth=success&code=${authCode}`);
+      } catch (callbackError) {
+        console.error("Google callback error:", callbackError);
+        const message =
+          callbackError instanceof Error
+            ? callbackError.message
+            : "unknown_error";
+        return res.redirect(
+          `${CLIENT_URL}?auth=error&message=${encodeURIComponent(message)}`,
+        );
       }
-
-      const oauth2Client = getOAuth2Client();
-      const { tokens } = await oauth2Client.getToken(code);
-      oauth2Client.setCredentials(tokens);
-
-      // Get user info
-      const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
-      const { data: userInfo } = await oauth2.userinfo.get();
-
-      if (!userInfo.id || !userInfo.email) {
-        return res.redirect(`${CLIENT_URL}?auth=error&message=no_user_info`);
-      }
-
-      // Store in Turso
-      const client = getTursoClient();
-      const metadata = JSON.stringify({
-        name: userInfo.name,
-        picture: userInfo.picture,
-      });
-
-      await client.execute({
-        sql: `INSERT INTO calendar_accounts (
-          user_id, provider, external_email, access_token, refresh_token, metadata, updated_at
-        ) VALUES (?, 'google', ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(user_id) DO UPDATE SET
-          access_token = excluded.access_token,
-          refresh_token = COALESCE(excluded.refresh_token, calendar_accounts.refresh_token),
-          updated_at = CURRENT_TIMESTAMP`,
-        args: [
-          userInfo.id,
-          userInfo.email,
-          tokens.access_token || null,
-          tokens.refresh_token || null,
-          metadata,
-        ],
-      });
-
-      // Generate JWT
-      const token = jwt.sign(
-        { userId: userInfo.id, email: userInfo.email },
-        JWT_SECRET,
-        { expiresIn: "30d" },
-      );
-
-      // Set cookie
-      res.setHeader(
-        "Set-Cookie",
-        `token=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`,
-      );
-
-      // Create auth code for client
-      const authCode = createAuthCode({
-        userId: userInfo.id,
-        email: userInfo.email,
-        provider: "google",
-      });
-
-      return res.redirect(`${CLIENT_URL}?auth=success&code=${authCode}`);
     }
 
     // Exchange auth code for user data
