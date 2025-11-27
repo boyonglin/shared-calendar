@@ -282,9 +282,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Get user profile
-    if (path.startsWith("/api/users/") && path.endsWith("/google")) {
-      const userId = path.split("/")[3];
+    // Get user profile - matches both /api/users/:id/google and /api/users/:id
+    if (path.startsWith("/api/users/") && !path.includes("/calendar")) {
+      const pathParts = path.split("/").filter(Boolean);
+      // pathParts = ["api", "users", "userId"] or ["api", "users", "userId", "google"]
+      const userId = pathParts[2];
       if (!userId) {
         return res.status(400).json({ error: "Missing user ID" });
       }
@@ -311,6 +313,80 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
         provider: "google",
       });
+    }
+
+    // Get calendar events
+    if (path.startsWith("/api/calendar/events")) {
+      // Parse query string manually
+      const queryString = req.url?.split("?")[1] || "";
+      const params = new URLSearchParams(queryString);
+      const userId = params.get("userId") || (req.query?.userId as string);
+
+      if (!userId) {
+        return res.status(400).json({ error: "Missing userId parameter" });
+      }
+
+      const client = getTursoClient();
+      const result = await client.execute({
+        sql: "SELECT * FROM calendar_accounts WHERE user_id = ?",
+        args: [userId],
+      });
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const account = result.rows[0];
+      const accessToken = account.access_token as string;
+      const refreshToken = account.refresh_token as string | null;
+
+      if (!accessToken) {
+        return res.status(401).json({ error: "No access token" });
+      }
+
+      // Create OAuth client with user's tokens
+      const oauth2Client = getOAuth2Client();
+      oauth2Client.setCredentials({
+        access_token: accessToken,
+        refresh_token: refreshToken || undefined,
+      });
+
+      // Handle token refresh
+      oauth2Client.on("tokens", async (tokens) => {
+        if (tokens.access_token) {
+          await client.execute({
+            sql: "UPDATE calendar_accounts SET access_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+            args: [tokens.access_token, userId],
+          });
+        }
+      });
+
+      try {
+        const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+
+        // Default to now + 4 weeks
+        const now = new Date();
+        const timeMax = new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000);
+
+        const response = await calendar.events.list({
+          calendarId: "primary",
+          timeMin: now.toISOString(),
+          timeMax: timeMax.toISOString(),
+          singleEvents: true,
+          orderBy: "startTime",
+        });
+
+        return res.status(200).json(response.data.items || []);
+      } catch (calendarError) {
+        console.error("Calendar API error:", calendarError);
+        return res.status(500).json({
+          error: "Failed to fetch calendar events",
+          details:
+            calendarError instanceof Error
+              ? calendarError.message
+              : "Unknown error",
+        });
+      }
     }
 
     // Root API endpoint
