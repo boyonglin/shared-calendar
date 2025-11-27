@@ -583,7 +583,10 @@ async function handleOutlookAuth(
     `outlook_auth_state=${stateToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`,
   );
 
-  const url = `${ONECAL_API_BASE}/oauth/authorize/${ONECAL_APP_ID}/microsoft`;
+  // Build the OAuth URL with explicit redirectUrl parameter
+  // This ensures OneCal redirects back to the correct environment
+  const redirectUrl = `${CLIENT_URL.replace(/\/$/, "")}/api/auth/outlook/callback`;
+  const url = `${ONECAL_API_BASE}/oauth/authorize/${ONECAL_APP_ID}/microsoft?redirectUrl=${encodeURIComponent(redirectUrl)}`;
   return res.redirect(url);
 }
 

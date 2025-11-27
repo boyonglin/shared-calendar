@@ -11,6 +11,12 @@ if (!ONECAL_APP_ID || !ONECAL_API_KEY) {
   );
 }
 
+// Build redirect URL based on environment
+const getRedirectUrl = () => {
+  const baseUrl = env.CLIENT_URL.replace(/\/$/, "");
+  return `${baseUrl}/api/auth/outlook/callback`;
+};
+
 interface OnecalEndUserAccount {
   id: string;
   email: string;
@@ -62,7 +68,9 @@ export const onecalAuthService = {
     if (!ONECAL_APP_ID) {
       throw new Error("ONECAL_APP_ID is not configured");
     }
-    return `${ONECAL_API_BASE}/oauth/authorize/${ONECAL_APP_ID}/microsoft`;
+    // Include redirectUrl parameter to ensure correct callback URL
+    const redirectUrl = getRedirectUrl();
+    return `${ONECAL_API_BASE}/oauth/authorize/${ONECAL_APP_ID}/microsoft?redirectUrl=${encodeURIComponent(redirectUrl)}`;
   },
 
   handleCallback: async (endUserAccountId: string, primaryUserId?: string) => {
