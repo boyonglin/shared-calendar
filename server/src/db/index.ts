@@ -56,16 +56,26 @@ export async function getDb(): Promise<Client> {
  */
 export let db: Database.Database;
 
-if (!useTurso) {
-  // Only initialize synchronously for local development
-  const BetterSqlite3 = require("better-sqlite3");
-  const path = require("path");
-  const dbPath = path.join(__dirname, "../../shared-calendar.db");
-  db = new BetterSqlite3(dbPath);
-  db.pragma("foreign_keys = ON");
-  initializeSqliteSchema(db);
-  console.log("✅ Database initialized (SQLite sync)");
+// Only initialize synchronously for local development (not on Vercel)
+// This block will be skipped entirely on Vercel
+function initializeLocalDb() {
+  if (useTurso) return;
+  
+  try {
+    // Dynamic require to avoid loading on Vercel
+    const BetterSqlite3 = require("better-sqlite3");
+    const path = require("path");
+    const dbPath = path.join(__dirname, "../../shared-calendar.db");
+    db = new BetterSqlite3(dbPath);
+    db.pragma("foreign_keys = ON");
+    initializeSqliteSchema(db);
+    console.log("✅ Database initialized (SQLite sync)");
+  } catch (error) {
+    console.log("⚠️ better-sqlite3 not available, using Turso only");
+  }
 }
+
+initializeLocalDb();
 
 /**
  * Initialize Turso database schema
