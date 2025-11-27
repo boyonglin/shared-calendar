@@ -1,5 +1,6 @@
 import { google } from "googleapis";
 import { db } from "../db";
+import { userConnectionRepository } from "../repositories/userConnectionRepository";
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -103,6 +104,50 @@ export const googleAuthService = {
       // We force 'prompt: consent' to try and get one.
       metadata,
     );
+
+    // Process any pending friend requests that were sent to this user before they registered
+    const normalizedEmail = userInfo.email.toLowerCase();
+    const pendingRequests =
+      userConnectionRepository.findPendingRequestsByFriendEmail(
+        normalizedEmail,
+      );
+
+    for (const request of pendingRequests) {
+      userConnectionRepository.transaction(() => {
+        // Update the requester's connection to 'requested' status with the new user's ID
+        userConnectionRepository.updateFriendUserIdAndStatus(
+          request.id,
+          userId,
+          "requested",
+        );
+
+        // Create the incoming request for the new user
+        const existingIncoming =
+          userConnectionRepository.findByUserIdAndFriendEmail(
+            userId,
+            request.friend_email, // The requester's email - need to get it from calendar_accounts
+          );
+
+        if (!existingIncoming) {
+          // Get the requester's email from their calendar account
+          const requesterStmt = db.prepare(
+            "SELECT external_email FROM calendar_accounts WHERE user_id = ?",
+          );
+          const requesterAccount = requesterStmt.get(request.user_id) as
+            | { external_email: string }
+            | undefined;
+
+          if (requesterAccount?.external_email) {
+            userConnectionRepository.createOrIgnore(
+              userId,
+              requesterAccount.external_email.toLowerCase(),
+              request.user_id,
+              "incoming",
+            );
+          }
+        }
+      });
+    }
 
     return {
       user: {

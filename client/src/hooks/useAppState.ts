@@ -4,7 +4,7 @@
  * Centralizes modal states and user selection logic
  * to reduce complexity in App.tsx
  */
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo } from "react";
 import type { User } from "../types";
 
 export interface ModalState {
@@ -50,6 +50,11 @@ export function useAppState({
     return initialSelectedUsers;
   });
 
+  // Track user IDs that have been auto-added (to avoid re-adding after manual removal)
+  const [autoAddedUsers, setAutoAddedUsers] = useState<Set<string>>(
+    () => new Set(currentUser ? [currentUser.id] : []),
+  );
+
   // Modal states consolidated into a single object
   const [modals, setModals] = useState<ModalState>({
     settings: false,
@@ -57,30 +62,43 @@ export function useAppState({
     icloud: false,
   });
 
-  // Track previous user ID to detect changes using a ref (doesn't cause re-render)
-  const prevUserIdRef = useRef<string | null>(currentUser?.id ?? null);
-
-  // Handle user changes (login/logout) - update derived state in useEffect
-  useEffect(() => {
-    const prevUserId = prevUserIdRef.current;
-    if (currentUser?.id !== prevUserId) {
-      prevUserIdRef.current = currentUser?.id ?? null;
-      if (currentUser && !selectedUsers.includes(currentUser.id)) {
-        setSelectedUsers((prev) => [...prev, currentUser.id]);
-      }
+  // Derive selectedUsers with current user included (if logged in and not already selected)
+  const selectedUsersWithCurrentUser = useMemo(() => {
+    if (!currentUser) {
+      return selectedUsers;
     }
-  }, [currentUser, selectedUsers]);
+
+    // If user is already in the list, return as-is
+    if (selectedUsers.includes(currentUser.id)) {
+      return selectedUsers;
+    }
+
+    // If this user was previously auto-added and then manually removed, don't re-add
+    if (autoAddedUsers.has(currentUser.id)) {
+      return selectedUsers;
+    }
+
+    // Auto-add new current user - need to update autoAddedUsers state
+    return [...selectedUsers, currentUser.id];
+  }, [currentUser, selectedUsers, autoAddedUsers]);
 
   /**
    * Toggle a user's selection in the calendar view
    */
-  const toggleUser = useCallback((userId: string) => {
-    setSelectedUsers((prev) =>
-      prev.includes(userId)
-        ? prev.filter((id) => id !== userId)
-        : [...prev, userId],
-    );
-  }, []);
+  const toggleUser = useCallback(
+    (userId: string) => {
+      // If this is the current user being toggled, mark as auto-added so we don't re-add
+      if (currentUser?.id === userId) {
+        setAutoAddedUsers((prev) => new Set(prev).add(userId));
+      }
+      setSelectedUsers((prev) =>
+        prev.includes(userId)
+          ? prev.filter((id) => id !== userId)
+          : [...prev, userId],
+      );
+    },
+    [currentUser?.id],
+  );
 
   /**
    * Open a specific modal
@@ -108,7 +126,7 @@ export function useAppState({
   }, []);
 
   return {
-    selectedUsers,
+    selectedUsers: selectedUsersWithCurrentUser,
     toggleUser,
     setSelectedUsers,
     modals,

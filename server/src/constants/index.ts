@@ -36,7 +36,7 @@ export const RATE_LIMIT_WINDOW_MS = 15 * ONE_MINUTE_MS;
 export const RATE_LIMIT_MAX_REQUESTS = 100;
 
 /** Maximum authentication requests per IP in the rate limit window */
-export const RATE_LIMIT_AUTH_MAX_REQUESTS = 10;
+export const RATE_LIMIT_AUTH_MAX_REQUESTS = 15;
 
 // =============================================================================
 // Authentication
