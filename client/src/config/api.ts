@@ -5,9 +5,13 @@ function getApiBaseUrl(): string {
     return import.meta.env.VITE_API_BASE_URL;
   }
 
-  // In production (Vercel), use relative path (same domain)
-  if (import.meta.env.PROD) {
-    return "";
+  // Check if running on Vercel or production domain
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname;
+    // If not localhost, use same origin (empty string for relative URLs)
+    if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+      return "";
+    }
   }
 
   // In development, use localhost
