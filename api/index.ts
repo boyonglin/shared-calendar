@@ -389,7 +389,82 @@ async function handleGetAllEvents(
         );
       }
     }
-    // TODO: Add iCloud and Outlook support here
+
+    // Fetch Outlook events via OneCal
+    if (account.provider === "outlook" && account.access_token && ONECAL_API_KEY) {
+      try {
+        const endUserAccountId = account.access_token as string;
+
+        // First, get calendars for this account
+        const calendarsResponse = await fetch(
+          `${ONECAL_API_BASE}/calendars/${endUserAccountId}`,
+          {
+            headers: { "x-api-key": ONECAL_API_KEY },
+          },
+        );
+
+        if (!calendarsResponse.ok) {
+          console.error(`Failed to fetch Outlook calendars: ${await calendarsResponse.text()}`);
+          continue;
+        }
+
+        const calendarsData = (await calendarsResponse.json()) as {
+          data?: Array<{ id: string; name: string; isPrimary?: boolean }>;
+        };
+        const allCalendars = calendarsData.data || [];
+
+        // Use primary calendar or first available
+        const primaryCalendar = allCalendars.find((cal) => cal.isPrimary);
+        const calendars = primaryCalendar ? [primaryCalendar] : allCalendars.slice(0, 1);
+
+        for (const calendar of calendars) {
+          const eventsParams = new URLSearchParams({
+            startDateTime: timeMin.toISOString(),
+            endDateTime: timeMax.toISOString(),
+            expandRecurrences: "true",
+          });
+
+          const eventsResponse = await fetch(
+            `${ONECAL_API_BASE}/events/${endUserAccountId}/${calendar.id}?${eventsParams}`,
+            { headers: { "x-api-key": ONECAL_API_KEY } },
+          );
+
+          if (!eventsResponse.ok) {
+            console.error(`Failed to fetch Outlook events: ${await eventsResponse.text()}`);
+            continue;
+          }
+
+          const eventsData = (await eventsResponse.json()) as {
+            data?: Array<{
+              id: string;
+              title?: string;
+              summary?: string;
+              start?: { dateTime?: string; date?: string };
+              end?: { dateTime?: string; date?: string };
+            }>;
+          };
+          const onecalEvents = eventsData.data || [];
+
+          for (const event of onecalEvents) {
+            allEvents.push({
+              id: event.id,
+              summary: event.title || event.summary || "Untitled Event",
+              start: { dateTime: event.start?.dateTime, date: event.start?.date },
+              end: { dateTime: event.end?.dateTime, date: event.end?.date },
+              calendarId: calendar.id,
+              accountType: "outlook",
+              accountEmail: account.external_email,
+              userId: account.user_id,
+            });
+          }
+        }
+      } catch (err) {
+        console.error(
+          `Error fetching Outlook events for ${account.user_id}:`,
+          err,
+        );
+      }
+    }
   }
 
   return res.status(200).json(allEvents);
@@ -700,6 +775,118 @@ async function handleOutlookCallback(
 }
 
 // =============================================================================
+// Friends Handlers
+// =============================================================================
+
+const FRIEND_COLORS = [
+  "#EF4444", "#F97316", "#F59E0B", "#EAB308", "#84CC16",
+  "#22C55E", "#10B981", "#14B8A6", "#06B6D4", "#0EA5E9",
+  "#3B82F6", "#6366F1", "#8B5CF6", "#A855F7", "#D946EF",
+  "#EC4899", "#F43F5E",
+];
+
+function generateFriendColor(email: string): string {
+  let hash = 0;
+  for (let i = 0; i < email.length; i++) {
+    hash = email.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return FRIEND_COLORS[Math.abs(hash) % FRIEND_COLORS.length];
+}
+
+function extractFriendName(metadata: string | null, email: string): string {
+  if (metadata) {
+    try {
+      const parsed = JSON.parse(metadata);
+      return parsed.name || email;
+    } catch {
+      // Use email as fallback
+    }
+  }
+  return email;
+}
+
+async function handleGetFriends(
+  req: VercelRequest,
+  res: VercelResponse,
+): Promise<VercelResponse> {
+  const user = verifyToken(req);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const client = getTursoClient();
+  const result = await client.execute({
+    sql: `SELECT uc.*, ca.metadata 
+          FROM user_connections uc
+          LEFT JOIN calendar_accounts ca ON uc.friend_user_id = ca.user_id
+          WHERE uc.user_id = ? AND uc.status != 'incoming'`,
+    args: [user.userId],
+  });
+
+  const friends = result.rows.map((conn) => ({
+    id: conn.id,
+    userId: conn.user_id,
+    friendEmail: conn.friend_email,
+    friendUserId: conn.friend_user_id,
+    friendName: extractFriendName(conn.metadata as string | null, conn.friend_email as string),
+    friendColor: generateFriendColor(conn.friend_email as string),
+    status: conn.status,
+    createdAt: conn.created_at,
+  }));
+
+  return res.status(200).json({ friends });
+}
+
+async function handleGetIncomingRequests(
+  req: VercelRequest,
+  res: VercelResponse,
+): Promise<VercelResponse> {
+  const user = verifyToken(req);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const client = getTursoClient();
+  const result = await client.execute({
+    sql: `SELECT uc.*, ca.metadata 
+          FROM user_connections uc
+          LEFT JOIN calendar_accounts ca ON uc.friend_user_id = ca.user_id
+          WHERE uc.user_id = ? AND uc.status = 'incoming'`,
+    args: [user.userId],
+  });
+
+  const requests = result.rows.map((conn) => ({
+    id: conn.id,
+    userId: conn.user_id,
+    friendEmail: conn.friend_email,
+    friendUserId: conn.friend_user_id,
+    friendName: extractFriendName(conn.metadata as string | null, conn.friend_email as string),
+    friendColor: generateFriendColor(conn.friend_email as string),
+    status: conn.status,
+    createdAt: conn.created_at,
+  }));
+
+  return res.status(200).json({ requests, count: requests.length });
+}
+
+async function handleSyncPending(
+  req: VercelRequest,
+  res: VercelResponse,
+): Promise<VercelResponse> {
+  const user = verifyToken(req);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  // For now, just return success - full sync logic can be added later
+  return res.status(200).json({
+    success: true,
+    message: "Synced 0 pending connections",
+    updatedCount: 0,
+  });
+}
+
+// =============================================================================
 // Main Handler
 // =============================================================================
 export default async function handler(
@@ -821,6 +1008,31 @@ export default async function handler(
       return handleRemoveOutlook(req, res, outlookDeleteMatch[1]);
     }
 
+    // ===================
+    // Friends routes
+    // ===================
+
+    // GET /api/friends
+    if ((path === "/api/friends" || path === "/api/friends/") && req.method === "GET") {
+      return handleGetFriends(req, res);
+    }
+
+    // GET /api/friends/requests/incoming
+    if (
+      path === "/api/friends/requests/incoming" ||
+      path === "/api/friends/requests/incoming/"
+    ) {
+      return handleGetIncomingRequests(req, res);
+    }
+
+    // POST /api/friends/sync-pending
+    if (
+      (path === "/api/friends/sync-pending" || path === "/api/friends/sync-pending/") &&
+      req.method === "POST"
+    ) {
+      return handleSyncPending(req, res);
+    }
+
     // Root endpoint
     if (path === "/api" || path === "/api/") {
       return res.status(200).json({
@@ -841,6 +1053,9 @@ export default async function handler(
           "DELETE /api/calendar/icloud/:userId",
           "GET /api/calendar/outlook/status",
           "DELETE /api/calendar/outlook/:userId",
+          "GET /api/friends",
+          "GET /api/friends/requests/incoming",
+          "POST /api/friends/sync-pending",
         ],
       });
     }
