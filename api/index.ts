@@ -33,6 +33,7 @@ const IV_LENGTH = 16;
 // AI Configuration
 const AI_MAX_INPUT_LENGTH = 1000;
 const AI_MAX_ATTENDEE_LENGTH = 100;
+const AI_MAX_ATTENDEES = 50;
 
 // =============================================================================
 // Database
@@ -208,6 +209,9 @@ function encrypt(text: string): string {
   encrypted = Buffer.concat([encrypted, cipher.final()]);
   return iv.toString("hex") + ":" + encrypted.toString("hex");
 }
+
+// Note: decrypt function will be needed when iCloud calendar event fetching is implemented.
+// See server/src/services/icloudAuth.ts for reference implementation.
 
 // =============================================================================
 // AI Helpers
@@ -1662,8 +1666,17 @@ async function handleDraftInvitation(
     ? sanitizeInput(location, AI_MAX_INPUT_LENGTH)
     : "";
   const safeAttendees = (attendees ?? [])
-    .slice(0, 50)
+    .slice(0, AI_MAX_ATTENDEES)
     .map((a: string) => sanitizeInput(a, AI_MAX_ATTENDEE_LENGTH));
+
+  // Validate datetime format (ISO 8601)
+  const isoDateTimeRegex =
+    /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$/;
+  if (!isoDateTimeRegex.test(start) || !isoDateTimeRegex.test(end)) {
+    return res
+      .status(400)
+      .json({ error: "Invalid datetime format. Use ISO 8601 format." });
+  }
 
   try {
     const genAI = new GoogleGenerativeAI(geminiApiKey);
