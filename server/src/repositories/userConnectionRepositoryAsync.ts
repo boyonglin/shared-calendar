@@ -32,7 +32,7 @@ export const userConnectionRepositoryAsync = {
       sql: "SELECT * FROM user_connections WHERE id = ?",
       args: [id],
     });
-    return result.rows[0] as UserConnection | undefined;
+    return result.rows[0] as unknown as UserConnection | undefined;
   },
 
   async findByIdAndUserId(
@@ -44,7 +44,7 @@ export const userConnectionRepositoryAsync = {
       sql: "SELECT * FROM user_connections WHERE id = ? AND user_id = ?",
       args: [id, userId],
     });
-    return result.rows[0] as UserConnection | undefined;
+    return result.rows[0] as unknown as UserConnection | undefined;
   },
 
   async findByIdUserIdAndStatus(
@@ -57,7 +57,7 @@ export const userConnectionRepositoryAsync = {
       sql: "SELECT * FROM user_connections WHERE id = ? AND user_id = ? AND status = ?",
       args: [id, userId, status],
     });
-    return result.rows[0] as UserConnection | undefined;
+    return result.rows[0] as unknown as UserConnection | undefined;
   },
 
   async findByUserIdAndFriendEmail(
@@ -69,7 +69,7 @@ export const userConnectionRepositoryAsync = {
       sql: "SELECT * FROM user_connections WHERE user_id = ? AND friend_email = ?",
       args: [userId, friendEmail],
     });
-    return result.rows[0] as UserConnection | undefined;
+    return result.rows[0] as unknown as UserConnection | undefined;
   },
 
   async findAllByUserId(userId: string): Promise<UserConnectionWithMetadata[]> {
@@ -84,7 +84,7 @@ export const userConnectionRepositoryAsync = {
       `,
       args: [userId],
     });
-    return result.rows as UserConnectionWithMetadata[];
+    return result.rows as unknown as UserConnectionWithMetadata[];
   },
 
   async findIncomingRequests(
@@ -101,7 +101,7 @@ export const userConnectionRepositoryAsync = {
       `,
       args: [userId],
     });
-    return result.rows as UserConnectionWithMetadata[];
+    return result.rows as unknown as UserConnectionWithMetadata[];
   },
 
   async findPendingWithoutFriendUserId(
@@ -116,7 +116,7 @@ export const userConnectionRepositoryAsync = {
       `,
       args: [userId],
     });
-    return result.rows as UserConnection[];
+    return result.rows as unknown as UserConnection[];
   },
 
   async findByUserIdAndFriendUserId(
@@ -130,13 +130,13 @@ export const userConnectionRepositoryAsync = {
         sql: "SELECT * FROM user_connections WHERE user_id = ? AND friend_user_id = ? AND status = ?",
         args: [userId, friendUserId, status],
       });
-      return result.rows[0] as UserConnection | undefined;
+      return result.rows[0] as unknown as UserConnection | undefined;
     }
     const result = await db.execute({
       sql: "SELECT * FROM user_connections WHERE user_id = ? AND friend_user_id = ?",
       args: [userId, friendUserId],
     });
-    return result.rows[0] as UserConnection | undefined;
+    return result.rows[0] as unknown as UserConnection | undefined;
   },
 
   async create(
@@ -268,6 +268,6 @@ export const userConnectionRepositoryAsync = {
       `,
       args: [friendEmail],
     });
-    return result.rows as UserConnectionWithMetadata[];
+    return result.rows as unknown as UserConnectionWithMetadata[];
   },
 };

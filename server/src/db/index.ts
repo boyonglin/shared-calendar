@@ -71,7 +71,7 @@ function initializeLocalDb() {
     db.pragma("foreign_keys = ON");
     initializeSqliteSchema(db);
     console.log("✅ Database initialized (SQLite sync)");
-  } catch (_error) {
+  } catch {
     console.log("⚠️ better-sqlite3 not available, using Turso only");
   }
 }

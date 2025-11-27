@@ -1,4 +1,4 @@
-import "dotenv/config"; // Load environment variables before other imports
+// Note: dotenv is loaded in ./config/env.ts before validation
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import cors from "cors";
