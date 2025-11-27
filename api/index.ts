@@ -205,7 +205,7 @@ function getEncryptionKey(): Buffer {
 function encrypt(text: string): string {
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv("aes-256-cbc", getEncryptionKey(), iv);
-  let encrypted = cipher.update(text);
+  let encrypted = cipher.update(text, "utf8");
   encrypted = Buffer.concat([encrypted, cipher.final()]);
   return iv.toString("hex") + ":" + encrypted.toString("hex");
 }
@@ -249,6 +249,7 @@ function sanitizeOutput(text: string): string {
 }
 
 type Tone = "professional" | "casual" | "friendly";
+const VALID_TONES: Tone[] = ["professional", "casual", "friendly"];
 
 function buildAIPrompt(params: {
   title: string;
@@ -672,14 +673,26 @@ async function handleICloudConnect(
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
   const { email, password } = req.body || {};
 
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required" });
+  // Validate email format and type
+  if (
+    !email ||
+    typeof email !== "string" ||
+    !email.includes("@") ||
+    email.length > 255
+  ) {
+    return res.status(400).json({ error: "Invalid email format" });
+  }
+
+  // Validate password format and type
+  if (
+    !password ||
+    typeof password !== "string" ||
+    password.length < 1 ||
+    password.length > 1000
+  ) {
+    return res.status(400).json({ error: "Invalid password format" });
   }
 
   // Verify credentials with Apple's CalDAV server using tsdav
@@ -706,7 +719,7 @@ async function handleICloudConnect(
   }
 
   // Generate a new ID for this iCloud connection
-  const icloudUserId = `icloud_${crypto.randomUUID()}`;
+  const iCloudUserId = `icloud_${crypto.randomUUID()}`;
 
   // Encrypt the app-specific password
   const encryptedPassword = encrypt(password);
@@ -715,22 +728,29 @@ async function handleICloudConnect(
   const client = getTursoClient();
   const metadata = JSON.stringify({ name: email });
 
-  await client.execute({
-    sql: `INSERT INTO calendar_accounts (
-      user_id, provider, external_email, encrypted_password, metadata, primary_user_id, updated_at
-    ) VALUES (?, 'icloud', ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    ON CONFLICT(user_id) DO UPDATE SET
-      external_email = excluded.external_email,
-      encrypted_password = excluded.encrypted_password,
-      metadata = excluded.metadata,
-      updated_at = CURRENT_TIMESTAMP`,
-    args: [icloudUserId, email, encryptedPassword, metadata, user.userId],
-  });
+  try {
+    await client.execute({
+      sql: `INSERT INTO calendar_accounts (
+        user_id, provider, external_email, encrypted_password, metadata, primary_user_id, updated_at
+      ) VALUES (?, 'icloud', ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id) DO UPDATE SET
+        external_email = excluded.external_email,
+        encrypted_password = excluded.encrypted_password,
+        metadata = excluded.metadata,
+        updated_at = CURRENT_TIMESTAMP`,
+      args: [iCloudUserId, email, encryptedPassword, metadata, user.userId],
+    });
+  } catch (error) {
+    console.error("Failed to store iCloud account:", error);
+    return res.status(500).json({
+      error: "Failed to save iCloud connection. Please try again.",
+    });
+  }
 
   return res.status(200).json({
     success: true,
     user: {
-      id: icloudUserId,
+      id: iCloudUserId,
       email: email,
       provider: "icloud",
     },
@@ -1630,10 +1650,6 @@ async function handleDraftInvitation(
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
   const {
     title,
     description,
@@ -1651,13 +1667,22 @@ async function handleDraftInvitation(
       .json({ error: "Missing required fields (title, start, end)" });
   }
 
-  if (!geminiApiKey) {
-    return res.status(400).json({ error: "Gemini API key is required" });
+  // Validate and sanitize geminiApiKey
+  if (typeof geminiApiKey !== "string" || geminiApiKey.trim().length === 0) {
+    return res.status(400).json({ error: "Invalid Gemini API key format" });
+  }
+  // Only allow alphanumeric, dash, and underscore characters
+  const sanitizedGeminiApiKey = geminiApiKey
+    .trim()
+    .replace(/[^A-Za-z0-9_-]/g, "");
+  if (sanitizedGeminiApiKey.length === 0) {
+    return res
+      .status(400)
+      .json({ error: "Gemini API key contains invalid characters" });
   }
 
-  // Validate tone
-  const validTones: Tone[] = ["professional", "casual", "friendly"];
-  const selectedTone: Tone = validTones.includes(tone) ? tone : "professional";
+  // Validate tone using module-level constant
+  const selectedTone: Tone = VALID_TONES.includes(tone) ? tone : "professional";
 
   // Sanitize inputs
   const safeTitle = sanitizeInput(title, AI_MAX_INPUT_LENGTH);
@@ -1669,17 +1694,25 @@ async function handleDraftInvitation(
     .slice(0, AI_MAX_ATTENDEES)
     .map((a: string) => sanitizeInput(a, AI_MAX_ATTENDEE_LENGTH));
 
-  // Validate datetime format (ISO 8601)
-  const isoDateTimeRegex =
-    /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$/;
-  if (!isoDateTimeRegex.test(start) || !isoDateTimeRegex.test(end)) {
+  // Validate datetime format using Date parsing
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (
+    isNaN(startDate.getTime()) ||
+    isNaN(endDate.getTime()) ||
+    !/T\d{2}:\d{2}/.test(start) ||
+    !/T\d{2}:\d{2}/.test(end)
+  ) {
     return res
       .status(400)
       .json({ error: "Invalid datetime format. Use ISO 8601 format." });
   }
+  if (endDate <= startDate) {
+    return res.status(400).json({ error: "End time must be after start time" });
+  }
 
   try {
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
+    const genAI = new GoogleGenerativeAI(sanitizedGeminiApiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
     const prompt = buildAIPrompt({
@@ -1687,8 +1720,8 @@ async function handleDraftInvitation(
       description: safeDescription,
       location: safeLocation,
       attendees: safeAttendees,
-      start: start,
-      end: end,
+      start: sanitizeInput(start, 100),
+      end: sanitizeInput(end, 100),
       tone: selectedTone,
     });
 
@@ -1699,11 +1732,10 @@ async function handleDraftInvitation(
     return res.status(200).json({ draft });
   } catch (error) {
     console.error("Error generating invitation draft:", error);
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to generate invitation draft";
-    return res.status(500).json({ error: message });
+    return res.status(500).json({
+      error:
+        "Failed to generate invitation draft. Please check your API key and try again.",
+    });
   }
 }
 
