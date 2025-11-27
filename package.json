@@ -4,6 +4,9 @@
   "type": "module",
   "description": "Shared calendar application - monorepo",
   "private": true,
+  "engines": {
+    "node": "20.x"
+  },
   "workspaces": [
     "client",
     "server"
