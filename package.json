@@ -11,6 +11,7 @@
   "scripts": {
     "dev": "concurrently -k -n \"CLIENT,SERVER\" -c \"cyan.bold,green.bold\" \"npm run dev --workspace=client\" \"npm run dev --workspace=server\"",
     "build": "npm run build --workspaces",
+    "build:vercel": "npm run build --workspace=client",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
