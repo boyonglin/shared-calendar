@@ -6,7 +6,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient, type Client } from "@libsql/client";
 import { google } from "googleapis";
-import * as jwt from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
 // =============================================================================
 // Environment Variables
