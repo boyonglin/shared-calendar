@@ -124,10 +124,14 @@ export function useFriends({
             })),
           )
           .catch((err) => {
-            console.error(
-              `Error fetching events for friend ${friend.id}:`,
-              err,
-            );
+            // Silently handle 404 errors (friend was deleted or connection removed)
+            // Only log non-404 errors as they indicate actual issues
+            if (err instanceof Error && !err.message.includes("Not found")) {
+              console.error(
+                `Error fetching events for friend ${friend.id}:`,
+                err,
+              );
+            }
             return [];
           }),
       );

@@ -104,6 +104,7 @@ export function FriendsManager({
   const [processingRequestId, setProcessingRequestId] = useState<number | null>(
     null,
   );
+  const [removingFriendId, setRemovingFriendId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -178,9 +179,14 @@ export function FriendsManager({
   };
 
   const handleRemoveFriend = async (friendId: number) => {
+    // Prevent double-clicks
+    if (removingFriendId === friendId) return;
+
     // Store friend for rollback
     const friendToRemove = friends.find((f) => f.id === friendId);
     if (!friendToRemove) return;
+
+    setRemovingFriendId(friendId);
 
     // Optimistic update: remove immediately
     setFriends((prev) => prev.filter((f) => f.id !== friendId));
@@ -189,9 +195,18 @@ export function FriendsManager({
       await friendsApi.removeFriend(friendId);
       onFriendsChange?.();
     } catch (err) {
-      // Rollback on error
-      setFriends((prev) => [...prev, friendToRemove]);
-      setError(err instanceof Error ? err.message : "Failed to remove friend");
+      // Handle 404 gracefully - friend was already removed (possibly by the other party)
+      const errorMessage = err instanceof Error ? err.message : "";
+      if (errorMessage.includes("Not found") || errorMessage.includes("404")) {
+        // Friend already removed, just trigger refresh to sync state
+        onFriendsChange?.();
+      } else {
+        // Rollback on other errors
+        setFriends((prev) => [...prev, friendToRemove]);
+        setError(errorMessage || "Failed to remove friend");
+      }
+    } finally {
+      setRemovingFriendId(null);
     }
   };
 
@@ -399,10 +414,15 @@ export function FriendsManager({
                             variant="ghost"
                             size="sm"
                             onClick={() => handleRemoveFriend(friend.id)}
+                            disabled={removingFriendId === friend.id}
                             className="h-7 w-7 p-0 text-gray-400 hover:text-red-500"
                             aria-label="Remove friend"
                           >
-                            <X className="w-4 h-4" />
+                            {removingFriendId === friend.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <X className="w-4 h-4" />
+                            )}
                           </Button>
                         </div>
                       </div>
