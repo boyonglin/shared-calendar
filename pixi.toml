@@ -26,7 +26,6 @@ format-client = { cmd = "npm run format", cwd = "client" }
 
 # Server tasks
 install-server = { cmd = "npm install", cwd = "server" }
-rebuild-server = { cmd = "npm rebuild better-sqlite3", cwd = "server" }
 dev-server = { cmd = "npm run dev", cwd = "server" }
 build-server = { cmd = "npm run build", cwd = "server" }
 lint-server = { cmd = "npm run lint", cwd = "server" }
