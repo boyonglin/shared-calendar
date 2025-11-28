@@ -72,19 +72,6 @@ export function createRequestLogger(context: {
  */
 
 /**
- * Helper to create a timer for performance logging
- *
- * @example
- * const timer = createTimer();
- * // ... do work ...
- * logger.info({ duration: timer(), operation: "fetchEvents" }, "Fetched events");
- */
-export function createTimer(): () => number {
-  const start = Date.now();
-  return () => Date.now() - start;
-}
-
-/**
  * Structured error logging helper
  * Extracts useful error properties for structured logging
  */

@@ -1,8 +1,4 @@
-import type {
-  GoogleUser,
-  GoogleCalendarEvent,
-  StoredSession,
-} from "../types/google";
+import type { GoogleUser, StoredSession } from "../types/google";
 import {
   STORAGE_KEYS,
   TOKEN_EXPIRY_BUFFER_MS,
@@ -45,15 +41,6 @@ export function saveUserSession(user: GoogleUser): void {
   // Keep a session timestamp for UI purposes
   const sessionTime = Date.now() + TOKEN_EXPIRY_DURATION_MS;
   localStorage.setItem(STORAGE_KEYS.TOKEN_EXPIRY, sessionTime.toString());
-}
-
-/**
- * Save calendar events to localStorage
- */
-export function saveCalendarEvents(events: GoogleCalendarEvent[]): void {
-  if (events.length > 0) {
-    localStorage.setItem(STORAGE_KEYS.CALENDAR_EVENTS, JSON.stringify(events));
-  }
 }
 
 /**

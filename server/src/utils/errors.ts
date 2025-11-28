@@ -118,38 +118,11 @@ export class ValidationError extends AppError {
 }
 
 /**
- * 429 Too Many Requests - Rate limit exceeded
- */
-export class RateLimitError extends AppError {
-  constructor(message = "Too many requests, please try again later") {
-    super(message, 429, "RATE_LIMIT_EXCEEDED");
-  }
-}
-
-/**
- * 500 Internal Server Error - Unexpected error
- */
-export class InternalError extends AppError {
-  constructor(message = "Internal server error", code = "INTERNAL_ERROR") {
-    super(message, 500, code, false);
-  }
-}
-
-/**
  * 501 Not Implemented - Feature not yet available
  */
 export class NotImplementedError extends AppError {
   constructor(message = "Not implemented", code = "NOT_IMPLEMENTED") {
     super(message, 501, code);
-  }
-}
-
-/**
- * 503 Service Unavailable - Dependency is down
- */
-export class ServiceUnavailableError extends AppError {
-  constructor(message = "Service unavailable", code = "SERVICE_UNAVAILABLE") {
-    super(message, 503, code);
   }
 }
 

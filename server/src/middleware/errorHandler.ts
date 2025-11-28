@@ -73,18 +73,6 @@ export function errorHandler(
 }
 
 /**
- * Async handler wrapper to catch errors in async route handlers
- * Use: router.get('/path', asyncHandler(async (req, res) => { ... }))
- */
-export function asyncHandler<T>(
-  fn: (req: Request, res: Response, next: NextFunction) => Promise<T>,
-) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-  };
-}
-
-/**
  * Not found handler for unmatched routes
  */
 export function notFoundHandler(req: Request, res: Response): void {

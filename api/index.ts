@@ -2020,18 +2020,12 @@ export default async function handler(
 ): Promise<VercelResponse | void> {
   const rawPath = req.url?.split("?")[0] || "/api";
 
-  // Debug logging
-  console.log(`[API] Method: ${req.method}, URL: ${req.url}, Path: ${rawPath}`);
-  console.log(`[API] Headers:`, JSON.stringify(req.headers));
-
   // Normalize path: remove trailing slash and ensure it starts with /api
   let path = rawPath.replace(/\/$/, "");
   if (!path.startsWith("/api")) {
     // Handle case where path might be relative or missing /api prefix due to rewriting
     path = `/api${path.startsWith("/") ? "" : "/"}${path}`;
   }
-
-  console.log(`[API] Normalized Path: ${path}`);
 
   // CORS
   res.setHeader("Access-Control-Allow-Origin", CLIENT_URL);
@@ -2227,7 +2221,6 @@ export default async function handler(
     }
 
     // 404
-    console.log(`[API] 404 Not Found: ${path}`);
     return res.status(404).json({ error: "Not found", path, rawUrl: req.url });
   } catch (error) {
     console.error("API Error:", error);

@@ -7,6 +7,7 @@ node_modules/
 .env.*.local
 
 # Build outputs
+api/dist/
 client/build/
 client/dist/
 server/dist/
@@ -39,6 +40,3 @@ client/dev-dist/
 # Pixi
 .pixi/
 pixi.lock
-
-# Documentation
-DEPLOYMENT.md
