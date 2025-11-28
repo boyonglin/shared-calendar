@@ -6,18 +6,12 @@ import type { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
-import rateLimit from "express-rate-limit";
 import authRoutes from "./routes/auth";
 import apiRoutes from "./routes/index";
 import logger from "./utils/logger";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { calendarAccountRepository } from "./repositories";
-import {
-  RATE_LIMIT_WINDOW_MS,
-  RATE_LIMIT_MAX_REQUESTS,
-  RATE_LIMIT_AUTH_MAX_REQUESTS,
-  GRACEFUL_SHUTDOWN_TIMEOUT_MS,
-} from "./constants";
+import { GRACEFUL_SHUTDOWN_TIMEOUT_MS } from "./constants";
 import { getDb } from "./db"; // Initialize database on startup
 
 // Initialize database connection
@@ -34,7 +28,7 @@ const app = express();
 const PORT = env.PORT;
 const CLIENT_URL = env.CLIENT_URL;
 
-// Trust proxy for rate limiting behind reverse proxy
+// Trust proxy for proper client IP detection behind reverse proxy
 app.set("trust proxy", 1);
 
 // Request ID middleware for request tracking
@@ -47,29 +41,6 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 
 // Security middleware
 app.use(helmet());
-
-// Rate limiting - general API limiter
-const generalLimiter = rateLimit({
-  windowMs: RATE_LIMIT_WINDOW_MS,
-  max: RATE_LIMIT_MAX_REQUESTS,
-  message: { error: "Too many requests, please try again later" },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Stricter rate limit for auth endpoints to prevent brute force
-const authLimiter = rateLimit({
-  windowMs: RATE_LIMIT_WINDOW_MS,
-  max: RATE_LIMIT_AUTH_MAX_REQUESTS,
-  message: {
-    error: "Too many authentication attempts, please try again later",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Apply general rate limiter to all requests
-app.use(generalLimiter);
 
 // Cookie parser middleware
 app.use(cookieParser());
@@ -85,11 +56,11 @@ app.use(
 // Body parser with size limit to prevent large payload attacks
 app.use(express.json({ limit: "10kb" }));
 
-// Routes with specific rate limiters
-app.use("/api/auth", authLimiter, authRoutes);
+// Routes
+app.use("/api/auth", authRoutes);
 app.use("/api", apiRoutes);
 
-// Health check (excluded from rate limiting for monitoring)
+// Health check
 app.get("/api/health", async (_req, res) => {
   const dbHealthy = await calendarAccountRepository.healthCheck();
   const status = dbHealthy ? "ok" : "degraded";

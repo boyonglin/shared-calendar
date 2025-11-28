@@ -26,25 +26,6 @@ export const ONE_DAY_MS = 24 * ONE_HOUR_MS;
 export const ONE_WEEK_MS = 7 * ONE_DAY_MS;
 
 // =============================================================================
-// Rate Limiting
-// =============================================================================
-
-/** Rate limit window duration (10 minutes) */
-export const RATE_LIMIT_WINDOW_MS = 10 * ONE_MINUTE_MS;
-
-/** Maximum requests per IP in the rate limit window */
-export const RATE_LIMIT_MAX_REQUESTS = 100;
-
-/**
- * Maximum authentication requests per IP in the rate limit window.
- *
- * The rate limit window was reduced from 15 minutes to 10 minutes, and the auth request limit
- * was increased from 10 to 15 requests. This change aims to balance security (preventing brute-force
- * attacks) and user experience (reducing friction for legitimate users).
- */
-export const RATE_LIMIT_AUTH_MAX_REQUESTS = 15;
-
-// =============================================================================
 // Authentication
 // =============================================================================
 
