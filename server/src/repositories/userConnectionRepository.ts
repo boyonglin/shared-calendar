@@ -66,7 +66,7 @@ export const userConnectionRepository = {
   ): Promise<UserConnection | undefined> {
     const db = await getDb();
     const result = await db.execute({
-      sql: "SELECT * FROM user_connections WHERE user_id = ? AND friend_email = ?",
+      sql: "SELECT * FROM user_connections WHERE user_id = ? AND LOWER(friend_email) = LOWER(?)",
       args: [userId, friendEmail],
     });
     return result.rows[0] as unknown as UserConnection | undefined;
@@ -236,7 +236,7 @@ export const userConnectionRepository = {
   ): Promise<boolean> {
     const db = await getDb();
     const result = await db.execute({
-      sql: "DELETE FROM user_connections WHERE user_id = ? AND friend_email = ?",
+      sql: "DELETE FROM user_connections WHERE user_id = ? AND LOWER(friend_email) = LOWER(?)",
       args: [userId, friendEmail],
     });
     return (result.rowsAffected ?? 0) > 0;
@@ -264,7 +264,7 @@ export const userConnectionRepository = {
         SELECT uc.*, ca.metadata
         FROM user_connections uc
         LEFT JOIN calendar_accounts ca ON ca.user_id = uc.user_id
-        WHERE uc.friend_email = ? AND uc.status IN ('pending', 'requested')
+        WHERE LOWER(uc.friend_email) = LOWER(?) AND uc.status IN ('pending', 'requested')
       `,
       args: [friendEmail],
     });

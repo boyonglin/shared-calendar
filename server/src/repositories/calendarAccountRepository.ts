@@ -79,7 +79,7 @@ export const calendarAccountRepository = {
   ): Promise<CalendarAccount | undefined> {
     const db = await getDb();
     const result = await db.execute({
-      sql: "SELECT * FROM calendar_accounts WHERE external_email = ?",
+      sql: "SELECT * FROM calendar_accounts WHERE LOWER(external_email) = LOWER(?)",
       args: [email],
     });
     return result.rows[0] as unknown as CalendarAccount | undefined;

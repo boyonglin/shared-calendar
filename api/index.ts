@@ -370,6 +370,55 @@ async function handleGoogleCallback(
       ],
     });
 
+    // Process any pending friend requests that were sent to this user before they registered
+    const normalizedEmail = userInfo.email.toLowerCase();
+    const userId = userInfo.id;
+
+    // Find pending friend requests sent to this email
+    const pendingRequestsResult = await client.execute({
+      sql: `SELECT uc.*, ca.external_email as requester_email
+            FROM user_connections uc
+            LEFT JOIN calendar_accounts ca ON ca.user_id = uc.user_id
+            WHERE LOWER(uc.friend_email) = LOWER(?) AND uc.status IN ('pending', 'requested')`,
+      args: [normalizedEmail],
+    });
+
+    // Process each pending request
+    for (const request of pendingRequestsResult.rows) {
+      const requestId = request.id as number;
+      const requestUserId = request.user_id as string;
+      const requesterEmail = request.requester_email as string | null;
+
+      // Update the requester's connection to 'requested' status with the new user's ID
+      await client.execute({
+        sql: `UPDATE user_connections 
+              SET friend_user_id = ?, status = 'requested', updated_at = CURRENT_TIMESTAMP
+              WHERE id = ?`,
+        args: [userId, requestId],
+      });
+
+      // Create incoming request for the new user if the requester has an email
+      if (requesterEmail) {
+        const requesterEmailLower = requesterEmail.toLowerCase();
+
+        // Check if an incoming connection already exists
+        const existingResult = await client.execute({
+          sql: `SELECT id FROM user_connections 
+                WHERE user_id = ? AND LOWER(friend_email) = LOWER(?)`,
+          args: [userId, requesterEmailLower],
+        });
+
+        if (existingResult.rows.length === 0) {
+          // Create the incoming request for the new user
+          await client.execute({
+            sql: `INSERT OR IGNORE INTO user_connections (user_id, friend_email, friend_user_id, status)
+                  VALUES (?, ?, ?, 'incoming')`,
+            args: [userId, requesterEmailLower, requestUserId],
+          });
+        }
+      }
+    }
+
     const token = jwt.sign(
       { userId: userInfo.id, email: userInfo.email },
       JWT_SECRET,
@@ -1231,9 +1280,9 @@ async function handleSyncPending(
   for (const conn of pendingResult.rows) {
     const friendEmail = conn.friend_email as string;
 
-    // Check if friend has an account now
+    // Check if friend has an account now (case-insensitive)
     const friendAccountResult = await client.execute({
-      sql: "SELECT user_id FROM calendar_accounts WHERE external_email = ?",
+      sql: "SELECT user_id FROM calendar_accounts WHERE LOWER(external_email) = LOWER(?)",
       args: [friendEmail],
     });
 
@@ -1258,7 +1307,7 @@ async function handleSyncPending(
 
         // Check if reverse connection exists
         const reverseResult = await client.execute({
-          sql: "SELECT id FROM user_connections WHERE user_id = ? AND friend_email = ?",
+          sql: "SELECT id FROM user_connections WHERE user_id = ? AND LOWER(friend_email) = LOWER(?)",
           args: [friendUserId, currentUserEmail.toLowerCase()],
         });
 
@@ -1329,7 +1378,7 @@ async function handleAddFriend(
 
   // Check if connection already exists
   const existingResult = await client.execute({
-    sql: "SELECT * FROM user_connections WHERE user_id = ? AND friend_email = ?",
+    sql: "SELECT * FROM user_connections WHERE user_id = ? AND LOWER(friend_email) = LOWER(?)",
     args: [user.userId, normalizedEmail],
   });
 
@@ -1380,7 +1429,7 @@ async function handleAddFriend(
     // Create incoming request for friend if they have an account
     if (friendAccount && primaryUserEmail) {
       const reverseExistingResult = await client.execute({
-        sql: "SELECT id FROM user_connections WHERE user_id = ? AND friend_email = ?",
+        sql: "SELECT id FROM user_connections WHERE user_id = ? AND LOWER(friend_email) = LOWER(?)",
         args: [friendUserId, primaryUserEmail.toLowerCase()],
       });
 
@@ -1404,7 +1453,7 @@ async function handleAddFriend(
 
   // Get the inserted connection
   const connectionResult = await client.execute({
-    sql: "SELECT * FROM user_connections WHERE user_id = ? AND friend_email = ?",
+    sql: "SELECT * FROM user_connections WHERE user_id = ? AND LOWER(friend_email) = LOWER(?)",
     args: [user.userId, normalizedEmail],
   });
 
@@ -1474,7 +1523,7 @@ async function handleRemoveFriend(
       )?.toLowerCase();
       if (userEmail) {
         await client.execute({
-          sql: "DELETE FROM user_connections WHERE user_id = ? AND friend_email = ?",
+          sql: "DELETE FROM user_connections WHERE user_id = ? AND LOWER(friend_email) = LOWER(?)",
           args: [connection.friend_user_id, userEmail],
         });
       }
