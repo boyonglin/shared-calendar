@@ -106,21 +106,22 @@ export function ICloudConnectModal({
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-xs">
               {error}
             </div>
           )}
 
-          <div className="flex gap-3 justify-end">
+          <div className="flex flex-row gap-3">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={isLoading}
+              className="flex-1"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading} className="flex-1">
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

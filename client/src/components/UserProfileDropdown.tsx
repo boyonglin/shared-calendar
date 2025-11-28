@@ -54,7 +54,7 @@ export function UserProfileDropdown({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-2 hover:bg-gray-50 rounded-lg px-3 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+      <DropdownMenuTrigger className="flex items-center gap-2 w-full sm:w-auto hover:bg-gray-50 rounded-lg px-3 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
         <div
           className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
           style={{ backgroundColor: currentUser.color }}
@@ -67,9 +67,9 @@ export function UserProfileDropdown({
           </span>
           <span className="text-xs text-gray-500">{currentUser.email}</span>
         </div>
-        <ChevronDown className="w-4 h-4 text-gray-500" />
+        <ChevronDown className="w-4 h-4 text-gray-500 ml-auto sm:ml-0" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] sm:w-56">
         <DropdownMenuItem
           onClick={onRefreshEvents}
           className="cursor-pointer"
@@ -110,7 +110,7 @@ export function UserProfileDropdown({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               side="bottom"
-              align="center"
+              align="end"
               className="w-56 shadow-lg"
               sideOffset={8}
             >
@@ -166,7 +166,7 @@ export function UserProfileDropdown({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               side="bottom"
-              align="center"
+              align="end"
               className="w-56 shadow-lg"
               sideOffset={8}
             >

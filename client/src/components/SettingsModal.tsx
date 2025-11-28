@@ -86,7 +86,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-4 py-4">
           <div className="space-y-4">
             <div>
               <h3 className="text-sm font-medium text-gray-900">
@@ -152,41 +152,24 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </div>
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-            <p className="text-amber-800 text-sm">
-              <strong>Security Notice:</strong> Your API key is stored in your
-              browser&apos;s localStorage, which may be accessible to scripts on
-              this page. Only use this feature on trusted devices. The key is
-              only sent when generating AI drafts.
+            <p className="text-amber-800 text-xs">
+              <strong>Note:</strong> Stored locally in your browser. Only sent when generating AI drafts.
             </p>
           </div>
         </div>
 
-        <div className="flex gap-3 justify-between">
-          <div>
-            {effectiveHasExistingKey && (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={handleRemove}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-              >
-                <Trash2 className="w-4 h-4 mr-1" />
-                Remove
-              </Button>
-            )}
-          </div>
-          <div className="flex gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={!apiKey.trim()}>
-              Save
-            </Button>
-          </div>
+        <div className="flex flex-row gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+            className="flex-1"
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={!apiKey.trim()} className="flex-1">
+            Save
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

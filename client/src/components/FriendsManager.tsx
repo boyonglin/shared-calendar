@@ -325,19 +325,19 @@ export function FriendsManager({
 
           {/* Messages - shown on all tabs */}
           {error && (
-            <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm">
+            <div className="mt-4 bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-xs">
               {error}
             </div>
           )}
           {successMessage && (
-            <div className="mt-4 bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-md text-sm">
+            <div className="mt-4 bg-green-50 border border-green-200 text-green-700 rounded-lg p-3 text-xs">
               {successMessage}
             </div>
           )}
 
           {/* My Friends Tab */}
           <TabsContent value="friends" className="mt-4">
-            <div className="space-y-4">
+            <div className="space-y-4 h-[320px]">
               {/* Search Input */}
               <Input
                 type="text"
@@ -347,7 +347,7 @@ export function FriendsManager({
               />
 
               {/* Friends List */}
-              <ScrollArea className="h-[280px]">
+              <ScrollArea className="h-[268px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
@@ -435,7 +435,7 @@ export function FriendsManager({
 
           {/* Add Friend Tab */}
           <TabsContent value="add" className="mt-4">
-            <div className="flex flex-col items-center py-6 space-y-4">
+            <div className="flex flex-col items-center justify-center py-6 space-y-4 h-[320px]">
               <UserPlus className="w-12 h-12 text-gray-400" />
               <div className="text-center">
                 <h3 className="font-medium text-gray-900">Add a Friend</h3>
@@ -472,7 +472,7 @@ export function FriendsManager({
 
           {/* Requests Tab */}
           <TabsContent value="requests" className="mt-4">
-            <ScrollArea className="h-[280px]">
+            <ScrollArea className="h-[320px]">
               {incomingRequests.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                   <Inbox className="w-12 h-12 text-gray-300 mb-3" />

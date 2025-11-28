@@ -178,7 +178,7 @@ export function InviteDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose} modal>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Create Calendar Invite</DialogTitle>
           <DialogDescription>
@@ -186,7 +186,7 @@ export function InviteDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="flex-1 overflow-y-auto scrollbar-hide space-y-4 py-4 -mx-6 px-6">
           {timeSlot && (
             <div className="bg-gray-50 p-3 rounded-lg space-y-2">
               <div className="flex items-center gap-2 text-gray-700">
@@ -218,7 +218,7 @@ export function InviteDialog({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="title">Event Title</Label>
+            <Label htmlFor="title" className="text-sm">Event Title</Label>
             <Input
               id="title"
               placeholder="e.g., Team Sync Meeting"
@@ -229,39 +229,37 @@ export function InviteDialog({
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="description">Description (Optional)</Label>
-              <div className="flex items-center gap-2">
-                <Select
-                  value={tone}
-                  onValueChange={(v) =>
-                    setTone(v as "professional" | "casual" | "friendly")
-                  }
-                  disabled={isGenerating}
+            <Label htmlFor="description" className="text-sm">Description (Optional)</Label>
+            <div className="flex items-center gap-2">
+              <Select
+                value={tone}
+                onValueChange={(v) =>
+                  setTone(v as "professional" | "casual" | "friendly")
+                }
+                disabled={isGenerating}
+              >
+                <SelectTrigger
+                  className="h-8 text-xs flex-1"
+                  aria-label="Select tone for AI draft"
                 >
-                  <SelectTrigger
-                    className="h-7 text-xs w-[110px]"
-                    aria-label="Select tone for AI draft"
-                  >
-                    <SelectValue placeholder="Tone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="professional">Professional</SelectItem>
-                    <SelectItem value="casual">Casual</SelectItem>
-                    <SelectItem value="friendly">Friendly</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs gap-1 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                  onClick={handleAIDraft}
-                  disabled={isGenerating || !title.trim()}
-                >
-                  <Sparkles className="w-3 h-3" />
-                  {isGenerating ? "Drafting..." : "AI Draft"}
-                </Button>
-              </div>
+                  <SelectValue placeholder="Tone" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="professional">Professional</SelectItem>
+                  <SelectItem value="casual">Casual</SelectItem>
+                  <SelectItem value="friendly">Friendly</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs gap-1 text-purple-600 hover:text-purple-700 hover:bg-purple-50 flex-1"
+                onClick={handleAIDraft}
+                disabled={isGenerating || !title.trim()}
+              >
+                <Sparkles className="w-3 h-3" />
+                {isGenerating ? "Drafting..." : "AI Draft"}
+              </Button>
             </div>
             <ScrollArea
               type="auto"
@@ -272,7 +270,7 @@ export function InviteDialog({
                 placeholder="Add meeting details, agenda, or notes..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="min-h-[80px] border-0 resize-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                className="min-h-[80px] border-0 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
                 maxLength={2000}
               />
             </ScrollArea>
@@ -313,19 +311,17 @@ export function InviteDialog({
           </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-blue-800 text-sm">
-              <strong>Note:</strong> In production, this will send calendar
-              invites via Google Calendar, Outlook, or other integrated calendar
-              platforms.
+            <p className="text-blue-800 text-xs">
+              This will create an event in your Google Calendar and send invites to selected attendees.
             </p>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+        <DialogFooter className="flex flex-row gap-3">
+          <Button variant="outline" onClick={onClose} className="flex-1">
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={!title.trim()}>
+          <Button onClick={handleSubmit} disabled={!title.trim()} className="flex-1">
             Send Invite
           </Button>
         </DialogFooter>

@@ -1,7 +1,7 @@
 import type { User, CalendarEvent, TimeSlot } from "../types";
 import { Card, CardContent, CardHeader } from "./ui/card";
 import { Button } from "./ui/button";
-import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { EventBlock } from "./EventBlock";
 
 interface CalendarViewProps {
@@ -10,7 +10,7 @@ interface CalendarViewProps {
   currentUserId: string;
   weekStart: Date;
   onTimeSlotSelect: (slot: TimeSlot) => void;
-  onWeekChange: (direction: "prev" | "next") => void;
+  onWeekChange: (direction: "prev" | "next" | "today") => void;
   startHour?: number;
   endHour?: number;
 }
@@ -127,11 +127,15 @@ export function CalendarView({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-gray-600 mr-1" />
-            <span className="text-gray-900">{formatWeekRange()}</span>
-          </div>
+          <span className="text-gray-900">{formatWeekRange()}</span>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onWeekChange("today")}
+            >
+              Today
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -151,30 +155,36 @@ export function CalendarView({
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
-          <div className="min-w-[800px]">
-            {/* Header row with days */}
-            <div className="grid grid-cols-8 gap-px bg-gray-200 border border-gray-200">
-              <div className="bg-white p-3">
-                <span className="text-gray-600">Time</span>
+          <div>
+            {/* Header row with days - 7 columns on mobile, 8 on desktop */}
+            <div className="grid grid-cols-7 sm:grid-cols-8 gap-px bg-gray-200 border border-gray-200">
+              <div className="bg-white p-1 sm:p-3 hidden sm:block">
+                <span className="text-gray-600 text-xs sm:text-base">Time</span>
               </div>
               {weekDays.map((day, index) => (
                 <div
                   key={index}
-                  className={`p-3 text-center ${
+                  className={`p-1 sm:p-3 text-center ${
                     isToday(day) ? "bg-gray-100" : "bg-white"
                   }`}
                 >
-                  <div className="text-gray-900">{getDayName(day)}</div>
-                  <div className="text-gray-600 text-sm">{formatDate(day)}</div>
+                  <div className="text-gray-900 text-xs sm:text-base">{getDayName(day)}</div>
+                  <div className="text-gray-600 text-xs hidden sm:block">{formatDate(day)}</div>
                 </div>
               ))}
             </div>
 
             {/* All-day row */}
-            <div className="border-l border-r border-b border-gray-200">
-              <div className="grid grid-cols-8 gap-px bg-gray-200 min-h-[80px]">
-                <div className="bg-white p-3 flex items-start">
-                  <span className="text-gray-600 text-sm">All-day</span>
+            <div className="border-l border-r sm:border-b border-gray-200">
+              {/* Time indicator row for mobile */}
+              <div className="sm:hidden flex items-center px-2 py-1">
+                <div className="flex-1 h-px bg-gray-300"></div>
+                <span className="text-gray-400 text-[10px] px-2">All-day</span>
+                <div className="flex-1 h-px bg-gray-300"></div>
+              </div>
+              <div className="grid grid-cols-7 sm:grid-cols-8 gap-px bg-gray-200 min-h-[40px] sm:min-h-[80px]">
+                <div className="bg-white p-1 sm:p-3 hidden sm:flex items-start">
+                  <span className="text-gray-600 text-xs">All-day</span>
                 </div>
                 {weekDays.map((day, dayIndex) => {
                   const allDayEvents = getAllDayEventsForDate(day);
@@ -209,52 +219,60 @@ export function CalendarView({
             {/* Time slots */}
             <div className="border-l border-r border-b border-gray-200">
               {timeSlots.map(({ hour, minute }) => (
-                <div
-                  key={`${hour}-${minute}`}
-                  className="grid grid-cols-8 gap-px bg-gray-200 min-h-[40px]"
-                >
-                  <div className="bg-white p-2 flex items-start">
-                    {minute === 0 && (
-                      <span className="text-gray-600 text-xs">
-                        {hour > 12 ? hour - 12 : hour || 12}:00{" "}
-                        {hour >= 12 ? "PM" : "AM"}
+                <div key={`${hour}-${minute}`}>
+                  {/* Time indicator row for mobile - only show on the hour */}
+                  {minute === 0 && (
+                    <div className="sm:hidden flex items-center px-2 py-1">
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                      <span className="text-gray-400 text-[10px] px-2">
+                        {hour > 12 ? hour - 12 : hour || 12} {hour >= 12 ? "PM" : "AM"}
                       </span>
-                    )}
-                  </div>
-                  {weekDays.map((day, dayIndex) => {
-                    const slotEvents = getEventsInSlot(day, hour, minute);
-                    const hasEvents = slotEvents.length > 0;
+                      <div className="flex-1 h-px bg-gray-300"></div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-7 sm:grid-cols-8 gap-px bg-gray-200 min-h-[24px] sm:min-h-[40px]">
+                    <div className="bg-white p-1 sm:p-2 hidden sm:flex items-start">
+                      {minute === 0 && (
+                        <span className="text-gray-600 text-[10px] sm:text-xs">
+                          {hour > 12 ? hour - 12 : hour || 12}:00 {hour >= 12 ? "PM" : "AM"}
+                        </span>
+                      )}
+                    </div>
+                    {weekDays.map((day, dayIndex) => {
+                      const slotEvents = getEventsInSlot(day, hour, minute);
+                      const hasEvents = slotEvents.length > 0;
 
-                    return (
-                      <div
-                        key={dayIndex}
-                        className={`p-1 cursor-pointer hover:bg-gray-200 transition-colors relative ${
-                          isToday(day) ? "bg-gray-100" : "bg-white"
-                        }`}
-                        onClick={() => handleSlotClick(day, hour, minute)}
-                      >
-                        {hasEvents && (
-                          <div className="space-y-1 h-full">
-                            {slotEvents.map((event) => (
-                              <EventBlock
-                                key={event.id}
-                                event={event}
-                                userColor={getUserColor(event.userId)}
-                                isCurrentUser={event.userId === currentUserId}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                      return (
+                        <div
+                          key={dayIndex}
+                          className={`p-1 cursor-pointer hover:bg-gray-200 transition-colors relative ${
+                            isToday(day) ? "bg-gray-100" : "bg-white"
+                          }`}
+                          onClick={() => handleSlotClick(day, hour, minute)}
+                        >
+                          {hasEvents && (
+                            <div className="space-y-1 h-full">
+                              {slotEvents.map((event) => (
+                                <EventBlock
+                                  key={event.id}
+                                  event={event}
+                                  userColor={getUserColor(event.userId)}
+                                  isCurrentUser={event.userId === currentUserId}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="mt-4 flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
+        <div className="mt-4 flex flex-col sm:flex-row sm:items-start gap-4 p-4 bg-gray-50 rounded-lg">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-gray-700">Team Members:</span>
@@ -271,8 +289,9 @@ export function CalendarView({
               ))}
             </div>
           </div>
-          <div className="text-gray-600 text-sm">
+          <div className="border-t border-gray-200 pt-4 sm:border-t-0 sm:pt-0 text-gray-600 text-sm">
             <p>• Click any free slot to send an invite</p>
+            <p className="sm:hidden">• Long press to see event name</p>
             <p>• Colored blocks = Busy</p>
             <p>• Empty slots = Free</p>
           </div>

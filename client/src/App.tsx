@@ -9,7 +9,7 @@ import { UserProfileDropdown } from "./components/UserProfileDropdown";
 import { GoogleSignInButton } from "./components/GoogleSignInButton";
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
-import { addDays, addMinutes, startOfDay, setHours } from "date-fns";
+import { addDays, addMinutes, startOfDay, startOfWeek, setHours } from "date-fns";
 import type { User, TimeSlot } from "./types";
 import {
   GoogleAuthProvider,
@@ -161,23 +161,27 @@ function AppContent({
     }
   };
 
-  const handleWeekChange = (direction: "prev" | "next") => {
-    const newDate = addDays(weekStart, direction === "next" ? 7 : -7);
-    setWeekStart(startOfDay(newDate));
+  const handleWeekChange = (direction: "prev" | "next" | "today") => {
+    if (direction === "today") {
+      setWeekStart(startOfWeek(new Date(), { weekStartsOn: 0 }));
+    } else {
+      const newDate = addDays(weekStart, direction === "next" ? 7 : -7);
+      setWeekStart(startOfDay(newDate));
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h1 className="text-gray-900">Calendar Sharing</h1>
               <p className="text-gray-600 mt-1">
                 View and share availability with your team
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
               {!user ? (
                 <GoogleSignInButton onSignIn={signIn} />
               ) : (
