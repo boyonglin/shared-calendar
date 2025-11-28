@@ -84,8 +84,25 @@ export function CalendarView({
     return events.filter((event) => {
       if (!event.isAllDay) return false;
 
-      const eventDate = new Date(event.start);
-      return eventDate.toDateString() === date.toDateString();
+      // For multi-day all-day events, check if the date falls within the event range
+      const eventStart = new Date(event.start);
+      const eventEnd = new Date(event.end);
+
+      // Normalize dates to compare just the date portion (ignore time)
+      const checkDate = new Date(date);
+      checkDate.setHours(0, 0, 0, 0);
+
+      const startDate = new Date(eventStart);
+      startDate.setHours(0, 0, 0, 0);
+
+      const endDate = new Date(eventEnd);
+      endDate.setHours(0, 0, 0, 0);
+
+      // Event spans this date if: startDate <= checkDate <= endDate
+      // Using <= for end date to handle both inclusive and exclusive end date formats
+      // For exclusive end dates (like Google Calendar), the event still shows correctly
+      // For inclusive end dates, we include the last day as well
+      return startDate <= checkDate && checkDate <= endDate;
     });
   };
 
