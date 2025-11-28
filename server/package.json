@@ -4,9 +4,9 @@
   "description": "Backend API for shared calendar application",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "node scripts/check-sqlite.js && tsx watch src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node scripts/check-sqlite.js && node dist/index.js",
+    "start": "node dist/index.js",
     "lint": "npx eslint .",
     "format": "npx prettier --write ."
   },
@@ -20,7 +20,6 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@libsql/client": "^0.15.15",
-    "better-sqlite3": "^12.4.6",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -38,13 +37,13 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.11",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.5",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.10.1",
     "@types/uuid": "^10.0.0",
+    "@vercel/node": "^2.3.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   }
