@@ -307,7 +307,7 @@ async function handleGoogleAuth(res: VercelResponse) {
     "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/calendar.readonly",
-    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/calendar.events.readonly",
   ];
   const url = oauth2Client.generateAuthUrl({
     access_type: "offline",
@@ -2443,6 +2443,18 @@ export default async function handler(
       return handleDraftInvitation(req, res);
     }
 
+    // ===================
+    // Utility routes
+    // ===================
+
+    // GET /api/privacy - Redirect to privacy policy
+    if (path === "/api/privacy" && req.method === "GET") {
+      return res.redirect(
+        301,
+        "https://www.privacypolicies.com/live/206e7238-acb3-4701-ab5c-c102a087fd1a"
+      );
+    }
+
     // Root endpoint
     if (path === "/api") {
       return res.status(200).json({
@@ -2474,6 +2486,7 @@ export default async function handler(
           "POST /api/friends/:friendId/reject",
           "GET /api/friends/:friendId/events",
           "POST /api/ai/draft-invitation",
+          "GET /api/privacy",
         ],
       });
     }
