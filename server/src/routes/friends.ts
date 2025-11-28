@@ -95,17 +95,18 @@ router.post(
 
       // Check if user is trying to add themselves
       const userEmails =
-        calendarAccountRepository.findAllEmailsByPrimaryUserId(userId);
+        await calendarAccountRepository.findAllEmailsByPrimaryUserId(userId);
 
       if (userEmails.includes(normalizedEmail)) {
         throw new BadRequestError("You cannot add yourself as a friend");
       }
 
       // Check if connection already exists
-      const existing = userConnectionRepository.findByUserIdAndFriendEmail(
-        userId,
-        normalizedEmail,
-      );
+      const existing =
+        await userConnectionRepository.findByUserIdAndFriendEmail(
+          userId,
+          normalizedEmail,
+        );
 
       if (existing) {
         const errorMessages: Record<string, string> = {
@@ -121,42 +122,40 @@ router.post(
 
       // Check if friend has an account
       const friendAccount =
-        calendarAccountRepository.findByExternalEmail(normalizedEmail);
+        await calendarAccountRepository.findByExternalEmail(normalizedEmail);
 
       const status = friendAccount ? "requested" : "pending";
       const friendUserId = friendAccount?.user_id || null;
 
       // Get current user's email for reverse connection
-      const primaryUserAccount = calendarAccountRepository.findByUserId(userId);
+      const primaryUserAccount =
+        await calendarAccountRepository.findByUserId(userId);
 
-      // Use transaction to ensure atomicity
       try {
-        userConnectionRepository.transaction(() => {
-          userConnectionRepository.create(
-            userId,
-            normalizedEmail,
-            friendUserId,
-            status,
-          );
+        await userConnectionRepository.create(
+          userId,
+          normalizedEmail,
+          friendUserId,
+          status,
+        );
 
-          // Create incoming request for friend if they have an account
-          if (friendAccount && primaryUserAccount?.external_email) {
-            const reverseExisting =
-              userConnectionRepository.findByUserIdAndFriendEmail(
-                friendAccount.user_id,
-                primaryUserAccount.external_email.toLowerCase(),
-              );
+        // Create incoming request for friend if they have an account
+        if (friendAccount && primaryUserAccount?.external_email) {
+          const reverseExisting =
+            await userConnectionRepository.findByUserIdAndFriendEmail(
+              friendAccount.user_id,
+              primaryUserAccount.external_email.toLowerCase(),
+            );
 
-            if (!reverseExisting) {
-              userConnectionRepository.createOrIgnore(
-                friendAccount.user_id,
-                primaryUserAccount.external_email.toLowerCase(),
-                userId,
-                "incoming",
-              );
-            }
+          if (!reverseExisting) {
+            await userConnectionRepository.createOrIgnore(
+              friendAccount.user_id,
+              primaryUserAccount.external_email.toLowerCase(),
+              userId,
+              "incoming",
+            );
           }
-        });
+        }
       } catch (dbError: unknown) {
         if (
           dbError instanceof Error &&
@@ -168,10 +167,11 @@ router.post(
       }
 
       // Get the inserted connection
-      const connection = userConnectionRepository.findByUserIdAndFriendEmail(
-        userId,
-        normalizedEmail,
-      );
+      const connection =
+        await userConnectionRepository.findByUserIdAndFriendEmail(
+          userId,
+          normalizedEmail,
+        );
 
       res.status(201).json({
         success: true,
@@ -209,7 +209,8 @@ router.get(
     try {
       const userId = req.user!.userId;
 
-      const connections = userConnectionRepository.findAllByUserId(userId);
+      const connections =
+        await userConnectionRepository.findAllByUserId(userId);
 
       const friends = connections.map((conn) => ({
         id: conn.id,
@@ -243,44 +244,44 @@ router.post(
 
       // Find pending connections where friend might have signed up
       const pendingConnections =
-        userConnectionRepository.findPendingWithoutFriendUserId(userId);
+        await userConnectionRepository.findPendingWithoutFriendUserId(userId);
 
       let updatedCount = 0;
 
       for (const conn of pendingConnections) {
-        const friendAccount = calendarAccountRepository.findByExternalEmail(
-          conn.friend_email,
-        );
+        const friendAccount =
+          await calendarAccountRepository.findByExternalEmail(
+            conn.friend_email,
+          );
 
         if (friendAccount) {
-          userConnectionRepository.transaction(() => {
-            // Update to 'requested' status
-            userConnectionRepository.updateFriendUserIdAndStatus(
-              conn.id,
-              friendAccount.user_id,
-              "requested",
-            );
+          // Update to 'requested' status
+          await userConnectionRepository.updateFriendUserIdAndStatus(
+            conn.id,
+            friendAccount.user_id,
+            "requested",
+          );
 
-            // Create incoming request for friend
-            const currentUser = calendarAccountRepository.findByUserId(userId);
+          // Create incoming request for friend
+          const currentUser =
+            await calendarAccountRepository.findByUserId(userId);
 
-            if (currentUser?.external_email) {
-              const reverseExisting =
-                userConnectionRepository.findByUserIdAndFriendEmail(
-                  friendAccount.user_id,
-                  currentUser.external_email.toLowerCase(),
-                );
+          if (currentUser?.external_email) {
+            const reverseExisting =
+              await userConnectionRepository.findByUserIdAndFriendEmail(
+                friendAccount.user_id,
+                currentUser.external_email.toLowerCase(),
+              );
 
-              if (!reverseExisting) {
-                userConnectionRepository.create(
-                  friendAccount.user_id,
-                  currentUser.external_email.toLowerCase(),
-                  userId,
-                  "incoming",
-                );
-              }
+            if (!reverseExisting) {
+              await userConnectionRepository.create(
+                friendAccount.user_id,
+                currentUser.external_email.toLowerCase(),
+                userId,
+                "incoming",
+              );
             }
-          });
+          }
           updatedCount++;
         }
       }
@@ -312,7 +313,7 @@ router.delete(
         throw new BadRequestError("Invalid friend ID");
       }
 
-      const connection = userConnectionRepository.findByIdAndUserId(
+      const connection = await userConnectionRepository.findByIdAndUserId(
         friendId,
         userId,
       );
@@ -321,21 +322,20 @@ router.delete(
         throw new NotFoundError("Friend connection not found");
       }
 
-      userConnectionRepository.transaction(() => {
-        userConnectionRepository.deleteById(friendId);
+      await userConnectionRepository.deleteById(friendId);
 
-        // Remove reverse connection
-        if (connection.friend_user_id) {
-          const userAccount = calendarAccountRepository.findByUserId(userId);
+      // Remove reverse connection
+      if (connection.friend_user_id) {
+        const userAccount =
+          await calendarAccountRepository.findByUserId(userId);
 
-          if (userAccount?.external_email) {
-            userConnectionRepository.deleteByUserIdAndFriendEmail(
-              connection.friend_user_id,
-              userAccount.external_email.toLowerCase(),
-            );
-          }
+        if (userAccount?.external_email) {
+          await userConnectionRepository.deleteByUserIdAndFriendEmail(
+            connection.friend_user_id,
+            userAccount.external_email.toLowerCase(),
+          );
         }
-      });
+      }
 
       res.json({ success: true, message: "Friend removed successfully" });
     } catch (error) {
@@ -355,7 +355,8 @@ router.get(
     try {
       const userId = req.user!.userId;
 
-      const connections = userConnectionRepository.findIncomingRequests(userId);
+      const connections =
+        await userConnectionRepository.findIncomingRequests(userId);
 
       const requests = connections.map((conn) => ({
         id: conn.id,
@@ -391,7 +392,7 @@ router.post(
         throw new BadRequestError("Invalid friend ID");
       }
 
-      const request = userConnectionRepository.findByIdUserIdAndStatus(
+      const request = await userConnectionRepository.findByIdUserIdAndStatus(
         friendId,
         userId,
         "incoming",
@@ -401,18 +402,16 @@ router.post(
         throw new NotFoundError("Friend request not found");
       }
 
-      userConnectionRepository.transaction(() => {
-        userConnectionRepository.updateStatus(friendId, "accepted");
+      await userConnectionRepository.updateStatus(friendId, "accepted");
 
-        if (request.friend_user_id) {
-          userConnectionRepository.updateStatusByUserIdAndFriendUserId(
-            request.friend_user_id,
-            userId,
-            "requested",
-            "accepted",
-          );
-        }
-      });
+      if (request.friend_user_id) {
+        await userConnectionRepository.updateStatusByUserIdAndFriendUserId(
+          request.friend_user_id,
+          userId,
+          "requested",
+          "accepted",
+        );
+      }
 
       res.json({ success: true, message: "Friend request accepted!" });
     } catch (error) {
@@ -437,7 +436,7 @@ router.post(
         throw new BadRequestError("Invalid friend ID");
       }
 
-      const request = userConnectionRepository.findByIdUserIdAndStatus(
+      const request = await userConnectionRepository.findByIdUserIdAndStatus(
         friendId,
         userId,
         "incoming",
@@ -447,17 +446,15 @@ router.post(
         throw new NotFoundError("Friend request not found");
       }
 
-      userConnectionRepository.transaction(() => {
-        userConnectionRepository.deleteById(friendId);
+      await userConnectionRepository.deleteById(friendId);
 
-        if (request.friend_user_id) {
-          userConnectionRepository.deleteByUserIdAndFriendUserIdAndStatus(
-            request.friend_user_id,
-            userId,
-            "requested",
-          );
-        }
-      });
+      if (request.friend_user_id) {
+        await userConnectionRepository.deleteByUserIdAndFriendUserIdAndStatus(
+          request.friend_user_id,
+          userId,
+          "requested",
+        );
+      }
 
       res.json({ success: true, message: "Friend request rejected" });
     } catch (error) {
@@ -483,7 +480,7 @@ router.get(
       }
 
       // Check if connection exists and is accepted
-      const connection = userConnectionRepository.findByIdUserIdAndStatus(
+      const connection = await userConnectionRepository.findByIdUserIdAndStatus(
         friendId,
         userId,
         "accepted",
@@ -495,7 +492,7 @@ router.get(
 
       // Verify mutual acceptance
       const reverseConnection =
-        userConnectionRepository.findByUserIdAndFriendUserId(
+        await userConnectionRepository.findByUserIdAndFriendUserId(
           connection.friend_user_id,
           userId,
           "accepted",
@@ -518,7 +515,7 @@ router.get(
       }
 
       // Get friend's calendar accounts
-      const accounts = calendarAccountRepository.findByPrimaryUserId(
+      const accounts = await calendarAccountRepository.findByPrimaryUserId(
         connection.friend_user_id,
       );
 

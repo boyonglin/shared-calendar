@@ -12,9 +12,9 @@ const router = express.Router();
 /**
  * GET /users/:id - Get user profile by ID
  */
-router.get("/:id", validateUserIdParam, (req: Request, res: Response) => {
+router.get("/:id", validateUserIdParam, async (req: Request, res: Response) => {
   try {
-    const user = googleAuthService.getUser(req.params.id);
+    const user = await googleAuthService.getUser(req.params.id);
     if (!user) {
       res.status(404).json({ error: "User not found" });
       return;
