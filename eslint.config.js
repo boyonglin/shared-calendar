@@ -77,6 +77,7 @@ export default [
         HTMLElement: "readonly",
         HTMLDivElement: "readonly",
         KeyboardEvent: "readonly",
+        AbortController: "readonly",
         // React globals
         React: "readonly",
         JSX: "readonly",
