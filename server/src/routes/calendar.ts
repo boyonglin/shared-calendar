@@ -165,6 +165,130 @@ router.get(
 );
 
 /**
+ * GET /calendar/events-stream/:primaryUserId
+ * Stream events from ALL connected calendar accounts as each platform completes
+ * Uses Server-Sent Events (SSE) to progressively send events
+ */
+router.get(
+  "/events-stream/:primaryUserId",
+  authenticateUser,
+  validatePrimaryUserId,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const primaryUserId = (req as AuthRequest).user!.userId;
+
+      // Validate time parameters
+      const timeMinResult = parseDateParam(req.query.timeMin);
+      if (!timeMinResult.valid) {
+        throw new BadRequestError("Invalid timeMin parameter");
+      }
+      const timeMaxResult = parseDateParam(req.query.timeMax);
+      if (!timeMaxResult.valid) {
+        throw new BadRequestError("Invalid timeMax parameter");
+      }
+
+      const timeMin = timeMinResult.date || undefined;
+      const timeMax = timeMaxResult.date || undefined;
+
+      // Get all calendar accounts linked to this primary user
+      const accounts =
+        await calendarAccountRepository.findByPrimaryUserId(primaryUserId);
+
+      // Set up SSE headers
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no"); // Disable nginx buffering
+      res.flushHeaders();
+
+      if (accounts.length === 0) {
+        res.write(`data: ${JSON.stringify({ type: "complete", events: [] })}\n\n`);
+        res.end();
+        return;
+      }
+
+      // Track connection state
+      let isConnectionClosed = false;
+      req.on("close", () => {
+        isConnectionClosed = true;
+      });
+
+      // Fetch events from all accounts in parallel, stream as each completes
+      const fetchPromises = accounts.map(async (account) => {
+        if (isConnectionClosed) return;
+
+        try {
+          const events = await fetchEventsFromProvider(
+            account,
+            timeMin,
+            timeMax,
+          );
+
+          if (isConnectionClosed) return;
+
+          // Tag each event with its user_id for display
+          const taggedEvents = events.map((event) => ({
+            ...event,
+            userId: account.user_id,
+          }));
+
+          // Send this platform's events immediately
+          res.write(
+            `data: ${JSON.stringify({
+              type: "events",
+              provider: account.provider,
+              events: taggedEvents,
+            })}\n\n`,
+          );
+        } catch (error: unknown) {
+          if (isConnectionClosed) return;
+
+          const log = createRequestLogger({
+            requestId: (req as Request & { requestId?: string }).requestId,
+            method: req.method,
+            path: req.path,
+          });
+          logError(
+            log,
+            error,
+            `Error fetching events from ${account.provider} (${account.user_id})`,
+          );
+
+          // Send error event for this provider but continue with others
+          res.write(
+            `data: ${JSON.stringify({
+              type: "error",
+              provider: account.provider,
+              message: `Failed to fetch ${account.provider} events`,
+            })}\n\n`,
+          );
+        }
+      });
+
+      // Wait for all fetches to complete
+      await Promise.all(fetchPromises);
+
+      if (!isConnectionClosed) {
+        // Send completion signal
+        res.write(`data: ${JSON.stringify({ type: "complete" })}\n\n`);
+        res.end();
+      }
+    } catch (error: unknown) {
+      // For SSE, we can't use next() after headers are sent
+      // If headers haven't been sent yet, use error handler
+      if (!res.headersSent) {
+        next(error);
+      } else {
+        res.write(
+          `data: ${JSON.stringify({ type: "error", message: "Stream error" })}\n\n`,
+        );
+        res.end();
+      }
+    }
+  },
+);
+
+/**
  * GET /calendar/:userId/events
  * Fetch events for a specific user account
  */

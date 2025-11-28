@@ -743,6 +743,254 @@ async function handleGetAllEvents(
   return res.status(200).json(allEvents);
 }
 
+/**
+ * Stream events from all calendar providers as Server-Sent Events (SSE)
+ * Events are sent progressively as each provider completes fetching
+ */
+async function handleStreamEvents(
+  req: VercelRequest,
+  res: VercelResponse,
+  userId: string,
+): Promise<void> {
+  const user = verifyToken(req);
+  if (!user) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const client = getTursoClient();
+
+  // Parse query parameters
+  const queryString = req.url?.split("?")[1] || "";
+  const params = new URLSearchParams(queryString);
+  const timeMin = params.get("timeMin")
+    ? new Date(params.get("timeMin")!)
+    : new Date();
+  const timeMax = params.get("timeMax")
+    ? new Date(params.get("timeMax")!)
+    : new Date(Date.now() + 28 * 24 * 60 * 60 * 1000);
+
+  // Get all accounts for this user (primary + linked)
+  const result = await client.execute({
+    sql: "SELECT * FROM calendar_accounts WHERE user_id = ? OR primary_user_id = ?",
+    args: [userId, userId],
+  });
+
+  // Set up SSE headers
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+
+  if (result.rows.length === 0) {
+    res.write(`data: ${JSON.stringify({ type: "complete", events: [] })}\n\n`);
+    res.end();
+    return;
+  }
+
+  // Helper to send SSE message
+  const sendEvent = (data: Record<string, unknown>) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  // Fetch events from all providers in parallel
+  const fetchPromises = result.rows.map(async (account) => {
+    const provider = account.provider as string;
+    const events: Array<Record<string, unknown>> = [];
+
+    try {
+      if (provider === "google" && account.access_token) {
+        const oauth2Client = getOAuth2Client();
+        oauth2Client.setCredentials({
+          access_token: account.access_token as string,
+          refresh_token: (account.refresh_token as string) || undefined,
+        });
+
+        // Handle token refresh
+        oauth2Client.on("tokens", async (tokens) => {
+          if (tokens.access_token) {
+            await client.execute({
+              sql: "UPDATE calendar_accounts SET access_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+              args: [tokens.access_token, account.user_id],
+            });
+          }
+        });
+
+        const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+        const response = await calendar.events.list({
+          calendarId: "primary",
+          timeMin: timeMin.toISOString(),
+          timeMax: timeMax.toISOString(),
+          singleEvents: true,
+          orderBy: "startTime",
+        });
+
+        const googleEvents = (response.data.items || []).map((event) => ({
+          ...event,
+          calendarId: "primary",
+          accountType: "google",
+          accountEmail: account.external_email,
+          userId: account.user_id,
+        }));
+        events.push(...googleEvents);
+      }
+
+      if (provider === "outlook" && account.access_token && ONECAL_API_KEY) {
+        const endUserAccountId = account.access_token as string;
+
+        const calendarsResponse = await fetch(
+          `${ONECAL_API_BASE}/calendars/${endUserAccountId}`,
+          { headers: { "x-api-key": ONECAL_API_KEY } },
+        );
+
+        if (calendarsResponse.ok) {
+          const calendarsData = (await calendarsResponse.json()) as {
+            data?: Array<{ id: string; name: string; isPrimary?: boolean }>;
+          };
+          const allCalendars = calendarsData.data || [];
+          const primaryCalendar = allCalendars.find((cal) => cal.isPrimary);
+          const calendars = primaryCalendar
+            ? [primaryCalendar]
+            : allCalendars.slice(0, 1);
+
+          for (const cal of calendars) {
+            const eventsParams = new URLSearchParams({
+              startDateTime: timeMin.toISOString(),
+              endDateTime: timeMax.toISOString(),
+              expandRecurrences: "true",
+            });
+
+            const eventsResponse = await fetch(
+              `${ONECAL_API_BASE}/events/${endUserAccountId}/${cal.id}?${eventsParams}`,
+              { headers: { "x-api-key": ONECAL_API_KEY } },
+            );
+
+            if (eventsResponse.ok) {
+              const eventsData = (await eventsResponse.json()) as {
+                data?: Array<{
+                  id: string;
+                  title?: string;
+                  summary?: string;
+                  start?: { dateTime?: string; date?: string };
+                  end?: { dateTime?: string; date?: string };
+                }>;
+              };
+
+              for (const event of eventsData.data || []) {
+                events.push({
+                  id: event.id,
+                  summary: event.title || event.summary || "Untitled Event",
+                  start: {
+                    dateTime: event.start?.dateTime,
+                    date: event.start?.date,
+                  },
+                  end: {
+                    dateTime: event.end?.dateTime,
+                    date: event.end?.date,
+                  },
+                  calendarId: cal.id,
+                  accountType: "outlook",
+                  accountEmail: account.external_email,
+                  userId: account.user_id,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      if (provider === "icloud" && account.encrypted_password) {
+        const password = decrypt(account.encrypted_password as string);
+
+        const davClient = new DAVClient({
+          serverUrl: "https://caldav.icloud.com",
+          credentials: {
+            username: account.external_email as string,
+            password: password,
+          },
+          authMethod: "Basic",
+          defaultAccountType: "caldav",
+        });
+
+        await davClient.login();
+        const calendars = await davClient.fetchCalendars();
+
+        for (const calendar of calendars) {
+          const objects = await davClient.fetchCalendarObjects({ calendar });
+
+          for (const obj of objects) {
+            if (obj.data) {
+              try {
+                const parsed = ical.parseICS(obj.data);
+
+                for (const key in parsed) {
+                  const event = parsed[key];
+                  if (event.type === "VEVENT") {
+                    const startDate = event.start;
+                    const endDate = event.end;
+
+                    if (
+                      startDate &&
+                      startDate >= timeMin &&
+                      startDate <= timeMax
+                    ) {
+                      events.push({
+                        id: event.uid || key,
+                        summary: event.summary || "Untitled Event",
+                        start: { dateTime: startDate.toISOString() },
+                        end: {
+                          dateTime: endDate
+                            ? endDate.toISOString()
+                            : startDate.toISOString(),
+                        },
+                        calendarId: calendar.url,
+                        accountType: "icloud",
+                        accountEmail: account.external_email,
+                        userId: account.user_id,
+                      });
+                    }
+                  }
+                }
+              } catch (parseErr) {
+                console.error(
+                  `Error parsing iCloud calendar object for ${account.user_id}:`,
+                  parseErr,
+                );
+              }
+            }
+          }
+        }
+      }
+
+      // Send events for this provider immediately
+      if (events.length > 0 || provider) {
+        sendEvent({
+          type: "events",
+          provider: provider,
+          events: events,
+        });
+      }
+    } catch (err) {
+      console.error(
+        `Error fetching ${provider} events for ${account.user_id}:`,
+        err,
+      );
+      sendEvent({
+        type: "error",
+        provider: provider,
+        message: `Failed to fetch ${provider} events`,
+      });
+    }
+  });
+
+  // Wait for all fetches to complete
+  await Promise.all(fetchPromises);
+
+  // Send completion signal
+  sendEvent({ type: "complete" });
+  res.end();
+}
+
 async function handleCreateEvent(
   req: VercelRequest,
   res: VercelResponse,
@@ -2096,6 +2344,15 @@ export default async function handler(
       return handleGetAllEvents(req, res, allEventsMatch[1]);
     }
 
+    // GET /api/calendar/events-stream/:userId - Stream events via SSE
+    const eventsStreamMatch = path.match(
+      /^\/api\/calendar\/events-stream\/([^/]+)$/,
+    );
+    if (eventsStreamMatch && req.method === "GET") {
+      await handleStreamEvents(req, res, eventsStreamMatch[1]);
+      return;
+    }
+
     // POST /api/calendar/events
     if (path === "/api/calendar/events" && req.method === "POST") {
       return handleCreateEvent(req, res);
@@ -2202,6 +2459,7 @@ export default async function handler(
           "POST /api/auth/icloud",
           "GET /api/users/:id",
           "GET /api/calendar/all-events/:userId",
+          "GET /api/calendar/events-stream/:userId (SSE)",
           "POST /api/calendar/events",
           "GET /api/calendar/icloud/status",
           "DELETE /api/calendar/icloud/:userId",

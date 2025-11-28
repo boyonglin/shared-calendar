@@ -1,5 +1,12 @@
 import { API_BASE_URL } from "../../config/api";
 
+export interface SSEMessage<T = unknown> {
+  type: "events" | "error" | "complete";
+  provider?: string;
+  events?: T[];
+  message?: string;
+}
+
 class ApiClient {
   private baseUrl: string;
 
@@ -47,6 +54,73 @@ class ApiClient {
 
   async delete<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: "DELETE" });
+  }
+
+  /**
+   * Subscribe to a Server-Sent Events stream
+   * Returns an AbortController to cancel the stream
+   */
+  streamSSE<T>(
+    endpoint: string,
+    onMessage: (message: SSEMessage<T>) => void,
+    onError?: (error: Error) => void,
+  ): AbortController {
+    const url = `${this.baseUrl}${endpoint}`;
+    const controller = new AbortController();
+
+    const connect = async () => {
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          credentials: "include",
+          signal: controller.signal,
+          headers: {
+            Accept: "text/event-stream",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error("No response body");
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // Process complete SSE messages
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || ""; // Keep incomplete line in buffer
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6)) as SSEMessage<T>;
+                onMessage(data);
+              } catch (e) {
+                console.error("Failed to parse SSE message:", e);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          onError?.(error as Error);
+        }
+      }
+    };
+
+    connect();
+    return controller;
   }
 }
 

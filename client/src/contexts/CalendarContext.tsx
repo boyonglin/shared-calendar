@@ -5,6 +5,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
 } from "react";
 import type { CalendarEvent } from "@shared/types";
 import type { CalendarProvider } from "@/interfaces/CalendarProvider";
@@ -21,6 +22,7 @@ const generateTempEventId = () =>
 export interface CalendarContextType {
   events: CalendarEvent[];
   isLoading: boolean;
+  loadingProviders: Set<string>;
   refreshEvents: () => Promise<void>;
   createEvent: (event: {
     title: string;
@@ -49,6 +51,12 @@ export function CalendarProviderWrapper({
   );
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProviders, setLoadingProviders] = useState<Set<string>>(
+    new Set(),
+  );
+
+  // Track the current stream abort controller
+  const streamAbortRef = useRef<AbortController | null>(null);
 
   // Update provider when user changes
   useEffect(() => {
@@ -100,57 +108,124 @@ export function CalendarProviderWrapper({
   };
 
   const refreshEvents = useCallback(async () => {
+    // Abort any existing stream
+    if (streamAbortRef.current) {
+      streamAbortRef.current.abort();
+      streamAbortRef.current = null;
+    }
+
     setIsLoading(true);
-    try {
-      // Calculate date range based on weekStart prop or use default range
-      let start: Date;
-      let end: Date;
+    setLoadingProviders(new Set(["google", "icloud", "outlook"])); // Start with all providers loading
 
-      if (weekStart) {
-        // Fetch events for 5 weeks total: current week (w0), 2 weeks before (w-1, w-2?), and 2 weeks after
-        start = new Date(weekStart);
-        start.setDate(start.getDate() - 14); // 2 weeks before
-        start.setHours(0, 0, 0, 0); // Normalize to midnight
+    // Calculate date range based on weekStart prop or use default range
+    let start: Date;
+    let end: Date;
 
-        end = new Date(weekStart);
-        end.setDate(end.getDate() + 21); // 3 weeks after (covers current week + 2 more)
-        end.setHours(23, 59, 59, 999); // End of day
-      } else {
-        // Fallback to broad range if no weekStart provided
-        const now = new Date();
-        start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        start.setHours(0, 0, 0, 0);
-        end = new Date(now.getFullYear(), now.getMonth() + 2, 0);
-        end.setHours(23, 59, 59, 999);
-      }
+    if (weekStart) {
+      // Fetch events for 5 weeks total: current week (w0), 2 weeks before (w-1, w-2?), and 2 weeks after
+      start = new Date(weekStart);
+      start.setDate(start.getDate() - 14); // 2 weeks before
+      start.setHours(0, 0, 0, 0); // Normalize to midnight
 
-      const fetchedEvents = await provider.getEvents(start, end);
+      end = new Date(weekStart);
+      end.setDate(end.getDate() + 21); // 3 weeks after (covers current week + 2 more)
+      end.setHours(23, 59, 59, 999); // End of day
+    } else {
+      // Fallback to broad range if no weekStart provided
+      const now = new Date();
+      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      start.setHours(0, 0, 0, 0);
+      end = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+      end.setHours(23, 59, 59, 999);
+    }
 
-      setEvents((prevEvents) => {
-        // Cache/Merge logic:
-        // 1. Define the fetch range
-        const fetchStart = start.getTime();
-        const fetchEnd = end.getTime();
+    const fetchStart = start.getTime();
+    const fetchEnd = end.getTime();
 
-        // 2. Keep events that are strictly outside the fetched range
-        // (Remove events that overlap with the new fetch range, as the new fetch is authoritative)
-        const nonOverlappingEvents = prevEvents.filter((event) => {
-          const eventStart = new Date(event.start).getTime();
-          const eventEnd = new Date(event.end).getTime();
-          // Keep if event ends before fetch starts OR event starts after fetch ends
-          return eventEnd <= fetchStart || eventStart >= fetchEnd;
+    // Check if provider supports streaming (UnifiedCalendarProvider)
+    if (provider instanceof UnifiedCalendarProvider) {
+      // Use streaming for progressive updates
+      const receivedProviders = new Set<string>();
+
+      streamAbortRef.current = provider.streamEvents(
+        start,
+        end,
+        (newEvents: CalendarEvent[], providerName: string) => {
+          receivedProviders.add(providerName);
+
+          // Update loading providers
+          setLoadingProviders((prev) => {
+            const next = new Set(prev);
+            next.delete(providerName);
+            return next;
+          });
+
+          // Merge new events with existing ones
+          setEvents((prevEvents) => {
+            // Keep events outside the fetch range
+            const nonOverlappingEvents = prevEvents.filter((event) => {
+              const eventStart = new Date(event.start).getTime();
+              const eventEnd = new Date(event.end).getTime();
+              return eventEnd <= fetchStart || eventStart >= fetchEnd;
+            });
+
+            // Keep events from already received providers within the fetch range
+            const existingInRangeEvents = prevEvents.filter((event) => {
+              const eventStart = new Date(event.start).getTime();
+              const eventEnd = new Date(event.end).getTime();
+              return eventStart < fetchEnd && eventEnd > fetchStart;
+            });
+
+            // Merge with new events and deduplicate by ID
+            const allEvents = [
+              ...nonOverlappingEvents,
+              ...existingInRangeEvents,
+              ...newEvents,
+            ];
+
+            const uniqueEventsMap = new Map(allEvents.map((e) => [e.id, e]));
+            return Array.from(uniqueEventsMap.values());
+          });
+        },
+        () => {
+          // Stream complete
+          setIsLoading(false);
+          setLoadingProviders(new Set());
+          streamAbortRef.current = null;
+        },
+        (error: Error) => {
+          console.error("Error streaming calendar events:", error);
+          setIsLoading(false);
+          setLoadingProviders(new Set());
+          streamAbortRef.current = null;
+          // On error, keep existing events (cache) rather than clearing
+        },
+      );
+    } else {
+      // Fallback to non-streaming for MockCalendarProvider
+      try {
+        const fetchedEvents = await provider.getEvents(start, end);
+
+        setEvents((prevEvents) => {
+          // Keep events outside the fetch range
+          const nonOverlappingEvents = prevEvents.filter((event) => {
+            const eventStart = new Date(event.start).getTime();
+            const eventEnd = new Date(event.end).getTime();
+            return eventEnd <= fetchStart || eventStart >= fetchEnd;
+          });
+
+          // Merge with new events and deduplicate by ID
+          const allEvents = [...nonOverlappingEvents, ...fetchedEvents];
+          const uniqueEventsMap = new Map(allEvents.map((e) => [e.id, e]));
+          return Array.from(uniqueEventsMap.values());
         });
-
-        // 3. Merge with new events and deduplicate by ID
-        const allEvents = [...nonOverlappingEvents, ...fetchedEvents];
-        const uniqueEventsMap = new Map(allEvents.map((e) => [e.id, e]));
-        return Array.from(uniqueEventsMap.values());
-      });
-    } catch (error) {
-      console.error("Error fetching calendar events:", error);
-      // On error, keep existing events (cache) rather than clearing
-    } finally {
-      setIsLoading(false);
+      } catch (error) {
+        console.error("Error fetching calendar events:", error);
+        // On error, keep existing events (cache) rather than clearing
+      } finally {
+        setIsLoading(false);
+        setLoadingProviders(new Set());
+      }
     }
   }, [provider, weekStart]);
 
@@ -158,6 +233,15 @@ export function CalendarProviderWrapper({
   useEffect(() => {
     setEvents([]);
   }, [provider]);
+
+  // Cleanup stream on unmount
+  useEffect(() => {
+    return () => {
+      if (streamAbortRef.current) {
+        streamAbortRef.current.abort();
+      }
+    };
+  }, []);
 
   // Refresh events when refreshEvents callback changes (which happens when provider or weekStart changes)
   useEffect(() => {
@@ -206,7 +290,13 @@ export function CalendarProviderWrapper({
 
   return (
     <CalendarContext.Provider
-      value={{ events, isLoading, refreshEvents, createEvent }}
+      value={{
+        events,
+        isLoading,
+        loadingProviders,
+        refreshEvents,
+        createEvent,
+      }}
     >
       {children}
     </CalendarContext.Provider>

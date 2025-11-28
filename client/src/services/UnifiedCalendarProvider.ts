@@ -17,36 +17,64 @@ export class UnifiedCalendarProvider implements CalendarProvider {
     return `${year}-${month}-${day}`;
   }
 
+  private transformEvent(event: RawCalendarEvent): CalendarEvent {
+    // Handle both Google Calendar format and iCloud format
+    const startObj = typeof event.start === "object" ? event.start : null;
+    const endObj = typeof event.end === "object" ? event.end : null;
+
+    const isAllDay = !!startObj?.date && !startObj?.dateTime;
+    const startStr = startObj?.dateTime || startObj?.date || event.start;
+    const endStr = endObj?.dateTime || endObj?.date || event.end;
+
+    return {
+      id: event.id,
+      userId: this.userId, // Normalize all events to the primary user ID
+      start:
+        typeof startStr === "string"
+          ? new Date(startStr)
+          : (startStr as Date),
+      end: typeof endStr === "string" ? new Date(endStr) : (endStr as Date),
+      title: event.summary || event.title || "(No title)",
+      isAllDay: isAllDay,
+    };
+  }
+
   async getEvents(start: Date, end: Date): Promise<CalendarEvent[]> {
     try {
       // Fetch events from all connected accounts with date filtering
       const events = await calendarApi.getAllEvents(this.userId, start, end);
 
-      return events.map((event: RawCalendarEvent) => {
-        // Handle both Google Calendar format and iCloud format
-        const startObj = typeof event.start === "object" ? event.start : null;
-        const endObj = typeof event.end === "object" ? event.end : null;
-
-        const isAllDay = !!startObj?.date && !startObj?.dateTime;
-        const startStr = startObj?.dateTime || startObj?.date || event.start;
-        const endStr = endObj?.dateTime || endObj?.date || event.end;
-
-        return {
-          id: event.id,
-          userId: this.userId, // Normalize all events to the primary user ID
-          start:
-            typeof startStr === "string"
-              ? new Date(startStr)
-              : (startStr as Date),
-          end: typeof endStr === "string" ? new Date(endStr) : (endStr as Date),
-          title: event.summary || event.title || "(No title)",
-          isAllDay: isAllDay,
-        };
-      });
+      return events.map((event: RawCalendarEvent) => this.transformEvent(event));
     } catch (error) {
       console.error("Failed to fetch unified events:", error);
       return [];
     }
+  }
+
+  /**
+   * Stream events from all connected calendar accounts
+   * Events are delivered progressively as each provider completes
+   */
+  streamEvents(
+    start: Date,
+    end: Date,
+    onEvents: (events: CalendarEvent[], provider: string) => void,
+    onComplete: () => void,
+    onError?: (error: Error) => void,
+  ): AbortController {
+    return calendarApi.streamAllEvents(
+      this.userId,
+      start,
+      end,
+      (rawEvents: RawCalendarEvent[], provider: string) => {
+        const transformedEvents = rawEvents.map((event) =>
+          this.transformEvent(event),
+        );
+        onEvents(transformedEvents, provider);
+      },
+      onComplete,
+      onError,
+    );
   }
 
   async createEvent(event: {
