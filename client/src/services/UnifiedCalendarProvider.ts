@@ -30,9 +30,7 @@ export class UnifiedCalendarProvider implements CalendarProvider {
       id: event.id,
       userId: this.userId, // Normalize all events to the primary user ID
       start:
-        typeof startStr === "string"
-          ? new Date(startStr)
-          : (startStr as Date),
+        typeof startStr === "string" ? new Date(startStr) : (startStr as Date),
       end: typeof endStr === "string" ? new Date(endStr) : (endStr as Date),
       title: event.summary || event.title || "(No title)",
       isAllDay: isAllDay,
@@ -44,7 +42,9 @@ export class UnifiedCalendarProvider implements CalendarProvider {
       // Fetch events from all connected accounts with date filtering
       const events = await calendarApi.getAllEvents(this.userId, start, end);
 
-      return events.map((event: RawCalendarEvent) => this.transformEvent(event));
+      return events.map((event: RawCalendarEvent) =>
+        this.transformEvent(event),
+      );
     } catch (error) {
       console.error("Failed to fetch unified events:", error);
       return [];

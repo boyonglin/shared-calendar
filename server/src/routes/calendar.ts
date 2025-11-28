@@ -202,7 +202,9 @@ router.get(
       res.flushHeaders();
 
       if (accounts.length === 0) {
-        res.write(`data: ${JSON.stringify({ type: "complete", events: [] })}\n\n`);
+        res.write(
+          `data: ${JSON.stringify({ type: "complete", events: [] })}\n\n`,
+        );
         res.end();
         return;
       }

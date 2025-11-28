@@ -66,7 +66,10 @@ export const calendarApi = {
         } else if (message.type === "complete") {
           onComplete();
         } else if (message.type === "error") {
-          console.warn(`Calendar provider error (${message.provider}):`, message.message);
+          console.warn(
+            `Calendar provider error (${message.provider}):`,
+            message.message,
+          );
           // Don't call onError for individual provider errors, just log them
         }
       },
