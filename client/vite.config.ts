@@ -48,30 +48,9 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
-            // Internal API routes - always go to network
+            // Internal API routes - always go to network (applies to all HTTP methods)
             urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
             handler: "NetworkOnly",
-            method: "GET",
-          },
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
-            handler: "NetworkOnly",
-            method: "POST",
-          },
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
-            handler: "NetworkOnly",
-            method: "PUT",
-          },
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
-            handler: "NetworkOnly",
-            method: "DELETE",
-          },
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
-            handler: "NetworkOnly",
-            method: "PATCH",
           },
           {
             // External API calls
@@ -108,9 +87,9 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          // React 核心
+          // React core
           "vendor-react": ["react", "react-dom"],
-          // UI 組件庫 (Radix UI)
+          // UI component library (Radix UI)
           "vendor-ui": [
             "@radix-ui/react-checkbox",
             "@radix-ui/react-dialog",
@@ -121,7 +100,7 @@ export default defineConfig({
             "@radix-ui/react-slot",
             "@radix-ui/react-tabs",
           ],
-          // 日期處理
+          // Date handling
           "vendor-date": ["date-fns"],
         },
       },
