@@ -1,4 +1,4 @@
-import { db } from "../db";
+import { calendarAccountRepository } from "../repositories/calendarAccountRepository";
 import { env } from "../config/env";
 
 const ONECAL_API_BASE = "https://api.onecalunified.com/api/v1";
@@ -10,6 +10,12 @@ if (!ONECAL_APP_ID || !ONECAL_API_KEY) {
     "Missing OneCal credentials - Outlook Calendar integration will not work",
   );
 }
+
+// Build redirect URL based on environment
+const getRedirectUrl = () => {
+  const baseUrl = env.CLIENT_URL.replace(/\/$/, "");
+  return `${baseUrl}/api/auth/outlook/callback`;
+};
 
 interface OnecalEndUserAccount {
   id: string;
@@ -43,7 +49,7 @@ interface OnecalEvent {
   };
 }
 
-interface CalendarAccount {
+interface _CalendarAccount {
   user_id: string;
   provider: string;
   access_token: string;
@@ -62,7 +68,9 @@ export const onecalAuthService = {
     if (!ONECAL_APP_ID) {
       throw new Error("ONECAL_APP_ID is not configured");
     }
-    return `${ONECAL_API_BASE}/oauth/authorize/${ONECAL_APP_ID}/microsoft`;
+    // Include redirectUrl parameter to ensure correct callback URL
+    const redirectUrl = getRedirectUrl();
+    return `${ONECAL_API_BASE}/oauth/authorize/${ONECAL_APP_ID}/microsoft?redirectUrl=${encodeURIComponent(redirectUrl)}`;
   },
 
   handleCallback: async (endUserAccountId: string, primaryUserId?: string) => {
@@ -84,30 +92,26 @@ export const onecalAuthService = {
 
     const account = (await response.json()) as OnecalEndUserAccount;
 
-    const stmt = db.prepare(`
-      INSERT INTO calendar_accounts (
-        user_id, provider, external_email, access_token, refresh_token, metadata, primary_user_id, updated_at
-      ) VALUES (?, 'outlook', ?, ?, NULL, ?, ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(user_id) DO UPDATE SET
-        access_token = excluded.access_token,
-        external_email = excluded.external_email,
-        metadata = excluded.metadata,
-        primary_user_id = excluded.primary_user_id,
-        updated_at = CURRENT_TIMESTAMP
-    `);
-
     const metadata = JSON.stringify({
       name: account.email,
       providerType: account.providerType,
       status: account.status,
     });
 
-    stmt.run(
-      endUserAccountId,
-      account.email,
-      endUserAccountId,
+    // Store using async repository
+    // Note: For Outlook/OneCal, we store endUserAccountId in access_token field
+    // since OneCal handles token management internally
+    await calendarAccountRepository.upsertOutlookAccount({
+      userId: endUserAccountId,
+      email: account.email,
       metadata,
-      primaryUserId || null,
+      primaryUserId: primaryUserId || null,
+    });
+
+    // Also update access_token to store endUserAccountId
+    await calendarAccountRepository.updateAccessToken(
+      endUserAccountId,
+      endUserAccountId,
     );
 
     return {
@@ -124,10 +128,10 @@ export const onecalAuthService = {
       throw new Error("ONECAL_API_KEY is not configured");
     }
 
-    const stmt = db.prepare(
-      "SELECT * FROM calendar_accounts WHERE user_id = ? AND provider = 'outlook'",
+    const account = await calendarAccountRepository.findByUserIdAndProvider(
+      userId,
+      "outlook",
     );
-    const account = stmt.get(userId) as CalendarAccount | undefined;
 
     if (!account) {
       throw new Error("Outlook account not found");
