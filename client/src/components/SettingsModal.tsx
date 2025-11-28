@@ -9,7 +9,7 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { ExternalLink, Eye, EyeOff, Check, Trash2 } from "lucide-react";
+import { ExternalLink, Eye, EyeOff, Check } from "lucide-react";
 import { toast } from "sonner";
 
 const GEMINI_API_KEY_STORAGE_KEY = "gemini_api_key";
@@ -129,10 +129,19 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 )}
               </div>
               {effectiveHasExistingKey && effectiveStoredKey && (
-                <p className="text-xs text-green-600 flex items-center gap-1">
-                  <Check className="w-3 h-3" />
-                  API key configured: {maskApiKey(effectiveStoredKey)}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-green-600 flex items-center gap-1">
+                    <Check className="w-3 h-3" />
+                    API key configured: {maskApiKey(effectiveStoredKey)}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleRemove}
+                    className="text-xs text-red-500 hover:text-red-700"
+                  >
+                    Remove
+                  </button>
+                </div>
               )}
               {!effectiveHasExistingKey && (
                 <p className="text-xs text-gray-500">
@@ -153,7 +162,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
             <p className="text-amber-800 text-xs">
-              <strong>Note:</strong> Stored locally in your browser. Only sent when generating AI drafts.
+              <strong>Note:</strong> Stored locally in your browser. Only sent
+              when generating AI drafts.
             </p>
           </div>
         </div>
@@ -167,7 +177,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           >
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!apiKey.trim()} className="flex-1">
+          <Button
+            onClick={handleSave}
+            disabled={!apiKey.trim()}
+            className="flex-1"
+          >
             Save
           </Button>
         </div>

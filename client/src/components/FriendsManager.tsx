@@ -153,9 +153,10 @@ export function FriendsManager({
     const tempId = generateTempId();
     const optimisticFriend: FriendWithColor = {
       id: tempId,
+      userId: "temp",
       friendEmail: email,
-      friendName: null,
-      friendUserId: null,
+      friendName: undefined,
+      friendUserId: undefined,
       friendColor: FRIEND_COLORS[friends.length % FRIEND_COLORS.length],
       status: "pending",
       createdAt: new Date().toISOString(),
@@ -224,9 +225,10 @@ export function FriendsManager({
 
     const optimisticFriend: FriendWithColor = {
       id: generateTempId(),
+      userId: "temp",
       friendEmail: acceptedRequest.friendEmail,
       friendName: acceptedRequest.friendName,
-      friendUserId: acceptedRequest.friendUserId,
+      friendUserId: acceptedRequest.friendUserId ?? undefined,
       friendColor: FRIEND_COLORS[friends.length % FRIEND_COLORS.length],
       status: "accepted",
       createdAt: new Date().toISOString(),

@@ -9,7 +9,13 @@ import { UserProfileDropdown } from "./components/UserProfileDropdown";
 import { GoogleSignInButton } from "./components/GoogleSignInButton";
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
-import { addDays, addMinutes, startOfDay, startOfWeek, setHours } from "date-fns";
+import {
+  addDays,
+  addMinutes,
+  startOfDay,
+  startOfWeek,
+  setHours,
+} from "date-fns";
 import type { User, TimeSlot } from "./types";
 import {
   GoogleAuthProvider,
@@ -163,7 +169,7 @@ function AppContent({
 
   const handleWeekChange = (direction: "prev" | "next" | "today") => {
     if (direction === "today") {
-      setWeekStart(startOfWeek(new Date(), { weekStartsOn: 0 }));
+      setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
     } else {
       const newDate = addDays(weekStart, direction === "next" ? 7 : -7);
       setWeekStart(startOfDay(newDate));
@@ -245,6 +251,7 @@ function AppContent({
       />
 
       <SettingsModal
+        key={modals.settings ? "open" : "closed"}
         isOpen={modals.settings}
         onClose={() => closeModal("settings")}
       />

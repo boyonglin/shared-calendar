@@ -168,8 +168,12 @@ export function CalendarView({
                     isToday(day) ? "bg-gray-100" : "bg-white"
                   }`}
                 >
-                  <div className="text-gray-900 text-xs sm:text-base">{getDayName(day)}</div>
-                  <div className="text-gray-600 text-xs hidden sm:block">{formatDate(day)}</div>
+                  <div className="text-gray-900 text-xs sm:text-base">
+                    {getDayName(day)}
+                  </div>
+                  <div className="text-gray-600 text-xs hidden sm:block">
+                    {formatDate(day)}
+                  </div>
                 </div>
               ))}
             </div>
@@ -225,7 +229,8 @@ export function CalendarView({
                     <div className="sm:hidden flex items-center px-2 py-1">
                       <div className="flex-1 h-px bg-gray-300"></div>
                       <span className="text-gray-400 text-[10px] px-2">
-                        {hour > 12 ? hour - 12 : hour || 12} {hour >= 12 ? "PM" : "AM"}
+                        {hour > 12 ? hour - 12 : hour || 12}{" "}
+                        {hour >= 12 ? "PM" : "AM"}
                       </span>
                       <div className="flex-1 h-px bg-gray-300"></div>
                     </div>
@@ -234,7 +239,8 @@ export function CalendarView({
                     <div className="bg-white p-1 sm:p-2 hidden sm:flex items-start">
                       {minute === 0 && (
                         <span className="text-gray-600 text-[10px] sm:text-xs">
-                          {hour > 12 ? hour - 12 : hour || 12}:00 {hour >= 12 ? "PM" : "AM"}
+                          {hour > 12 ? hour - 12 : hour || 12}:00{" "}
+                          {hour >= 12 ? "PM" : "AM"}
                         </span>
                       )}
                     </div>

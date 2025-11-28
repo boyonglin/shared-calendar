@@ -188,7 +188,7 @@ export function InviteDialog({
 
         <div className="flex-1 overflow-y-auto scrollbar-hide space-y-4 py-4 -mx-6 px-6">
           {timeSlot && (
-            <div className="bg-gray-50 p-3 rounded-lg space-y-2">
+            <div className="py-3 space-y-2">
               <div className="flex items-center gap-2 text-gray-700">
                 <Calendar className="w-4 h-4" />
                 <span className="text-sm">{formatDateTime()}</span>
@@ -218,7 +218,9 @@ export function InviteDialog({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="title" className="text-sm">Event Title</Label>
+            <Label htmlFor="title" className="text-sm">
+              Event Title
+            </Label>
             <Input
               id="title"
               placeholder="e.g., Team Sync Meeting"
@@ -229,7 +231,9 @@ export function InviteDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm">Description (Optional)</Label>
+            <Label htmlFor="description" className="text-sm">
+              Description (Optional)
+            </Label>
             <div className="flex items-center gap-2">
               <Select
                 value={tone}
@@ -312,7 +316,8 @@ export function InviteDialog({
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-blue-800 text-xs">
-              This will create an event in your Google Calendar and send invites to selected attendees.
+              This will create an event in your Google Calendar and send invites
+              to selected attendees.
             </p>
           </div>
         </div>
@@ -321,7 +326,11 @@ export function InviteDialog({
           <Button variant="outline" onClick={onClose} className="flex-1">
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={!title.trim()} className="flex-1">
+          <Button
+            onClick={handleSubmit}
+            disabled={!title.trim()}
+            className="flex-1"
+          >
             Send Invite
           </Button>
         </DialogFooter>
