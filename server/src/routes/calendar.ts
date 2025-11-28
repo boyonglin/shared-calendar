@@ -164,6 +164,12 @@ router.get(
   },
 );
 
+/** SSE connection timeout in milliseconds (30 seconds) */
+const SSE_TIMEOUT_MS = 30_000;
+
+/** SSE heartbeat interval in milliseconds (15 seconds) */
+const SSE_HEARTBEAT_INTERVAL_MS = 15_000;
+
 /**
  * GET /calendar/events-stream/:primaryUserId
  * Stream events from ALL connected calendar accounts as each platform completes
@@ -174,10 +180,53 @@ router.get(
   authenticateUser,
   validatePrimaryUserId,
   async (req: Request, res: Response, next: NextFunction) => {
+    // Track timers for cleanup
+    let connectionTimeout: ReturnType<typeof globalThis.setTimeout> | null =
+      null;
+    let heartbeatInterval: ReturnType<typeof globalThis.setInterval> | null =
+      null;
+    let isConnectionClosed = false;
+
+    // Helper to safely write to response
+    const safeWrite = (data: string): boolean => {
+      if (isConnectionClosed) return false;
+      try {
+        res.write(data);
+        return true;
+      } catch {
+        isConnectionClosed = true;
+        return false;
+      }
+    };
+
+    // Helper to clean up timers
+    const cleanup = () => {
+      isConnectionClosed = true;
+      if (connectionTimeout) {
+        globalThis.clearTimeout(connectionTimeout);
+        connectionTimeout = null;
+      }
+      if (heartbeatInterval) {
+        globalThis.clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+      }
+    };
+
+    // Helper to end the stream gracefully
+    const endStream = (data?: { type: string; message?: string }) => {
+      if (data) {
+        safeWrite(`data: ${JSON.stringify(data)}\n\n`);
+      }
+      cleanup();
+      if (!res.writableEnded) {
+        res.end();
+      }
+    };
+
     try {
       const primaryUserId = (req as AuthRequest).user!.userId;
 
-      // Validate time parameters
+      // Validate time parameters before setting up SSE
       const timeMinResult = parseDateParam(req.query.timeMin);
       if (!timeMinResult.valid) {
         throw new BadRequestError("Invalid timeMin parameter");
@@ -201,19 +250,28 @@ router.get(
       res.setHeader("X-Accel-Buffering", "no"); // Disable nginx buffering
       res.flushHeaders();
 
+      // Handle client disconnect
+      req.on("close", cleanup);
+
+      // Set up connection timeout to prevent resource exhaustion
+      connectionTimeout = globalThis.setTimeout(() => {
+        if (!isConnectionClosed) {
+          endStream({ type: "timeout", message: "Connection timed out" });
+        }
+      }, SSE_TIMEOUT_MS);
+
+      // Set up heartbeat to keep connection alive
+      heartbeatInterval = globalThis.setInterval(() => {
+        if (!isConnectionClosed) {
+          // SSE comment line for keep-alive (not parsed as data by clients)
+          safeWrite(": heartbeat\n\n");
+        }
+      }, SSE_HEARTBEAT_INTERVAL_MS);
+
       if (accounts.length === 0) {
-        res.write(
-          `data: ${JSON.stringify({ type: "complete", events: [] })}\n\n`,
-        );
-        res.end();
+        endStream({ type: "complete" });
         return;
       }
-
-      // Track connection state
-      let isConnectionClosed = false;
-      req.on("close", () => {
-        isConnectionClosed = true;
-      });
 
       // Fetch events from all accounts in parallel, stream as each completes
       const fetchPromises = accounts.map(async (account) => {
@@ -235,7 +293,7 @@ router.get(
           }));
 
           // Send this platform's events immediately
-          res.write(
+          safeWrite(
             `data: ${JSON.stringify({
               type: "events",
               provider: account.provider,
@@ -257,7 +315,7 @@ router.get(
           );
 
           // Send error event for this provider but continue with others
-          res.write(
+          safeWrite(
             `data: ${JSON.stringify({
               type: "error",
               provider: account.provider,
@@ -271,20 +329,16 @@ router.get(
       await Promise.all(fetchPromises);
 
       if (!isConnectionClosed) {
-        // Send completion signal
-        res.write(`data: ${JSON.stringify({ type: "complete" })}\n\n`);
-        res.end();
+        endStream({ type: "complete" });
       }
     } catch (error: unknown) {
+      cleanup();
       // For SSE, we can't use next() after headers are sent
       // If headers haven't been sent yet, use error handler
       if (!res.headersSent) {
         next(error);
       } else {
-        res.write(
-          `data: ${JSON.stringify({ type: "error", message: "Stream error" })}\n\n`,
-        );
-        res.end();
+        endStream({ type: "error", message: "Stream error" });
       }
     }
   },

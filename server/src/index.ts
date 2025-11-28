@@ -28,7 +28,7 @@ const app = express();
 const PORT = env.PORT;
 const CLIENT_URL = env.CLIENT_URL;
 
-// Trust proxy for proper client IP detection behind reverse proxy
+// Trust proxy for correct client IP/protocol behind reverse proxies
 app.set("trust proxy", 1);
 
 // Request ID middleware for request tracking

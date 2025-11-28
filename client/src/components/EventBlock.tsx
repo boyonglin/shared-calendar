@@ -48,7 +48,7 @@ export function EventBlock({
 
   return (
     <div
-      className="rounded text-white text-sm relative overflow-visible flex items-center justify-center w-full h-6 sm:w-auto sm:h-auto sm:p-2 touch-none"
+      className="rounded text-white text-sm relative overflow-visible flex items-center justify-center w-full h-8 sm:w-auto sm:h-auto sm:p-2 touch-none"
       style={{
         backgroundColor: userColor,
         opacity: 0.9,

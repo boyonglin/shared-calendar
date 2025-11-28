@@ -640,29 +640,6 @@ Health check endpoint (no rate limiting).
 
 ---
 
-## Rate Limiting
-
-| Endpoint Pattern   | Limit        | Window     |
-| ------------------ | ------------ | ---------- |
-| `/api/auth/*`      | 15 requests  | 10 minutes |
-| All other `/api/*` | 100 requests | 10 minutes |
-
-Rate limit headers are included in responses:
-
-- `RateLimit-Limit`
-- `RateLimit-Remaining`
-- `RateLimit-Reset`
-
-**Rate Limit Exceeded Response** (429):
-
-```json
-{
-  "error": "Too many requests, please try again later"
-}
-```
-
----
-
 ## Error Response Format
 
 All error responses follow this format:
