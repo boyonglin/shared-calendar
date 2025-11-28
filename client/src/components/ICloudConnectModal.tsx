@@ -34,7 +34,8 @@ export function ICloudConnectModal({
     setIsLoading(true);
 
     try {
-      const data = await authApi.connectICloud({ email, password });
+      const fullEmail = `${email}@icloud.com`;
+      const data = await authApi.connectICloud({ email: fullEmail, password });
 
       // Success
       onSuccess(data.user.id);
@@ -62,15 +63,21 @@ export function ICloudConnectModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="apple-id">Apple ID</Label>
-            <Input
-              id="apple-id"
-              type="email"
-              placeholder="your.email@icloud.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={isLoading}
-            />
+            <div className="flex items-center">
+              <Input
+                id="apple-id"
+                type="text"
+                placeholder="your.apple.id"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={isLoading}
+                className="rounded-r-none border-r-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-input"
+              />
+              <span className="inline-flex h-9 items-center px-3 text-sm text-muted-foreground bg-muted border border-input rounded-r-md">
+                @icloud.com
+              </span>
+            </div>
           </div>
 
           <div className="space-y-2">
