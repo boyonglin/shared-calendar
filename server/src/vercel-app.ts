@@ -3,6 +3,8 @@
  *
  * This is a simplified version of the Express server for Vercel serverless deployment.
  * It removes the server.listen() call and exports the app for use as a serverless function.
+ *
+ * NOTE: This version uses Turso (async) for database operations.
  */
 import "dotenv/config";
 import express from "express";
@@ -11,16 +13,8 @@ import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
-import authRoutes from "./routes/auth";
-import apiRoutes from "./routes/index";
-import { env } from "./config/env";
-import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
-import { calendarAccountRepository } from "./repositories";
-import {
-  RATE_LIMIT_WINDOW_MS,
-  RATE_LIMIT_MAX_REQUESTS,
-  RATE_LIMIT_AUTH_MAX_REQUESTS,
-} from "./constants";
+import { calendarAccountRepository } from "./repositories/calendarAccountRepository";
+import { RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX_REQUESTS } from "./constants";
 
 const app = express();
 
@@ -49,19 +43,6 @@ const generalLimiter = rateLimit({
   message: { error: "Too many requests, please try again later" },
   standardHeaders: true,
   legacyHeaders: false,
-  // Use memory store for serverless (stateless between invocations)
-  // For production, consider using a Redis-based store
-});
-
-// Stricter rate limit for auth endpoints
-const authLimiter = rateLimit({
-  windowMs: RATE_LIMIT_WINDOW_MS,
-  max: RATE_LIMIT_AUTH_MAX_REQUESTS,
-  message: {
-    error: "Too many authentication attempts, please try again later",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
 });
 
 // Apply general rate limiter
@@ -70,27 +51,10 @@ app.use(generalLimiter);
 // Cookie parser middleware
 app.use(cookieParser());
 
-// CORS middleware - allow multiple origins for development and production
-const allowedOrigins = [
-  env.CLIENT_URL,
-  "http://localhost:5173",
-  "http://localhost:3000",
-].filter(Boolean);
-
+// CORS middleware - allow all origins for now (to be tightened in production)
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      // In production, you might want to be stricter
-      if (process.env.NODE_ENV !== "production") {
-        return callback(null, true);
-      }
-      callback(new Error("Not allowed by CORS"));
-    },
+    origin: true,
     credentials: true,
   }),
 );
@@ -98,40 +62,58 @@ app.use(
 // Body parser with size limit
 app.use(express.json({ limit: "10kb" }));
 
-// Routes with specific rate limiters
-app.use("/api/auth", authLimiter, authRoutes);
-app.use("/api", apiRoutes);
+// Health check - This is the primary endpoint for verifying the API works
+app.get("/api/health", async (_req: Request, res: Response) => {
+  try {
+    const dbHealthy = await calendarAccountRepository.healthCheck();
+    const status = dbHealthy ? "ok" : "degraded";
+    const statusCode = dbHealthy ? 200 : 503;
 
-// Health check
-app.get("/api/health", (_req, res) => {
-  const dbHealthy = calendarAccountRepository.healthCheck();
-  const status = dbHealthy ? "ok" : "degraded";
-  const statusCode = dbHealthy ? 200 : 503;
-
-  res.status(statusCode).json({
-    status,
-    timestamp: new Date().toISOString(),
-    environment: "vercel",
-    checks: {
-      database: dbHealthy ? "ok" : "error",
-    },
-  });
+    res.status(statusCode).json({
+      status,
+      timestamp: new Date().toISOString(),
+      environment: "vercel",
+      node_version: process.version,
+      checks: {
+        database: dbHealthy ? "ok" : "error",
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      timestamp: new Date().toISOString(),
+      environment: "vercel",
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
 });
 
 // Root endpoint
-app.get("/", (_req, res) => {
+app.get("/api", (_req: Request, res: Response) => {
   res.json({
     message: "Shared Calendar API",
     version: "1.0.0",
     status: "running",
     environment: "vercel",
+    endpoints: ["/api/health"],
   });
 });
 
-// 404 handler for unmatched routes
-app.use(notFoundHandler);
+// Catch-all for undefined routes
+app.use("/api/*", (_req: Request, res: Response) => {
+  res.status(404).json({
+    error: "Not found",
+    message: "The requested API endpoint does not exist",
+  });
+});
 
 // Global error handler
-app.use(errorHandler);
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error("Error:", err);
+  res.status(500).json({
+    error: "Internal server error",
+    message: err.message,
+  });
+});
 
 export default app;

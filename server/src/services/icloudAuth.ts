@@ -1,5 +1,5 @@
 import { DAVClient } from "tsdav";
-import { db } from "../db";
+import { calendarAccountRepository } from "../repositories/calendarAccountRepository";
 import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import * as ical from "node-ical";
@@ -82,24 +82,14 @@ export const icloudAuthService = {
       const userId = uuidv4(); // Generate a new ID for this connection
       const encryptedPassword = encrypt(appSpecificPassword);
 
-      const stmt = db.prepare(`
-                INSERT INTO calendar_accounts (
-                    user_id, provider, external_email, encrypted_password, metadata, primary_user_id, updated_at
-                ) VALUES (?, 'icloud', ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                ON CONFLICT(user_id) DO UPDATE SET
-                    encrypted_password = excluded.encrypted_password,
-                    primary_user_id = excluded.primary_user_id,
-                    updated_at = CURRENT_TIMESTAMP
-            `);
-
       // Store the encrypted password in the dedicated encrypted_password column
-      stmt.run(
+      await calendarAccountRepository.upsertICloudAccount({
         userId,
         email,
         encryptedPassword,
-        JSON.stringify({ name: email }), // iCloud doesn't give us a name easily, use email
-        primaryUserId || null,
-      );
+        metadata: JSON.stringify({ name: email }), // iCloud doesn't give us a name easily, use email
+        primaryUserId: primaryUserId || null,
+      });
 
       return {
         success: true,
@@ -119,12 +109,10 @@ export const icloudAuthService = {
   },
 
   getCalendarEvents: async (userId: string, timeMin?: Date, timeMax?: Date) => {
-    const stmt = db.prepare(
-      "SELECT * FROM calendar_accounts WHERE user_id = ? AND provider = 'icloud'",
+    const account = await calendarAccountRepository.findByUserIdAndProvider(
+      userId,
+      "icloud",
     );
-    const account = stmt.get(userId) as
-      | { user_id: string; encrypted_password: string; external_email: string }
-      | undefined;
 
     if (!account) {
       throw new Error("iCloud account not found");
@@ -145,7 +133,7 @@ export const icloudAuthService = {
     const client = new DAVClient({
       serverUrl: "https://caldav.icloud.com",
       credentials: {
-        username: account.external_email,
+        username: account.external_email ?? undefined,
         password: password,
       },
       authMethod: "Basic",

@@ -6,8 +6,10 @@ import express from "express";
 import { googleAuthService } from "../services/googleAuth";
 import { icloudAuthService } from "../services/icloudAuth";
 import { onecalAuthService } from "../services/onecalAuth";
-import { calendarAccountRepository } from "../repositories/calendarAccountRepository";
-import type { CalendarAccount } from "../repositories/calendarAccountRepository";
+import {
+  calendarAccountRepository,
+  type CalendarAccount,
+} from "../repositories/calendarAccountRepository";
 import {
   validateUserId,
   validatePrimaryUserId,
@@ -115,7 +117,7 @@ router.get(
 
       // Get all calendar accounts linked to this primary user
       const accounts =
-        calendarAccountRepository.findByPrimaryUserId(primaryUserId);
+        await calendarAccountRepository.findByPrimaryUserId(primaryUserId);
 
       if (accounts.length === 0) {
         res.json([]);
@@ -189,7 +191,8 @@ router.get(
       const timeMax = timeMaxResult.date || undefined;
 
       // Check which provider this user is using
-      const account = calendarAccountRepository.findByUserId(requestedUserId);
+      const account =
+        await calendarAccountRepository.findByUserId(requestedUserId);
 
       if (!account) {
         throw new NotFoundError("User not found");
@@ -246,7 +249,7 @@ router.post(
       const { title, description, start, end, attendees, isAllDay } = req.body;
 
       // Check provider
-      const account = calendarAccountRepository.findByUserId(userId);
+      const account = await calendarAccountRepository.findByUserId(userId);
 
       if (!account) {
         throw new NotFoundError("User not found");
@@ -267,10 +270,7 @@ router.post(
             end: isAllDay ? { date: end } : { dateTime: end },
             attendees: attendees?.map((email: string) => ({ email })),
           },
-          {
-            access_token: account.access_token,
-            refresh_token: account.refresh_token ?? undefined,
-          },
+          account,
         );
         res.json(event);
       } else {
@@ -295,14 +295,15 @@ router.post(
 router.get(
   "/icloud/status",
   authenticateUser,
-  (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = (req as AuthRequest).user!.userId;
 
-      const account = calendarAccountRepository.findByProviderAndPrimaryUser(
-        "icloud",
-        userId,
-      );
+      const account =
+        await calendarAccountRepository.findByProviderAndPrimaryUser(
+          "icloud",
+          userId,
+        );
 
       if (!account) {
         res.json({ connected: false });
@@ -328,11 +329,11 @@ router.delete(
   "/icloud/:userId",
   authenticateUser,
   validateUserId,
-  (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const primaryUserId = (req as AuthRequest).user!.userId;
 
-      const deleted = calendarAccountRepository.deleteByUserIdAndProvider(
+      const deleted = await calendarAccountRepository.deleteByUserIdAndProvider(
         req.params.userId,
         "icloud",
         primaryUserId,
@@ -360,14 +361,15 @@ router.delete(
 router.get(
   "/outlook/status",
   authenticateUser,
-  (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = (req as AuthRequest).user!.userId;
 
-      const account = calendarAccountRepository.findByProviderAndPrimaryUser(
-        "outlook",
-        userId,
-      );
+      const account =
+        await calendarAccountRepository.findByProviderAndPrimaryUser(
+          "outlook",
+          userId,
+        );
 
       if (!account) {
         res.json({ connected: false });
@@ -393,11 +395,11 @@ router.delete(
   "/outlook/:userId",
   authenticateUser,
   validateUserId,
-  (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const primaryUserId = (req as AuthRequest).user!.userId;
 
-      const deleted = calendarAccountRepository.deleteByUserIdAndProvider(
+      const deleted = await calendarAccountRepository.deleteByUserIdAndProvider(
         req.params.userId,
         "outlook",
         primaryUserId,

@@ -1,13 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run build:vercel",
-  "outputDirectory": "client/dist",
-  "installCommand": "npm install",
+  "buildCommand": "npm run build --workspace=client",
+  "outputDirectory": "client/build",
+  "installCommand": "npm install --workspaces",
   "framework": null,
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "/api/:path*"
+      "destination": "/api/index"
     },
     {
       "source": "/((?!api/).*)",
@@ -43,8 +43,7 @@
     }
   ],
   "functions": {
-    "api/**/*.ts": {
-      "runtime": "@vercel/node@3.0.0",
+    "api/index.ts": {
       "maxDuration": 10
     }
   }

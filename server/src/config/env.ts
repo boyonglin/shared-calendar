@@ -1,4 +1,17 @@
+import dotenv from "dotenv";
+import path from "path";
 import { z } from "zod";
+
+// Load environment variables before validation
+// When running via npm workspaces from root: process.cwd() = /shared-calendar
+// When running directly from server: process.cwd() = /shared-calendar/server
+const cwd = process.cwd();
+const isRunFromRoot = !cwd.endsWith("/server");
+const rootEnvPath = isRunFromRoot
+  ? path.resolve(cwd, ".env")
+  : path.resolve(cwd, "../.env");
+
+dotenv.config({ path: rootEnvPath });
 
 const envSchema = z.object({
   // Server Configuration

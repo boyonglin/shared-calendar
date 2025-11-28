@@ -4,9 +4,13 @@
   "type": "module",
   "description": "Shared calendar application - monorepo",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "workspaces": [
     "client",
-    "server"
+    "server",
+    "api"
   ],
   "scripts": {
     "dev": "concurrently -k -n \"CLIENT,SERVER\" -c \"cyan.bold,green.bold\" \"npm run dev --workspace=client\" \"npm run dev --workspace=server\"",
@@ -33,5 +37,10 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "prettier": "^3.6.2"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@swc/core-linux-x64-gnu": "^1.15.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "googleapis": "^166.0.0",
+    "jsonwebtoken": "^9.0.2"
+  }
 }

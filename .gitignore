@@ -33,5 +33,12 @@ credentials.json
 *.swo
 .DS_Store
 
+# PWA development
+client/dev-dist/
+
+# Pixi
+.pixi/
+pixi.lock
+
 # Documentation
 DEPLOYMENT.md
