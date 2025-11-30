@@ -726,29 +726,46 @@ async function handleCreateEvent(
     return res.status(400).json({ error: "Only Google calendar supported" });
   }
 
-  const oauth2Client = getOAuth2Client();
-  oauth2Client.setCredentials({
-    access_token: account.access_token as string,
-    refresh_token: (account.refresh_token as string) || undefined,
-  });
+  try {
+    const oauth2Client = getOAuth2Client();
+    oauth2Client.setCredentials({
+      access_token: account.access_token as string,
+      refresh_token: (account.refresh_token as string) || undefined,
+    });
 
-  const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+    // Handle token refresh
+    oauth2Client.on("tokens", async (tokens) => {
+      if (tokens.access_token) {
+        await client.execute({
+          sql: "UPDATE calendar_accounts SET access_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+          args: [tokens.access_token, account.user_id],
+        });
+      }
+    });
 
-  const eventData = {
-    summary: title,
-    description,
-    start: isAllDay ? { date: start } : { dateTime: start },
-    end: isAllDay ? { date: end } : { dateTime: end },
-    attendees: attendees?.map((email: string) => ({ email })),
-  };
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
 
-  const response = await calendar.events.insert({
-    calendarId: "primary",
-    requestBody: eventData,
-    sendUpdates: "all",
-  });
+    const eventData = {
+      summary: title,
+      description,
+      start: isAllDay ? { date: start } : { dateTime: start },
+      end: isAllDay ? { date: end } : { dateTime: end },
+      attendees: attendees?.map((email: string) => ({ email })),
+    };
 
-  return res.status(200).json(response.data);
+    const response = await calendar.events.insert({
+      calendarId: "primary",
+      requestBody: eventData,
+      sendUpdates: "all",
+    });
+
+    return res.status(200).json(response.data);
+  } catch (err) {
+    console.error("Error creating calendar event:", err);
+    const message =
+      err instanceof Error ? err.message : "Failed to create event";
+    return res.status(500).json({ error: message });
+  }
 }
 
 async function handleICloudConnect(
