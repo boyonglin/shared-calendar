@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { DAVClient } from "tsdav";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import * as ical from "node-ical";
+import ical from "node-ical";
 // =============================================================================
 // Environment Variables
 // =============================================================================
