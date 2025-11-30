@@ -1039,13 +1039,21 @@ async function handleCreateEvent(
     attendees: attendees?.map((email: string) => ({ email })),
   };
 
-  const response = await calendar.events.insert({
-    calendarId: "primary",
-    requestBody: eventData,
-    sendUpdates: "all",
-  });
+  try {
+    const response = await calendar.events.insert({
+      calendarId: "primary",
+      requestBody: eventData,
+      sendUpdates: "all",
+    });
 
-  return res.status(200).json(response.data);
+    return res.status(200).json(response.data);
+  } catch (error) {
+    console.error("Failed to create calendar event:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return res
+      .status(500)
+      .json({ error: `Failed to create event: ${message}` });
+  }
 }
 
 async function handleICloudConnect(
@@ -2451,7 +2459,7 @@ export default async function handler(
     if (path === "/api/privacy" && req.method === "GET") {
       return res.redirect(
         301,
-        "https://www.privacypolicies.com/live/206e7238-acb3-4701-ab5c-c102a087fd1a"
+        "https://www.privacypolicies.com/live/206e7238-acb3-4701-ab5c-c102a087fd1a",
       );
     }
 
