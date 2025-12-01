@@ -162,17 +162,16 @@ export function InviteDialog({
   const formatDateTime = () => {
     if (!timeSlot) return "";
     const { date, hour, minute = 0, isAllDay } = timeSlot;
-    const dateStr = date.toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
+    const dateStr = `${weekday}, ${year}/${month}/${day}`;
     if (isAllDay) {
       return `${dateStr} (All day)`;
     }
     const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    const timeStr = `${displayHour}:${minute === 0 ? "00" : minute} ${hour >= 12 ? "PM" : "AM"}`;
+    const timeStr = `${displayHour}:${minute === 0 ? "00" : String(minute).padStart(2, "0")} ${hour >= 12 ? "PM" : "AM"}`;
     return `${dateStr} at ${timeStr}`;
   };
 

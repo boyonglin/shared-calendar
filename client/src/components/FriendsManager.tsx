@@ -372,26 +372,28 @@ export function FriendsManager({
                     {filteredFriends.map((friend) => (
                       <div
                         key={friend.id}
-                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50"
+                        className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border hover:bg-gray-50"
                       >
-                        <div className="flex items-center gap-3">
-                          <UserAvatar
-                            name={friend.friendName}
-                            email={friend.friendEmail}
-                            color={friend.friendColor}
-                          />
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="hidden sm:block shrink-0">
+                            <UserAvatar
+                              name={friend.friendName}
+                              email={friend.friendEmail}
+                              color={friend.friendColor}
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-gray-900 truncate">
                               {friend.friendName || friend.friendEmail}
                             </div>
                             {friend.friendName && (
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-gray-500 break-all">
                                 {friend.friendEmail}
                               </div>
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           <Badge
                             variant={
                               friend.status === "accepted"
@@ -490,11 +492,13 @@ export function FriendsManager({
                       key={request.id}
                       className="flex items-center justify-between p-3 rounded-lg border"
                     >
-                      <div className="flex items-center gap-3">
-                        <UserAvatar
-                          name={request.friendName}
-                          email={request.friendEmail}
-                        />
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="hidden sm:block">
+                          <UserAvatar
+                            name={request.friendName}
+                            email={request.friendEmail}
+                          />
+                        </div>
                         <div>
                           <div className="text-sm font-medium text-gray-900">
                             {request.friendName || request.friendEmail}
