@@ -1420,15 +1420,13 @@ async function handleRevokeAccount(
       // Revoke the token with Google
       if (accessToken) {
         try {
-          const response = await fetch(
-            `${GOOGLE_REVOKE_URL}?token=${accessToken}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-              },
+          const response = await fetch(GOOGLE_REVOKE_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
             },
-          );
+            body: `token=${encodeURIComponent(accessToken)}`,
+          });
           if (!response.ok) {
             const body = await response.text();
             console.warn(
