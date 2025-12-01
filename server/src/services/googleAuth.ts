@@ -238,12 +238,24 @@ export const googleAuthService = {
     if (account?.access_token) {
       // Revoke the token with Google
       try {
-        await fetch(`${GOOGLE_REVOKE_URL}?token=${account.access_token}`, {
+        const response = await fetch(GOOGLE_REVOKE_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
           },
+          body: `token=${encodeURIComponent(account.access_token)}`,
         });
+        if (!response.ok) {
+          let body = "";
+          try {
+            body = await response.text();
+          } catch {
+            body = "Unable to read response body";
+          }
+          console.warn(
+            `Google token revocation failed with status ${response.status}: ${body}`,
+          );
+        }
       } catch (error) {
         // Log but continue - we still want to delete local data even if revocation fails
         console.error("Failed to revoke token with Google:", error);

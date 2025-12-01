@@ -1420,12 +1420,24 @@ async function handleRevokeAccount(
       // Revoke the token with Google
       if (accessToken) {
         try {
-          await fetch(`${GOOGLE_REVOKE_URL}?token=${accessToken}`, {
+          const response = await fetch(GOOGLE_REVOKE_URL, {
             method: "POST",
             headers: {
               "Content-Type": "application/x-www-form-urlencoded",
             },
+            body: `token=${encodeURIComponent(accessToken)}`,
           });
+          if (!response.ok) {
+            let body = "";
+            try {
+              body = await response.text();
+            } catch {
+              body = "Unable to read response body";
+            }
+            console.warn(
+              `Google token revocation failed with status ${response.status}: ${body}`,
+            );
+          }
         } catch (error) {
           // Log but continue - we still want to delete local data even if revocation fails
           console.error("Failed to revoke token with Google:", error);
@@ -1446,15 +1458,19 @@ async function handleRevokeAccount(
     });
 
     // Clear the JWT cookie
+    const isProduction = process.env.NODE_ENV === "production";
     res.setHeader(
       "Set-Cookie",
-      "token=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0",
+      `token=; HttpOnly; ${isProduction ? "Secure; " : ""}SameSite=Lax; Path=/; Max-Age=0`,
     );
 
-    return res.status(200).json({ success: true, message: "Account successfully revoked" });
+    return res
+      .status(200)
+      .json({ success: true, message: "Account successfully revoked" });
   } catch (error) {
     console.error("Revoke account error:", error);
-    const message = error instanceof Error ? error.message : "Failed to revoke account";
+    const message =
+      error instanceof Error ? error.message : "Failed to revoke account";
     return res.status(500).json({ error: message });
   }
 }

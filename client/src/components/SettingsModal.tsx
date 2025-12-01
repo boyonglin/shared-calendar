@@ -35,7 +35,13 @@ const GEMINI_API_KEY_VALID_KEY = "gemini_api_key_valid";
 async function validateGeminiApiKey(apiKey: string): Promise<boolean> {
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models`,
+      {
+        method: "GET",
+        headers: {
+          "X-Goog-Api-Key": apiKey,
+        },
+      },
     );
     return response.ok;
   } catch {
@@ -296,9 +302,19 @@ export function SettingsModal({
             <AlertDialogAction
               onClick={async () => {
                 if (onRevokeAccount) {
-                  await onRevokeAccount();
+                  try {
+                    await onRevokeAccount();
+                    setShowRevokeDialog(false);
+                  } catch (error) {
+                    const message =
+                      error instanceof Error
+                        ? error.message
+                        : typeof error === "string"
+                          ? error
+                          : "Failed to delete account. Please try again.";
+                    toast.error(message);
+                  }
                 }
-                setShowRevokeDialog(false);
               }}
               className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
             >
