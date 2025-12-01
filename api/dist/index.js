@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { DAVClient } from "tsdav";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import * as ical from "node-ical";
+import ical from "node-ical";
 // =============================================================================
 // Environment Variables
 // =============================================================================
@@ -17,6 +17,8 @@ const CLIENT_URL = process.env.CLIENT_URL || "https://shared-calendar-vibe.verce
 const ONECAL_APP_ID = process.env.ONECAL_APP_ID;
 const ONECAL_API_KEY = process.env.ONECAL_API_KEY;
 const ONECAL_API_BASE = "https://api.onecalunified.com/api/v1";
+// Google Token Revocation URL
+const GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 // Encryption Configuration (for iCloud password storage)
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 const IV_LENGTH = 16;
@@ -272,6 +274,48 @@ async function handleGoogleCallback(req, res) {
                 metadata,
             ],
         });
+        // Process any pending friend requests that were sent to this user before they registered
+        const normalizedEmail = userInfo.email.toLowerCase();
+        const userId = userInfo.id;
+        // Find pending friend requests sent to this email
+        const pendingRequestsResult = await client.execute({
+            sql: `SELECT uc.*, ca.external_email as requester_email
+            FROM user_connections uc
+            LEFT JOIN calendar_accounts ca ON ca.user_id = uc.user_id
+            WHERE LOWER(uc.friend_email) = LOWER(?) AND uc.status IN ('pending', 'requested')`,
+            args: [normalizedEmail],
+        });
+        // Process each pending request
+        for (const request of pendingRequestsResult.rows) {
+            const requestId = request.id;
+            const requestUserId = request.user_id;
+            const requesterEmail = request.requester_email;
+            // Update the requester's connection to 'requested' status with the new user's ID
+            await client.execute({
+                sql: `UPDATE user_connections 
+              SET friend_user_id = ?, status = 'requested', updated_at = CURRENT_TIMESTAMP
+              WHERE id = ?`,
+                args: [userId, requestId],
+            });
+            // Create incoming request for the new user if the requester has an email
+            if (requesterEmail) {
+                const requesterEmailLower = requesterEmail.toLowerCase();
+                // Check if an incoming connection already exists
+                const existingResult = await client.execute({
+                    sql: `SELECT id FROM user_connections 
+                WHERE user_id = ? AND LOWER(friend_email) = LOWER(?)`,
+                    args: [userId, requesterEmailLower],
+                });
+                if (existingResult.rows.length === 0) {
+                    // Create the incoming request for the new user
+                    await client.execute({
+                        sql: `INSERT OR IGNORE INTO user_connections (user_id, friend_email, friend_user_id, status)
+                  VALUES (?, ?, ?, 'incoming')`,
+                        args: [userId, requesterEmailLower, requestUserId],
+                    });
+                }
+            }
+        }
         const token = jwt.sign({ userId: userInfo.id, email: userInfo.email }, JWT_SECRET, { expiresIn: "30d" });
         res.setHeader("Set-Cookie", `token=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`);
         const authCode = createAuthCode({
@@ -509,6 +553,199 @@ async function handleGetAllEvents(req, res, userId) {
         }
     }
     return res.status(200).json(allEvents);
+}
+/**
+ * Stream events from all calendar providers as Server-Sent Events (SSE)
+ * Events are sent progressively as each provider completes fetching
+ */
+async function handleStreamEvents(req, res, userId) {
+    const user = verifyToken(req);
+    if (!user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+    }
+    const client = getTursoClient();
+    // Parse query parameters
+    const queryString = req.url?.split("?")[1] || "";
+    const params = new URLSearchParams(queryString);
+    const timeMin = params.get("timeMin")
+        ? new Date(params.get("timeMin"))
+        : new Date();
+    const timeMax = params.get("timeMax")
+        ? new Date(params.get("timeMax"))
+        : new Date(Date.now() + 28 * 24 * 60 * 60 * 1000);
+    // Get all accounts for this user (primary + linked)
+    const result = await client.execute({
+        sql: "SELECT * FROM calendar_accounts WHERE user_id = ? OR primary_user_id = ?",
+        args: [userId, userId],
+    });
+    // Set up SSE headers
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    if (result.rows.length === 0) {
+        res.write(`data: ${JSON.stringify({ type: "complete", events: [] })}\n\n`);
+        res.end();
+        return;
+    }
+    // Helper to send SSE message
+    const sendEvent = (data) => {
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+    // Fetch events from all providers in parallel
+    const fetchPromises = result.rows.map(async (account) => {
+        const provider = account.provider;
+        const events = [];
+        try {
+            if (provider === "google" && account.access_token) {
+                const oauth2Client = getOAuth2Client();
+                oauth2Client.setCredentials({
+                    access_token: account.access_token,
+                    refresh_token: account.refresh_token || undefined,
+                });
+                // Handle token refresh
+                oauth2Client.on("tokens", async (tokens) => {
+                    if (tokens.access_token) {
+                        await client.execute({
+                            sql: "UPDATE calendar_accounts SET access_token = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+                            args: [tokens.access_token, account.user_id],
+                        });
+                    }
+                });
+                const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+                const response = await calendar.events.list({
+                    calendarId: "primary",
+                    timeMin: timeMin.toISOString(),
+                    timeMax: timeMax.toISOString(),
+                    singleEvents: true,
+                    orderBy: "startTime",
+                });
+                const googleEvents = (response.data.items || []).map((event) => ({
+                    ...event,
+                    calendarId: "primary",
+                    accountType: "google",
+                    accountEmail: account.external_email,
+                    userId: account.user_id,
+                }));
+                events.push(...googleEvents);
+            }
+            if (provider === "outlook" && account.access_token && ONECAL_API_KEY) {
+                const endUserAccountId = account.access_token;
+                const calendarsResponse = await fetch(`${ONECAL_API_BASE}/calendars/${endUserAccountId}`, { headers: { "x-api-key": ONECAL_API_KEY } });
+                if (calendarsResponse.ok) {
+                    const calendarsData = (await calendarsResponse.json());
+                    const allCalendars = calendarsData.data || [];
+                    const primaryCalendar = allCalendars.find((cal) => cal.isPrimary);
+                    const calendars = primaryCalendar
+                        ? [primaryCalendar]
+                        : allCalendars.slice(0, 1);
+                    for (const cal of calendars) {
+                        const eventsParams = new URLSearchParams({
+                            startDateTime: timeMin.toISOString(),
+                            endDateTime: timeMax.toISOString(),
+                            expandRecurrences: "true",
+                        });
+                        const eventsResponse = await fetch(`${ONECAL_API_BASE}/events/${endUserAccountId}/${cal.id}?${eventsParams}`, { headers: { "x-api-key": ONECAL_API_KEY } });
+                        if (eventsResponse.ok) {
+                            const eventsData = (await eventsResponse.json());
+                            for (const event of eventsData.data || []) {
+                                events.push({
+                                    id: event.id,
+                                    summary: event.title || event.summary || "Untitled Event",
+                                    start: {
+                                        dateTime: event.start?.dateTime,
+                                        date: event.start?.date,
+                                    },
+                                    end: {
+                                        dateTime: event.end?.dateTime,
+                                        date: event.end?.date,
+                                    },
+                                    calendarId: cal.id,
+                                    accountType: "outlook",
+                                    accountEmail: account.external_email,
+                                    userId: account.user_id,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            if (provider === "icloud" && account.encrypted_password) {
+                const password = decrypt(account.encrypted_password);
+                const davClient = new DAVClient({
+                    serverUrl: "https://caldav.icloud.com",
+                    credentials: {
+                        username: account.external_email,
+                        password: password,
+                    },
+                    authMethod: "Basic",
+                    defaultAccountType: "caldav",
+                });
+                await davClient.login();
+                const calendars = await davClient.fetchCalendars();
+                for (const calendar of calendars) {
+                    const objects = await davClient.fetchCalendarObjects({ calendar });
+                    for (const obj of objects) {
+                        if (obj.data) {
+                            try {
+                                const parsed = ical.parseICS(obj.data);
+                                for (const key in parsed) {
+                                    const event = parsed[key];
+                                    if (event.type === "VEVENT") {
+                                        const startDate = event.start;
+                                        const endDate = event.end;
+                                        if (startDate &&
+                                            startDate >= timeMin &&
+                                            startDate <= timeMax) {
+                                            events.push({
+                                                id: event.uid || key,
+                                                summary: event.summary || "Untitled Event",
+                                                start: { dateTime: startDate.toISOString() },
+                                                end: {
+                                                    dateTime: endDate
+                                                        ? endDate.toISOString()
+                                                        : startDate.toISOString(),
+                                                },
+                                                calendarId: calendar.url,
+                                                accountType: "icloud",
+                                                accountEmail: account.external_email,
+                                                userId: account.user_id,
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                            catch (parseErr) {
+                                console.error(`Error parsing iCloud calendar object for ${account.user_id}:`, parseErr);
+                            }
+                        }
+                    }
+                }
+            }
+            // Send events for this provider immediately
+            if (events.length > 0 || provider) {
+                sendEvent({
+                    type: "events",
+                    provider: provider,
+                    events: events,
+                });
+            }
+        }
+        catch (err) {
+            console.error(`Error fetching ${provider} events for ${account.user_id}:`, err);
+            sendEvent({
+                type: "error",
+                provider: provider,
+                message: `Failed to fetch ${provider} events`,
+            });
+        }
+    });
+    // Wait for all fetches to complete
+    await Promise.all(fetchPromises);
+    // Send completion signal
+    sendEvent({ type: "complete" });
+    res.end();
 }
 async function handleCreateEvent(req, res) {
     const user = verifyToken(req);
@@ -790,6 +1027,67 @@ async function handleOutlookCallback(req, res) {
     }
 }
 // =============================================================================
+// Account Revocation Handler
+// =============================================================================
+async function handleRevokeAccount(req, res) {
+    const user = verifyToken(req);
+    if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+    const userId = user.userId;
+    const client = getTursoClient();
+    try {
+        // Get user's account to retrieve tokens for revocation
+        const accountResult = await client.execute({
+            sql: "SELECT access_token FROM calendar_accounts WHERE user_id = ?",
+            args: [userId],
+        });
+        if (accountResult.rows.length > 0) {
+            const accessToken = accountResult.rows[0].access_token;
+            // Revoke the token with Google
+            if (accessToken) {
+                try {
+                    const response = await fetch(`${GOOGLE_REVOKE_URL}?token=${accessToken}`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/x-www-form-urlencoded",
+                        },
+                    });
+                    if (!response.ok) {
+                        const body = await response.text();
+                        console.warn(`Google token revocation failed with status ${response.status}: ${body}`);
+                    }
+                }
+                catch (error) {
+                    // Log but continue - we still want to delete local data even if revocation fails
+                    console.error("Failed to revoke token with Google:", error);
+                }
+            }
+        }
+        // Delete all user connections (both directions)
+        await client.execute({
+            sql: "DELETE FROM user_connections WHERE user_id = ? OR friend_user_id = ?",
+            args: [userId, userId],
+        });
+        // Delete all calendar accounts (primary and linked accounts like iCloud/Outlook)
+        await client.execute({
+            sql: "DELETE FROM calendar_accounts WHERE user_id = ? OR primary_user_id = ?",
+            args: [userId, userId],
+        });
+        // Clear the JWT cookie
+        const isProduction = process.env.NODE_ENV === "production";
+        res.setHeader("Set-Cookie", `token=; HttpOnly; ${isProduction ? "Secure; " : ""}SameSite=Lax; Path=/; Max-Age=0`);
+        return res
+            .status(200)
+            .json({ success: true, message: "Account successfully revoked" });
+    }
+    catch (error) {
+        console.error("Revoke account error:", error);
+        const message = error instanceof Error ? error.message : "Failed to revoke account";
+        return res.status(500).json({ error: message });
+    }
+}
+// =============================================================================
 // Friends Handlers
 // =============================================================================
 const FRIEND_COLORS = [
@@ -898,9 +1196,9 @@ async function handleSyncPending(req, res) {
     let updatedCount = 0;
     for (const conn of pendingResult.rows) {
         const friendEmail = conn.friend_email;
-        // Check if friend has an account now
+        // Check if friend has an account now (case-insensitive)
         const friendAccountResult = await client.execute({
-            sql: "SELECT user_id FROM calendar_accounts WHERE external_email = ?",
+            sql: "SELECT user_id FROM calendar_accounts WHERE LOWER(external_email) = LOWER(?)",
             args: [friendEmail],
         });
         if (friendAccountResult.rows.length > 0) {
@@ -920,7 +1218,7 @@ async function handleSyncPending(req, res) {
                     .external_email;
                 // Check if reverse connection exists
                 const reverseResult = await client.execute({
-                    sql: "SELECT id FROM user_connections WHERE user_id = ? AND friend_email = ?",
+                    sql: "SELECT id FROM user_connections WHERE user_id = ? AND LOWER(friend_email) = LOWER(?)",
                     args: [friendUserId, currentUserEmail.toLowerCase()],
                 });
                 if (reverseResult.rows.length === 0) {
@@ -974,7 +1272,7 @@ async function handleAddFriend(req, res) {
     }
     // Check if connection already exists
     const existingResult = await client.execute({
-        sql: "SELECT * FROM user_connections WHERE user_id = ? AND friend_email = ?",
+        sql: "SELECT * FROM user_connections WHERE user_id = ? AND LOWER(friend_email) = LOWER(?)",
         args: [user.userId, normalizedEmail],
     });
     if (existingResult.rows.length > 0) {
@@ -1016,7 +1314,7 @@ async function handleAddFriend(req, res) {
         // Create incoming request for friend if they have an account
         if (friendAccount && primaryUserEmail) {
             const reverseExistingResult = await client.execute({
-                sql: "SELECT id FROM user_connections WHERE user_id = ? AND friend_email = ?",
+                sql: "SELECT id FROM user_connections WHERE user_id = ? AND LOWER(friend_email) = LOWER(?)",
                 args: [friendUserId, primaryUserEmail.toLowerCase()],
             });
             if (reverseExistingResult.rows.length === 0) {
@@ -1037,7 +1335,7 @@ async function handleAddFriend(req, res) {
     }
     // Get the inserted connection
     const connectionResult = await client.execute({
-        sql: "SELECT * FROM user_connections WHERE user_id = ? AND friend_email = ?",
+        sql: "SELECT * FROM user_connections WHERE user_id = ? AND LOWER(friend_email) = LOWER(?)",
         args: [user.userId, normalizedEmail],
     });
     const connection = connectionResult.rows[0];
@@ -1087,7 +1385,7 @@ async function handleRemoveFriend(req, res, friendId) {
             const userEmail = userAccountResult.rows[0].external_email?.toLowerCase();
             if (userEmail) {
                 await client.execute({
-                    sql: "DELETE FROM user_connections WHERE user_id = ? AND friend_email = ?",
+                    sql: "DELETE FROM user_connections WHERE user_id = ? AND LOWER(friend_email) = LOWER(?)",
                     args: [connection.friend_user_id, userEmail],
                 });
             }
@@ -1372,7 +1670,11 @@ async function handleGetFriendEvents(req, res, friendId) {
             }
         }
     }
-    return res.status(200).json(allEvents);
+    // Return events with consistent format (matching local server response)
+    return res.status(200).json({
+        events: allEvents,
+        errors: [],
+    });
 }
 // =============================================================================
 // AI Handlers
@@ -1456,16 +1758,12 @@ async function handleDraftInvitation(req, res) {
 // =============================================================================
 export default async function handler(req, res) {
     const rawPath = req.url?.split("?")[0] || "/api";
-    // Debug logging
-    console.log(`[API] Method: ${req.method}, URL: ${req.url}, Path: ${rawPath}`);
-    console.log(`[API] Headers:`, JSON.stringify(req.headers));
     // Normalize path: remove trailing slash and ensure it starts with /api
     let path = rawPath.replace(/\/$/, "");
     if (!path.startsWith("/api")) {
         // Handle case where path might be relative or missing /api prefix due to rewriting
         path = `/api${path.startsWith("/") ? "" : "/"}${path}`;
     }
-    console.log(`[API] Normalized Path: ${path}`);
     // CORS
     res.setHeader("Access-Control-Allow-Origin", CLIENT_URL);
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
@@ -1509,6 +1807,10 @@ export default async function handler(req, res) {
         if (path === "/api/auth/icloud" && req.method === "POST") {
             return handleICloudConnect(req, res);
         }
+        // Account revocation route
+        if (path === "/api/auth/revoke" && req.method === "DELETE") {
+            return handleRevokeAccount(req, res);
+        }
         // ===================
         // User routes - /api/users/:id
         // ===================
@@ -1523,6 +1825,12 @@ export default async function handler(req, res) {
         const allEventsMatch = path.match(/^\/api\/calendar\/all-events\/([^/]+)$/);
         if (allEventsMatch && req.method === "GET") {
             return handleGetAllEvents(req, res, allEventsMatch[1]);
+        }
+        // GET /api/calendar/events-stream/:userId - Stream events via SSE
+        const eventsStreamMatch = path.match(/^\/api\/calendar\/events-stream\/([^/]+)$/);
+        if (eventsStreamMatch && req.method === "GET") {
+            await handleStreamEvents(req, res, eventsStreamMatch[1]);
+            return;
         }
         // POST /api/calendar/events
         if (path === "/api/calendar/events" && req.method === "POST") {
@@ -1596,6 +1904,13 @@ export default async function handler(req, res) {
         if (path === "/api/ai/draft-invitation" && req.method === "POST") {
             return handleDraftInvitation(req, res);
         }
+        // ===================
+        // Utility routes
+        // ===================
+        // GET /api/privacy - Redirect to privacy policy
+        if (path === "/api/privacy" && req.method === "GET") {
+            return res.redirect(301, "https://www.privacypolicies.com/live/206e7238-acb3-4701-ab5c-c102a087fd1a");
+        }
         // Root endpoint
         if (path === "/api") {
             return res.status(200).json({
@@ -1610,8 +1925,10 @@ export default async function handler(req, res) {
                     "GET /api/auth/outlook/callback",
                     "POST /api/auth/exchange",
                     "POST /api/auth/icloud",
+                    "DELETE /api/auth/revoke",
                     "GET /api/users/:id",
                     "GET /api/calendar/all-events/:userId",
+                    "GET /api/calendar/events-stream/:userId (SSE)",
                     "POST /api/calendar/events",
                     "GET /api/calendar/icloud/status",
                     "DELETE /api/calendar/icloud/:userId",
@@ -1626,11 +1943,11 @@ export default async function handler(req, res) {
                     "POST /api/friends/:friendId/reject",
                     "GET /api/friends/:friendId/events",
                     "POST /api/ai/draft-invitation",
+                    "GET /api/privacy",
                 ],
             });
         }
         // 404
-        console.log(`[API] 404 Not Found: ${path}`);
         return res.status(404).json({ error: "Not found", path, rawUrl: req.url });
     }
     catch (error) {
