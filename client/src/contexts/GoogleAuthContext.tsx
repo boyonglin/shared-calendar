@@ -18,6 +18,7 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
     const storedSession = restoreSession();
     return storedSession ? storedSession.user : null;
   });
+  const [isRevoking, setIsRevoking] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -72,14 +73,30 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
     clearStoredSession();
   };
 
+  const revokeAccount = async () => {
+    setIsRevoking(true);
+    try {
+      await authApi.revokeAccount();
+      setUser(null);
+      clearStoredSession();
+    } catch (error) {
+      console.error("Failed to revoke account:", error);
+      throw error;
+    } finally {
+      setIsRevoking(false);
+    }
+  };
+
   // Event fetching logic moved to CalendarContext
 
   return (
     <GoogleAuthContext.Provider
       value={{
         user,
+        isRevoking,
         signIn: handleSignIn,
         signOut,
+        revokeAccount,
       }}
     >
       {children}

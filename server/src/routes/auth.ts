@@ -233,4 +233,34 @@ router.get("/outlook/callback", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * DELETE /auth/revoke
+ * Revoke Google authorization and delete all user data
+ */
+router.delete(
+  "/revoke",
+  authenticateUser,
+  async (req: Request, res: Response) => {
+    const userId = (req as AuthRequest).user!.userId;
+
+    try {
+      await googleAuthService.revokeAccount(userId);
+
+      // Clear the JWT cookie
+      res.clearCookie("token", {
+        httpOnly: true,
+        secure: env.NODE_ENV === "production",
+        sameSite: "lax",
+      });
+
+      res.json({ success: true, message: "Account successfully revoked" });
+    } catch (error) {
+      console.error("Revoke error:", error);
+      const message =
+        error instanceof Error ? error.message : "Failed to revoke account";
+      res.status(500).json({ error: message });
+    }
+  },
+);
+
 export default router;

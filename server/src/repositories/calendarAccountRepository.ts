@@ -218,4 +218,23 @@ export const calendarAccountRepository = {
       return false;
     }
   },
+
+  async deleteByUserId(userId: string): Promise<boolean> {
+    const db = await getDb();
+    const result = await db.execute({
+      sql: "DELETE FROM calendar_accounts WHERE user_id = ?",
+      args: [userId],
+    });
+    return (result.rowsAffected ?? 0) > 0;
+  },
+
+  async deleteAllByPrimaryUserId(primaryUserId: string): Promise<number> {
+    const db = await getDb();
+    // Delete all accounts where user_id matches or primary_user_id matches
+    const result = await db.execute({
+      sql: "DELETE FROM calendar_accounts WHERE user_id = ? OR primary_user_id = ?",
+      args: [primaryUserId, primaryUserId],
+    });
+    return result.rowsAffected ?? 0;
+  },
 };

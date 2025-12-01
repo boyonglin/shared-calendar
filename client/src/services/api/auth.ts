@@ -21,6 +21,11 @@ export interface ExchangeCodeResponse {
   provider: string;
 }
 
+export interface RevokeResponse {
+  success: boolean;
+  message: string;
+}
+
 export const authApi = {
   getUser: (userId: string) =>
     apiClient.get<GoogleUser>(`/api/users/${userId}`),
@@ -31,4 +36,8 @@ export const authApi = {
    */
   exchangeCode: (code: string) =>
     apiClient.post<ExchangeCodeResponse>("/api/auth/exchange", { code }),
+  /**
+   * Revoke Google authorization and delete all user data
+   */
+  revokeAccount: () => apiClient.delete<RevokeResponse>("/api/auth/revoke"),
 };

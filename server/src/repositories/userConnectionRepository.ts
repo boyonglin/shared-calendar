@@ -270,4 +270,13 @@ export const userConnectionRepository = {
     });
     return result.rows as unknown as UserConnectionWithMetadata[];
   },
+
+  async deleteAllByUserId(userId: string): Promise<number> {
+    const db = await getDb();
+    const result = await db.execute({
+      sql: "DELETE FROM user_connections WHERE user_id = ? OR friend_user_id = ?",
+      args: [userId, userId],
+    });
+    return result.rowsAffected ?? 0;
+  },
 };

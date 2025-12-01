@@ -16,6 +16,9 @@ const oauth2Client = new google.auth.OAuth2(
   REDIRECT_URI,
 );
 
+// Google's token revocation endpoint
+const GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
+
 function createOAuth2ClientForUser(
   userId: string,
   credentials: { access_token: string; refresh_token?: string },
@@ -226,5 +229,31 @@ export const googleAuthService = {
     });
 
     return res.data;
+  },
+
+  revokeAccount: async (userId: string): Promise<void> => {
+    // Get user's account to retrieve tokens
+    const account = await calendarAccountRepository.findByUserId(userId);
+
+    if (account?.access_token) {
+      // Revoke the token with Google
+      try {
+        await fetch(`${GOOGLE_REVOKE_URL}?token=${account.access_token}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        });
+      } catch (error) {
+        // Log but continue - we still want to delete local data even if revocation fails
+        console.error("Failed to revoke token with Google:", error);
+      }
+    }
+
+    // Delete all user connections
+    await userConnectionRepository.deleteAllByUserId(userId);
+
+    // Delete all calendar accounts (primary and linked accounts like iCloud/Outlook)
+    await calendarAccountRepository.deleteAllByPrimaryUserId(userId);
   },
 };

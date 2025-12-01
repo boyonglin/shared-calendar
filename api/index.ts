@@ -27,6 +27,9 @@ const ONECAL_APP_ID = process.env.ONECAL_APP_ID;
 const ONECAL_API_KEY = process.env.ONECAL_API_KEY;
 const ONECAL_API_BASE = "https://api.onecalunified.com/api/v1";
 
+// Google Token Revocation URL
+const GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
+
 // Encryption Configuration (for iCloud password storage)
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 const IV_LENGTH = 16;
@@ -1389,6 +1392,74 @@ async function handleOutlookCallback(
 }
 
 // =============================================================================
+// Account Revocation Handler
+// =============================================================================
+
+async function handleRevokeAccount(
+  req: VercelRequest,
+  res: VercelResponse,
+): Promise<VercelResponse> {
+  const user = verifyToken(req);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const userId = user.userId;
+  const client = getTursoClient();
+
+  try {
+    // Get user's account to retrieve tokens for revocation
+    const accountResult = await client.execute({
+      sql: "SELECT access_token FROM calendar_accounts WHERE user_id = ?",
+      args: [userId],
+    });
+
+    if (accountResult.rows.length > 0) {
+      const accessToken = accountResult.rows[0].access_token as string | null;
+
+      // Revoke the token with Google
+      if (accessToken) {
+        try {
+          await fetch(`${GOOGLE_REVOKE_URL}?token=${accessToken}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+          });
+        } catch (error) {
+          // Log but continue - we still want to delete local data even if revocation fails
+          console.error("Failed to revoke token with Google:", error);
+        }
+      }
+    }
+
+    // Delete all user connections (both directions)
+    await client.execute({
+      sql: "DELETE FROM user_connections WHERE user_id = ? OR friend_user_id = ?",
+      args: [userId, userId],
+    });
+
+    // Delete all calendar accounts (primary and linked accounts like iCloud/Outlook)
+    await client.execute({
+      sql: "DELETE FROM calendar_accounts WHERE user_id = ? OR primary_user_id = ?",
+      args: [userId, userId],
+    });
+
+    // Clear the JWT cookie
+    res.setHeader(
+      "Set-Cookie",
+      "token=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0",
+    );
+
+    return res.status(200).json({ success: true, message: "Account successfully revoked" });
+  } catch (error) {
+    console.error("Revoke account error:", error);
+    const message = error instanceof Error ? error.message : "Failed to revoke account";
+    return res.status(500).json({ error: message });
+  }
+}
+
+// =============================================================================
 // Friends Handlers
 // =============================================================================
 
@@ -2153,7 +2224,11 @@ async function handleGetFriendEvents(
     }
   }
 
-  return res.status(200).json(allEvents);
+  // Return events with consistent format (matching local server response)
+  return res.status(200).json({
+    events: allEvents,
+    errors: [],
+  });
 }
 
 // =============================================================================
@@ -2325,6 +2400,10 @@ export default async function handler(
     if (path === "/api/auth/icloud" && req.method === "POST") {
       return handleICloudConnect(req, res);
     }
+    // Account revocation route
+    if (path === "/api/auth/revoke" && req.method === "DELETE") {
+      return handleRevokeAccount(req, res);
+    }
 
     // ===================
     // User routes - /api/users/:id
@@ -2469,6 +2548,7 @@ export default async function handler(
           "GET /api/auth/outlook/callback",
           "POST /api/auth/exchange",
           "POST /api/auth/icloud",
+          "DELETE /api/auth/revoke",
           "GET /api/users/:id",
           "GET /api/calendar/all-events/:userId",
           "GET /api/calendar/events-stream/:userId (SSE)",
