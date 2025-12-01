@@ -1,6 +1,9 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useId } from "react";
 import { createPortal } from "react-dom";
 import type { CalendarEvent } from "../types";
+
+// Custom event name for closing all tooltips
+const CLOSE_TOOLTIPS_EVENT = "eventblock:closetooltips";
 
 interface EventBlockProps {
   event: CalendarEvent;
@@ -18,6 +21,7 @@ export function EventBlock({
   const longPressTimer = useRef<number | null>(null);
   const hideTooltipTimer = useRef<number | null>(null);
   const blockRef = useRef<HTMLDivElement>(null);
+  const instanceId = useId();
   const displayText = isCurrentUser && event.title ? event.title : "Busy";
 
   // Clean up timers on unmount
@@ -31,6 +35,26 @@ export function EventBlock({
       }
     };
   }, []);
+
+  // Listen for close tooltip events from other instances
+  useEffect(() => {
+    const handleCloseTooltips = (e: globalThis.Event) => {
+      const customEvent = e as globalThis.CustomEvent<{ sourceId: string }>;
+      // Close this tooltip if another instance triggered the event
+      if (customEvent.detail.sourceId !== instanceId) {
+        setShowTooltip(false);
+        if (hideTooltipTimer.current) {
+          window.clearTimeout(hideTooltipTimer.current);
+          hideTooltipTimer.current = null;
+        }
+      }
+    };
+
+    document.addEventListener(CLOSE_TOOLTIPS_EVENT, handleCloseTooltips);
+    return () => {
+      document.removeEventListener(CLOSE_TOOLTIPS_EVENT, handleCloseTooltips);
+    };
+  }, [instanceId]);
 
   // Hide tooltip on scroll
   useEffect(() => {
@@ -56,36 +80,43 @@ export function EventBlock({
       const rect = blockRef.current.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
 
+      // Calculate tooltip half-width based on actual max-width (min of 200px or 80vw)
+      const tooltipMaxWidth = Math.min(200, viewportWidth * 0.8);
+      const tooltipHalfWidth = tooltipMaxWidth / 2;
+
       // Calculate left position, clamping to keep tooltip within viewport
       let left = rect.left + rect.width / 2;
-      // Ensure tooltip doesn't go off-screen (assuming max-width of ~200px, so 100px on each side)
-      left = Math.max(100, Math.min(viewportWidth - 100, left));
+      // Ensure tooltip doesn't go off-screen using calculated half-width with padding
+      left = Math.max(
+        tooltipHalfWidth + 8,
+        Math.min(viewportWidth - tooltipHalfWidth - 8, left),
+      );
 
       setTooltipPosition({
-        top: rect.top - 8, // Position above the element with some margin
+        top: rect.top - 12, // Position above the element with some margin (4px higher)
         left: left,
       });
     }
   }, []);
 
-  const handleTouchStart = useCallback(
-    (e: React.TouchEvent) => {
-      // Prevent iOS text selection and callout menu
-      e.preventDefault();
+  const handleTouchStart = useCallback(() => {
+    // Clear any existing hide timer
+    if (hideTooltipTimer.current) {
+      window.clearTimeout(hideTooltipTimer.current);
+      hideTooltipTimer.current = null;
+    }
 
-      // Clear any existing hide timer
-      if (hideTooltipTimer.current) {
-        window.clearTimeout(hideTooltipTimer.current);
-        hideTooltipTimer.current = null;
-      }
-
-      longPressTimer.current = window.setTimeout(() => {
-        updateTooltipPosition();
-        setShowTooltip(true);
-      }, 500); // 500ms long press
-    },
-    [updateTooltipPosition],
-  );
+    longPressTimer.current = window.setTimeout(() => {
+      // Dispatch event to close other tooltips before showing this one
+      document.dispatchEvent(
+        new globalThis.CustomEvent(CLOSE_TOOLTIPS_EVENT, {
+          detail: { sourceId: instanceId },
+        }),
+      );
+      updateTooltipPosition();
+      setShowTooltip(true);
+    }, 500); // 500ms long press
+  }, [updateTooltipPosition, instanceId]);
 
   const handleTouchEnd = useCallback(() => {
     if (longPressTimer.current) {
@@ -139,7 +170,7 @@ export function EventBlock({
     <>
       <div
         ref={blockRef}
-        className="rounded text-white text-sm relative overflow-visible flex items-center justify-center w-full h-8 sm:w-auto sm:h-auto sm:p-2 touch-none select-none"
+        className="rounded text-white text-sm relative overflow-visible flex items-center justify-center w-full h-8 sm:w-auto sm:h-auto sm:p-2 touch-manipulation select-none"
         style={{
           backgroundColor: userColor,
           opacity: 0.9,

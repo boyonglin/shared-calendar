@@ -588,14 +588,16 @@ router.get(
         }
       }
 
-      // Return events with optional error metadata
+      // Return events with consistent format (always object with events array)
       if (accountErrors.length > 0) {
         res.json({
           events: allEvents,
           errors: accountErrors,
         });
       } else {
-        res.json(allEvents);
+        res.json({
+          events: allEvents,
+        });
       }
     } catch (error) {
       next(error);

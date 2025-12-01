@@ -56,6 +56,20 @@ export function InviteDialog({
   const [tone, setTone] = useState<"professional" | "casual" | "friendly">(
     "professional",
   );
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile viewport for conditional rendering
+  // 640px matches Tailwind's default 'sm' breakpoint
+  useEffect(() => {
+    const SM_BREAKPOINT = 640;
+    const checkMobile = () => {
+      const newIsMobile = window.innerWidth < SM_BREAKPOINT;
+      setIsMobile((prev) => (prev !== newIsMobile ? newIsMobile : prev));
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   useEffect(() => {
     if (!isOpen) {
@@ -257,8 +271,7 @@ export function InviteDialog({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="description" className="text-sm">
-                <span className="sm:hidden">Description</span>
-                <span className="hidden sm:inline">Description (Optional)</span>
+                {isMobile ? "Description" : "Description (Optional)"}
               </Label>
               <div className="flex items-center gap-2">
                 <Select
@@ -296,22 +309,16 @@ export function InviteDialog({
               type="auto"
               className="min-h-[80px] max-h-[180px] rounded-md border"
             >
-              {/* Mobile placeholder with (Optional) prefix */}
               <Textarea
-                id="description-mobile"
-                placeholder="(Optional) Add meeting details, agenda, or notes..."
+                id="description"
+                placeholder={
+                  isMobile
+                    ? "(Optional) Add meeting details, agenda, or notes..."
+                    : "Add meeting details, agenda, or notes..."
+                }
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="sm:hidden min-h-[80px] border-0 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
-                maxLength={2000}
-              />
-              {/* Desktop placeholder without (Optional) prefix */}
-              <Textarea
-                id="description-desktop"
-                placeholder="Add meeting details, agenda, or notes..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="hidden sm:block min-h-[80px] border-0 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
+                className="min-h-[80px] border-0 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
                 maxLength={2000}
               />
             </ScrollArea>

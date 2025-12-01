@@ -237,7 +237,7 @@ export function CalendarView({
                       <div className="flex-1 h-px bg-gray-300"></div>
                     </div>
                   )}
-                  <div className="grid grid-cols-7 sm:grid-cols-8 gap-px bg-gray-200 min-h-[24px] sm:min-h-[40px]">
+                  <div className="grid grid-cols-7 sm:grid-cols-8 gap-px bg-gray-200 min-h-[32px] sm:min-h-[40px]">
                     <div className="bg-white p-1 sm:p-2 hidden sm:flex items-start">
                       {minute === 0 && (
                         <span className="text-gray-600 text-[10px] sm:text-xs">
