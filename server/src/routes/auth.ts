@@ -250,7 +250,7 @@ router.delete(
       res.clearCookie("token", {
         httpOnly: true,
         secure: env.NODE_ENV === "production",
-        sameSite: "lax",
+        sameSite: "strict",
       });
 
       res.json({ success: true, message: "Account successfully revoked" });

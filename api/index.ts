@@ -1461,7 +1461,7 @@ async function handleRevokeAccount(
     const isProduction = process.env.NODE_ENV === "production";
     res.setHeader(
       "Set-Cookie",
-      `token=; HttpOnly; ${isProduction ? "Secure; " : ""}SameSite=Lax; Path=/; Max-Age=0`,
+      `token=; HttpOnly; ${isProduction ? "Secure; " : ""}SameSite=Strict; Path=/; Max-Age=0`,
     );
 
     return res

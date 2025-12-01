@@ -31,8 +31,19 @@ import { toast } from "sonner";
 const GEMINI_API_KEY_STORAGE_KEY = "gemini_api_key";
 const GEMINI_API_KEY_VALID_KEY = "gemini_api_key_valid";
 
-// Validate API key by making a simple request to Gemini API
-async function validateGeminiApiKey(apiKey: string): Promise<boolean> {
+/**
+ * Validate API key by making a simple request to Gemini API.
+ * Note: This sends the API key to Google's servers for verification.
+ * The key is sent in the X-Goog-Api-Key header, not as a URL parameter.
+ */
+async function validateGeminiApiKey(
+  apiKey: string,
+  signal?: AbortSignal,
+): Promise<boolean> {
+  // Basic format validation before making API call
+  if (!apiKey || apiKey.length < 20) {
+    return false;
+  }
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models`,
@@ -41,6 +52,7 @@ async function validateGeminiApiKey(apiKey: string): Promise<boolean> {
         headers: {
           "X-Goog-Api-Key": apiKey,
         },
+        signal,
       },
     );
     return response.ok;
@@ -86,15 +98,17 @@ export function SettingsModal({
   // Validate stored key on mount if we haven't validated yet
   useEffect(() => {
     if (effectiveStoredKey && isKeyValid === null) {
-      let cancelled = false;
-      validateGeminiApiKey(effectiveStoredKey).then((valid) => {
-        if (!cancelled) {
-          setIsKeyValid(valid);
-          localStorage.setItem(GEMINI_API_KEY_VALID_KEY, String(valid));
-        }
-      });
+      const abortController = new AbortController();
+      validateGeminiApiKey(effectiveStoredKey, abortController.signal).then(
+        (valid) => {
+          if (!abortController.signal.aborted) {
+            setIsKeyValid(valid);
+            localStorage.setItem(GEMINI_API_KEY_VALID_KEY, String(valid));
+          }
+        },
+      );
       return () => {
-        cancelled = true;
+        abortController.abort();
       };
     }
   }, [effectiveStoredKey, isKeyValid]);
@@ -217,8 +231,11 @@ export function SettingsModal({
                       "Validating..."
                     ) : isKeyValid === false ? (
                       <>
-                        <span title="API key appears to be invalid">
-                          <AlertTriangle className="w-3 h-3" />
+                        <span>
+                          <AlertTriangle
+                            className="w-3 h-3"
+                            aria-label="API key appears to be invalid"
+                          />
                         </span>
                         API key configured: {maskApiKey(effectiveStoredKey)}
                       </>
