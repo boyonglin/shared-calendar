@@ -44,8 +44,10 @@ export interface StoredSession {
 
 export interface GoogleAuthContextType {
   user: GoogleUser | null;
+  isRevoking: boolean;
   signIn: () => void;
   signOut: () => void;
+  revokeAccount: () => Promise<void>;
 }
 
 // ============================================================================

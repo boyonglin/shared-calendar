@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -6,27 +6,87 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { ExternalLink, Eye, EyeOff, Check } from "lucide-react";
+import {
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Trash2,
+  AlertTriangle,
+  Check,
+} from "lucide-react";
 import { toast } from "sonner";
 
 const GEMINI_API_KEY_STORAGE_KEY = "gemini_api_key";
+const GEMINI_API_KEY_VALID_KEY = "gemini_api_key_valid";
+
+/**
+ * Validate API key by making a simple request to Gemini API.
+ * Note: This sends the API key to Google's servers for verification.
+ * The key is sent in the X-Goog-Api-Key header, not as a URL parameter.
+ */
+async function validateGeminiApiKey(
+  apiKey: string,
+  signal?: AbortSignal,
+): Promise<boolean> {
+  // Basic format validation before making API call
+  if (!apiKey || apiKey.length < 20) {
+    return false;
+  }
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models`,
+      {
+        method: "GET",
+        headers: {
+          "X-Goog-Api-Key": apiKey,
+        },
+        signal,
+      },
+    );
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  isRevoking?: boolean;
+  onRevokeAccount?: () => Promise<void>;
 }
 
 export function getGeminiApiKey(): string | null {
   return localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY);
 }
 
-export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+export function SettingsModal({
+  isOpen,
+  onClose,
+  isRevoking,
+  onRevokeAccount,
+}: SettingsModalProps) {
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [removed, setRemoved] = useState(false);
+  const [showRevokeDialog, setShowRevokeDialog] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const [isKeyValid, setIsKeyValid] = useState<boolean | null>(() => {
+    const stored = localStorage.getItem(GEMINI_API_KEY_VALID_KEY);
+    return stored === null ? null : stored === "true";
+  });
 
   // Read stored key on each render to get current state
   const storedKey = localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY);
@@ -35,6 +95,24 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const effectiveStoredKey = removed ? null : storedKey;
   const effectiveHasExistingKey = !!effectiveStoredKey;
 
+  // Validate stored key on mount if we haven't validated yet
+  useEffect(() => {
+    if (effectiveStoredKey && isKeyValid === null) {
+      const abortController = new AbortController();
+      validateGeminiApiKey(effectiveStoredKey, abortController.signal).then(
+        (valid) => {
+          if (!abortController.signal.aborted) {
+            setIsKeyValid(valid);
+            localStorage.setItem(GEMINI_API_KEY_VALID_KEY, String(valid));
+          }
+        },
+      );
+      return () => {
+        abortController.abort();
+      };
+    }
+  }, [effectiveStoredKey, isKeyValid]);
+
   // Reset state when opening or closing the dialog
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -42,32 +120,51 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setApiKey("");
       setShowApiKey(false);
       setRemoved(false);
+      setShowRevokeDialog(false);
       onClose();
     } else {
       // Reset state when opening
       setApiKey("");
       setShowApiKey(false);
       setRemoved(false);
+      setShowRevokeDialog(false);
+      // Re-read validation status from storage
+      const stored = localStorage.getItem(GEMINI_API_KEY_VALID_KEY);
+      setIsKeyValid(stored === null ? null : stored === "true");
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const keyToSave = apiKey.trim();
     if (!keyToSave) {
       toast.error("Please enter a valid API key");
       return;
     }
 
+    // Validate the API key before saving
+    setIsValidating(true);
+    const isValid = await validateGeminiApiKey(keyToSave);
+    setIsValidating(false);
+
     localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, keyToSave);
+    localStorage.setItem(GEMINI_API_KEY_VALID_KEY, String(isValid));
+    setIsKeyValid(isValid);
     setRemoved(false);
-    toast.success("Gemini API key saved successfully");
-    onClose();
+    setApiKey("");
+
+    if (isValid) {
+      toast.success("Gemini API key saved successfully");
+    } else {
+      toast.warning("API key saved but appears to be invalid");
+    }
   };
 
   const handleRemove = () => {
     localStorage.removeItem(GEMINI_API_KEY_STORAGE_KEY);
+    localStorage.removeItem(GEMINI_API_KEY_VALID_KEY);
     setApiKey("");
     setRemoved(true);
+    setIsKeyValid(null);
     toast.success("Gemini API key removed");
   };
 
@@ -82,24 +179,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Configure your API keys and preferences.
+            Configure your account preferences.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium text-gray-900">
-                Gemini API Key
-              </h3>
-              <p className="text-xs text-gray-500 mt-1">
-                Add your own Gemini API key to enable AI-powered invitation
-                drafts.
-              </p>
-            </div>
+          <div className="border border-gray-200 rounded-lg p-3">
+            <h3 className="text-sm font-medium text-gray-900">
+              Gemini API Key
+            </h3>
+            <p className="text-xs text-gray-500 mt-1 mb-3">
+              Draft invitations faster with AI—just add your key, stored locally
+              in your browser.
+            </p>
 
             <div className="space-y-2">
-              <Label htmlFor="gemini-api-key">API Key</Label>
               <div className="relative">
                 <Input
                   id="gemini-api-key"
@@ -130,17 +224,28 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </div>
               {effectiveHasExistingKey && effectiveStoredKey && (
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-green-600 flex items-center gap-1">
-                    <Check className="w-3 h-3" />
-                    API key configured: {maskApiKey(effectiveStoredKey)}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleRemove}
-                    className="text-xs text-red-500 hover:text-red-700"
+                  <p
+                    className={`text-xs flex items-center gap-1 ${isKeyValid === false ? "text-amber-600" : "text-green-600"}`}
                   >
-                    Remove
-                  </button>
+                    {isValidating ? (
+                      "Validating..."
+                    ) : isKeyValid === false ? (
+                      <>
+                        <span>
+                          <AlertTriangle
+                            className="w-3 h-3"
+                            aria-label="API key appears to be invalid"
+                          />
+                        </span>
+                        API key configured: {maskApiKey(effectiveStoredKey)}
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3 h-3" />
+                        API key configured: {maskApiKey(effectiveStoredKey)}
+                      </>
+                    )}
+                  </p>
                 </div>
               )}
               {!effectiveHasExistingKey && (
@@ -157,35 +262,84 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   </a>
                 </p>
               )}
+              <div className="flex flex-row gap-2 pt-2">
+                {effectiveHasExistingKey && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleRemove}
+                    className="flex-1 text-red-600 border-red-300 hover:bg-red-600 hover:text-white hover:border-red-600"
+                  >
+                    Remove
+                  </Button>
+                )}
+                <Button
+                  onClick={handleSave}
+                  disabled={!apiKey.trim() || isValidating}
+                  className="flex-1"
+                >
+                  {isValidating ? "Validating..." : "Save"}
+                </Button>
+              </div>
             </div>
           </div>
+        </div>
 
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-            <p className="text-amber-800 text-xs">
-              <strong>Note:</strong> Stored locally in your browser. Only sent
-              when generating AI drafts.
+        {onRevokeAccount && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+            <h3 className="text-sm font-medium text-red-700">Danger Zone</h3>
+            <p className="text-xs text-red-600 mt-1 mb-3">
+              Permanently delete your account and all associated data.
             </p>
+            <Button
+              variant="outline"
+              onClick={() => setShowRevokeDialog(true)}
+              disabled={isRevoking}
+              className="w-full text-red-600 border-red-300 hover:bg-red-600 hover:text-white hover:border-red-600"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              {isRevoking ? "Deleting..." : "Delete account"}
+            </Button>
           </div>
-        </div>
-
-        <div className="flex flex-row gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
-            className="flex-1"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!apiKey.trim()}
-            className="flex-1"
-          >
-            Save
-          </Button>
-        </div>
+        )}
       </DialogContent>
+
+      <AlertDialog open={showRevokeDialog} onOpenChange={setShowRevokeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete your account and all associated data,
+              including your calendar connections, friend connections, and
+              settings. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (onRevokeAccount) {
+                  try {
+                    await onRevokeAccount();
+                    setShowRevokeDialog(false);
+                  } catch (error) {
+                    const message =
+                      error instanceof Error
+                        ? error.message
+                        : typeof error === "string"
+                          ? error
+                          : "Failed to delete account. Please try again.";
+                    toast.error(message);
+                  }
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isRevoking ? "Deleting..." : "Delete account"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

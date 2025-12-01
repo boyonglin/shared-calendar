@@ -270,4 +270,21 @@ export const userConnectionRepository = {
     });
     return result.rows as unknown as UserConnectionWithMetadata[];
   },
+
+  /**
+   * Delete all connections involving the given user.
+   * This removes:
+   * - All connections where the user initiated the connection (user_id = userId)
+   * - All connections where the user is the friend in someone else's connection (friend_user_id = userId)
+   *
+   * This bidirectional deletion is critical for data consistency during account deletion.
+   */
+  async deleteAllByUserId(userId: string): Promise<number> {
+    const db = await getDb();
+    const result = await db.execute({
+      sql: "DELETE FROM user_connections WHERE user_id = ? OR friend_user_id = ?",
+      args: [userId, userId],
+    });
+    return result.rowsAffected ?? 0;
+  },
 };

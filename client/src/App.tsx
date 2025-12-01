@@ -39,7 +39,7 @@ function AppContent({
   weekStart: Date;
   setWeekStart: (date: Date) => void;
 }) {
-  const { user, signIn, signOut } = useGoogleAuth();
+  const { user, signIn, signOut, revokeAccount, isRevoking } = useGoogleAuth();
   const {
     events: calendarEvents,
     isLoading: isLoadingEvents,
@@ -254,6 +254,8 @@ function AppContent({
         key={modals.settings ? "open" : "closed"}
         isOpen={modals.settings}
         onClose={() => closeModal("settings")}
+        isRevoking={isRevoking}
+        onRevokeAccount={revokeAccount}
       />
 
       <FriendsManager

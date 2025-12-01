@@ -218,4 +218,30 @@ export const calendarAccountRepository = {
       return false;
     }
   },
+
+  async deleteByUserId(userId: string): Promise<boolean> {
+    const db = await getDb();
+    const result = await db.execute({
+      sql: "DELETE FROM calendar_accounts WHERE user_id = ?",
+      args: [userId],
+    });
+    return (result.rowsAffected ?? 0) > 0;
+  },
+
+  /**
+   * Delete all calendar accounts associated with the given primary user.
+   * This removes:
+   * - The user's primary Google account (user_id = primaryUserId)
+   * - All linked calendar accounts (iCloud, Outlook) that belong to this user (primary_user_id = primaryUserId)
+   *
+   * This bidirectional deletion is critical for proper cleanup during account deletion.
+   */
+  async deleteAllByPrimaryUserId(primaryUserId: string): Promise<number> {
+    const db = await getDb();
+    const result = await db.execute({
+      sql: "DELETE FROM calendar_accounts WHERE user_id = ? OR primary_user_id = ?",
+      args: [primaryUserId, primaryUserId],
+    });
+    return result.rowsAffected ?? 0;
+  },
 };
