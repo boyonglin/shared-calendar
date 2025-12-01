@@ -98,16 +98,11 @@ export const friendsApi = {
     if (timeMin) params.append("timeMin", timeMin.toISOString());
     if (timeMax) params.append("timeMax", timeMax.toISOString());
     const query = params.toString() ? `?${params.toString()}` : "";
-    const response = await apiClient.get<FriendEvent[] | FriendEventsResponse>(
+    const response = await apiClient.get<FriendEventsResponse>(
       `/api/friends/${friendId}/events${query}`,
     );
 
-    // Handle both old format (array) and new format (object with events and errors)
-    if (Array.isArray(response)) {
-      return response;
-    }
-
-    // New format with potential errors
+    // Log any sync errors for awareness
     if (response.errors && response.errors.length > 0) {
       const reauthErrors = response.errors.filter((e) => e.needsReauth);
       if (reauthErrors.length > 0) {
