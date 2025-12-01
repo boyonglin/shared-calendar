@@ -22,6 +22,8 @@ export function EventBlock({
   const hideTooltipTimer = useRef<number | null>(null);
   const blockRef = useRef<HTMLDivElement>(null);
   const instanceId = useId();
+  // Track if a long press was triggered to prevent click event propagation
+  const wasLongPress = useRef(false);
   const displayText = isCurrentUser && event.title ? event.title : "Busy";
 
   // Clean up timers on unmount
@@ -100,6 +102,9 @@ export function EventBlock({
   }, []);
 
   const handleTouchStart = useCallback(() => {
+    // Reset long press flag
+    wasLongPress.current = false;
+    
     // Clear any existing hide timer
     if (hideTooltipTimer.current) {
       window.clearTimeout(hideTooltipTimer.current);
@@ -107,6 +112,8 @@ export function EventBlock({
     }
 
     longPressTimer.current = window.setTimeout(() => {
+      // Mark as long press to prevent click event
+      wasLongPress.current = true;
       // Dispatch event to close other tooltips before showing this one
       document.dispatchEvent(
         new globalThis.CustomEvent(CLOSE_TOOLTIPS_EVENT, {
@@ -118,11 +125,18 @@ export function EventBlock({
     }, 500); // 500ms long press
   }, [updateTooltipPosition, instanceId]);
 
-  const handleTouchEnd = useCallback(() => {
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     if (longPressTimer.current) {
       window.clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
+    
+    // If this was a long press, prevent the click event from propagating
+    if (wasLongPress.current) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     // Hide tooltip after a longer delay so user can read it
     if (showTooltip) {
       hideTooltipTimer.current = window.setTimeout(
@@ -131,6 +145,15 @@ export function EventBlock({
       );
     }
   }, [showTooltip]);
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    // Prevent click event from bubbling up after a long press
+    if (wasLongPress.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      wasLongPress.current = false;
+    }
+  }, []);
 
   const handleTouchMove = useCallback(() => {
     // Cancel long press if user moves finger
@@ -181,6 +204,7 @@ export function EventBlock({
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onTouchMove={handleTouchMove}
+        onClick={handleClick}
         onContextMenu={handleContextMenu}
       >
         <span className="hidden sm:inline truncate">{displayText}</span>
