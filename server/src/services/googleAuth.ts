@@ -246,8 +246,14 @@ export const googleAuthService = {
           body: `token=${encodeURIComponent(account.access_token)}`,
         });
         if (!response.ok) {
+          let body = "";
+          try {
+            body = await response.text();
+          } catch {
+            body = "Unable to read response body";
+          }
           console.warn(
-            `Google token revocation failed with status ${response.status}: ${await response.text()}`,
+            `Google token revocation failed with status ${response.status}: ${body}`,
           );
         }
       } catch (error) {

@@ -305,8 +305,14 @@ export function SettingsModal({
                   try {
                     await onRevokeAccount();
                     setShowRevokeDialog(false);
-                  } catch {
-                    toast.error("Failed to delete account. Please try again.");
+                  } catch (error) {
+                    const message =
+                      error instanceof Error
+                        ? error.message
+                        : typeof error === "string"
+                          ? error
+                          : "Failed to delete account. Please try again.";
+                    toast.error(message);
                   }
                 }
               }}

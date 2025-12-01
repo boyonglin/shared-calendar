@@ -1428,7 +1428,12 @@ async function handleRevokeAccount(
             body: `token=${encodeURIComponent(accessToken)}`,
           });
           if (!response.ok) {
-            const body = await response.text();
+            let body = "";
+            try {
+              body = await response.text();
+            } catch {
+              body = "Unable to read response body";
+            }
             console.warn(
               `Google token revocation failed with status ${response.status}: ${body}`,
             );
