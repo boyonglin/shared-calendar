@@ -63,7 +63,8 @@ export function InviteDialog({
   useEffect(() => {
     const SM_BREAKPOINT = 640;
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < SM_BREAKPOINT);
+      const newIsMobile = window.innerWidth < SM_BREAKPOINT;
+      setIsMobile((prev) => (prev !== newIsMobile ? newIsMobile : prev));
     };
     checkMobile();
     window.addEventListener("resize", checkMobile);
