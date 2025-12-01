@@ -75,7 +75,7 @@ export function UserProfileDropdown({
           className="cursor-pointer"
           disabled={isLoadingEvents}
         >
-          <RefreshCw className="w-4 h-4 mr-2" />
+          <RefreshCw className="size-4" />
           <span>
             {isLoadingEvents ? "Loading..." : "Reload Calendar events"}
           </span>
@@ -88,7 +88,7 @@ export function UserProfileDropdown({
             onClick={() => setShowICloudModal(true)}
             className="cursor-pointer"
           >
-            <Cloud className="w-4 h-4 mr-2" />
+            <Cloud className="size-4" />
             <span>Connect iCloud Calendar</span>
           </DropdownMenuItem>
         ) : (
@@ -98,14 +98,14 @@ export function UserProfileDropdown({
           >
             <DropdownMenuTrigger asChild>
               <button
-                className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 gap-2 text-sm outline-none transition-colors hover:bg-gray-100 focus:bg-gray-100 data-[state=open]:bg-gray-100 text-gray-900"
+                className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 gap-3 text-sm outline-none transition-colors hover:bg-gray-50 focus:bg-gray-50 data-[state=open]:bg-gray-50 text-gray-900 [&_svg]:pointer-events-none [&_svg]:shrink-0"
                 type="button"
               >
-                <Cloud className="w-4 h-4 mr-2 text-muted-foreground" />
-                <span>
+                <Cloud className="size-4 text-muted-foreground" />
+                <span className="flex-1 truncate text-left">
                   iCloud ({iCloudStatus.email?.split("@")[0] || "account"})
                 </span>
-                <ChevronDown className="w-3 h-3 ml-auto text-gray-600" />
+                <ChevronDown className="size-3 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -121,7 +121,7 @@ export function UserProfileDropdown({
                 }}
                 className="cursor-pointer"
               >
-                <RefreshCw className="w-4 h-4 mr-2" />
+                <RefreshCw className="size-4" />
                 <span>Change account</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -129,7 +129,7 @@ export function UserProfileDropdown({
                 onClick={handleRemoveICloud}
                 className="cursor-pointer text-red-600 focus:text-red-600"
               >
-                <LogOut className="w-4 h-4 mr-2" />
+                <LogOut className="size-4" />
                 <span>Remove connection</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -144,7 +144,7 @@ export function UserProfileDropdown({
             onClick={handleConnectOutlook}
             className="cursor-pointer"
           >
-            <Mail className="w-4 h-4 mr-2" />
+            <Mail className="size-4" />
             <span>Connect Outlook Calendar</span>
           </DropdownMenuItem>
         ) : (
@@ -154,14 +154,14 @@ export function UserProfileDropdown({
           >
             <DropdownMenuTrigger asChild>
               <button
-                className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 gap-2 text-sm outline-none transition-colors hover:bg-gray-100 focus:bg-gray-100 data-[state=open]:bg-gray-100 text-gray-900"
+                className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 gap-3 text-sm outline-none transition-colors hover:bg-gray-50 focus:bg-gray-50 data-[state=open]:bg-gray-50 text-gray-900 [&_svg]:pointer-events-none [&_svg]:shrink-0"
                 type="button"
               >
-                <Mail className="w-4 h-4 mr-2 text-muted-foreground" />
-                <span>
+                <Mail className="size-4 text-muted-foreground" />
+                <span className="flex-1 truncate text-left">
                   Outlook ({outlookStatus.email?.split("@")[0] || "account"})
                 </span>
-                <ChevronDown className="w-3 h-3 ml-auto text-gray-600" />
+                <ChevronDown className="size-3 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -177,7 +177,7 @@ export function UserProfileDropdown({
                 }}
                 className="cursor-pointer"
               >
-                <RefreshCw className="w-4 h-4 mr-2" />
+                <RefreshCw className="size-4" />
                 <span>Change account</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -185,7 +185,7 @@ export function UserProfileDropdown({
                 onClick={handleRemoveOutlook}
                 className="cursor-pointer text-red-600 focus:text-red-600"
               >
-                <LogOut className="w-4 h-4 mr-2" />
+                <LogOut className="size-4" />
                 <span>Remove connection</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -196,7 +196,7 @@ export function UserProfileDropdown({
 
         {/* Settings Menu Item */}
         <DropdownMenuItem onClick={onOpenSettings} className="cursor-pointer">
-          <Settings className="w-4 h-4 mr-2" />
+          <Settings className="size-4" />
           <span>Settings</span>
         </DropdownMenuItem>
 
@@ -205,7 +205,7 @@ export function UserProfileDropdown({
           onClick={onSignOut}
           className="cursor-pointer text-red-600 focus:text-red-600"
         >
-          <LogOut className="w-4 h-4 mr-2" />
+          <LogOut className="size-4" />
           <span>Sign out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
