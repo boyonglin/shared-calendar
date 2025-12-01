@@ -588,17 +588,11 @@ router.get(
         }
       }
 
-      // Return events with consistent format (always object with events array)
-      if (accountErrors.length > 0) {
-        res.json({
-          events: allEvents,
-          errors: accountErrors,
-        });
-      } else {
-        res.json({
-          events: allEvents,
-        });
-      }
+      // Return events with consistent format (always object with events and errors arrays)
+      res.json({
+        events: allEvents,
+        errors: accountErrors,
+      });
     } catch (error) {
       next(error);
     }

@@ -201,7 +201,7 @@ export function InviteDialog({
     }
 
     const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    const timeStr = `${displayHour}:${minute === 0 ? "00" : String(minute).padStart(2, "0")} ${hour >= 12 ? "PM" : "AM"}`;
+    const timeStr = `${displayHour}:${String(minute).padStart(2, "0")} ${hour >= 12 ? "PM" : "AM"}`;
 
     return {
       mobile: `${mobileDate} at ${timeStr}`,
