@@ -157,7 +157,7 @@ export function CalendarView({
       <CardContent>
         <div className="overflow-x-auto">
           {/* Header row with days - 7 columns on mobile, 8 on desktop - FIXED outside scroll */}
-          <div className="grid grid-cols-7 sm:grid-cols-8 gap-px bg-gray-200 border border-gray-200">
+          <div className="grid grid-cols-7 sm:grid-cols-8 gap-px bg-gray-200 border border-gray-200 rounded-t-lg overflow-hidden">
             <div className="bg-white p-1 sm:p-3 hidden sm:block">
               <span className="text-gray-600 text-xs sm:text-base">Time</span>
             </div>
@@ -223,7 +223,7 @@ export function CalendarView({
             </div>
 
             {/* Time slots */}
-            <div className="border-l border-r border-b border-gray-200">
+            <div className="border-l border-r border-b border-gray-200 rounded-b-lg overflow-hidden">
               {timeSlots.map(({ hour, minute }) => (
                 <div key={`${hour}-${minute}`}>
                   {/* Time indicator row for mobile - only show on the hour */}
