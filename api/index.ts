@@ -2451,7 +2451,7 @@ export default async function handler(
     if (path === "/api/privacy" && req.method === "GET") {
       return res.redirect(
         301,
-        "https://www.privacypolicies.com/live/206e7238-acb3-4701-ab5c-c102a087fd1a"
+        "https://www.privacypolicies.com/live/206e7238-acb3-4701-ab5c-c102a087fd1a",
       );
     }
 

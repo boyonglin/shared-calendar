@@ -40,14 +40,14 @@ A modern, full-stack calendar sharing application that integrates with Google Ca
 
 ## 🛠️ Tech Stack
 
-| Layer        | Technologies                                                                             |
-| ------------ | ---------------------------------------------------------------------------------------- |
-| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, Radix UI, Lucide Icons              |
-| **Backend**  | Node.js 24, Express 5, TypeScript, SQLite (libSQL)                                       |
-| **Auth**     | Server-side OAuth 2.0 (Google), CalDAV (iCloud), OneCal API (Outlook), JWT               |
-| **AI**       | Google Gemini API (gemini-flash-latest)                                                  |
-| **Tooling**  | Pixi (package management), ESLint, Prettier, Zod (validation), Pino (logging)            |
-| **PWA**      | Vite PWA Plugin, Workbox                                                                 |
+| Layer        | Technologies                                                                  |
+| ------------ | ----------------------------------------------------------------------------- |
+| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, Radix UI, Lucide Icons   |
+| **Backend**  | Node.js 24, Express 5, TypeScript, SQLite (libSQL)                            |
+| **Auth**     | Server-side OAuth 2.0 (Google), CalDAV (iCloud), OneCal API (Outlook), JWT    |
+| **AI**       | Google Gemini API (gemini-flash-latest)                                       |
+| **Tooling**  | Pixi (package management), ESLint, Prettier, Zod (validation), Pino (logging) |
+| **PWA**      | Vite PWA Plugin, Workbox                                                      |
 
 ---
 
@@ -79,13 +79,13 @@ The app will be available at:
 
 ### Available Commands
 
-| Command             | Description                                |
-| ------------------- | ------------------------------------------ |
-| `pixi run install`  | Install all dependencies                   |
-| `pixi run build`    | Build both client and server for production |
-| `pixi run format`   | Format code with Prettier                  |
-| `pixi run lint`     | Lint code with ESLint                      |
-| `pixi run dev`      | Start both frontend and backend dev servers |
+| Command            | Description                                 |
+| ------------------ | ------------------------------------------- |
+| `pixi run install` | Install all dependencies                    |
+| `pixi run build`   | Build both client and server for production |
+| `pixi run format`  | Format code with Prettier                   |
+| `pixi run lint`    | Lint code with ESLint                       |
+| `pixi run dev`     | Start both frontend and backend dev servers |
 
 ---
 
