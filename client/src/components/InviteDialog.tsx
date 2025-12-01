@@ -160,19 +160,39 @@ export function InviteDialog({
   };
 
   const formatDateTime = () => {
-    if (!timeSlot) return "";
+    if (!timeSlot) return { mobile: "", web: "" };
     const { date, hour, minute = 0, isAllDay } = timeSlot;
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
-    const dateStr = `${weekday}, ${year}/${month}/${day}`;
+    
+    // Mobile format: Fri, Dec 5, 2025
+    const mobileDate = date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+    
+    // Web format: Friday, December 5, 2025
+    const webDate = date.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+    
     if (isAllDay) {
-      return `${dateStr} (All day)`;
+      return {
+        mobile: `${mobileDate} (All day)`,
+        web: `${webDate} (All day)`,
+      };
     }
+    
     const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
     const timeStr = `${displayHour}:${minute === 0 ? "00" : String(minute).padStart(2, "0")} ${hour >= 12 ? "PM" : "AM"}`;
-    return `${dateStr} at ${timeStr}`;
+    
+    return {
+      mobile: `${mobileDate} at ${timeStr}`,
+      web: `${webDate} at ${timeStr}`,
+    };
   };
 
   return (
@@ -190,7 +210,8 @@ export function InviteDialog({
             <div className="py-3 space-y-2">
               <div className="flex items-center gap-2 text-gray-700">
                 <Calendar className="w-4 h-4" />
-                <span className="text-sm">{formatDateTime()}</span>
+                <span className="text-sm sm:hidden">{formatDateTime().mobile}</span>
+                <span className="text-sm hidden sm:inline">{formatDateTime().web}</span>
               </div>
               {!timeSlot.isAllDay && (
                 <div className="flex items-center gap-2 text-gray-700">
@@ -230,50 +251,63 @@ export function InviteDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm">
-              Description (Optional)
-            </Label>
-            <div className="flex items-center gap-2">
-              <Select
-                value={tone}
-                onValueChange={(v) =>
-                  setTone(v as "professional" | "casual" | "friendly")
-                }
-                disabled={isGenerating}
-              >
-                <SelectTrigger
-                  className="h-8 text-xs flex-1"
-                  aria-label="Select tone for AI draft"
+            <div className="flex items-center justify-between">
+              <Label htmlFor="description" className="text-sm">
+                <span className="sm:hidden">Description</span>
+                <span className="hidden sm:inline">Description (Optional)</span>
+              </Label>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={tone}
+                  onValueChange={(v) =>
+                    setTone(v as "professional" | "casual" | "friendly")
+                  }
+                  disabled={isGenerating}
                 >
-                  <SelectValue placeholder="Tone" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="professional">Professional</SelectItem>
-                  <SelectItem value="casual">Casual</SelectItem>
-                  <SelectItem value="friendly">Friendly</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 text-xs gap-1 text-purple-600 hover:text-purple-700 hover:bg-purple-50 flex-1"
-                onClick={handleAIDraft}
-                disabled={isGenerating || !title.trim()}
-              >
-                <Sparkles className="w-3 h-3" />
-                {isGenerating ? "Drafting..." : "AI Draft"}
-              </Button>
+                  <SelectTrigger
+                    className="h-8 text-xs w-[110px]"
+                    aria-label="Select tone for AI draft"
+                  >
+                    <SelectValue placeholder="Tone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="professional">Professional</SelectItem>
+                    <SelectItem value="casual">Casual</SelectItem>
+                    <SelectItem value="friendly">Friendly</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs gap-1 text-purple-600 hover:text-purple-700 hover:bg-purple-50 px-2"
+                  onClick={handleAIDraft}
+                  disabled={isGenerating || !title.trim()}
+                >
+                  <Sparkles className="w-3 h-3" />
+                  {isGenerating ? "Drafting..." : "AI Draft"}
+                </Button>
+              </div>
             </div>
             <ScrollArea
               type="auto"
               className="min-h-[80px] max-h-[180px] rounded-md border"
             >
+              {/* Mobile placeholder with (Optional) prefix */}
               <Textarea
-                id="description"
+                id="description-mobile"
+                placeholder="(Optional) Add meeting details, agenda, or notes..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="sm:hidden min-h-[80px] border-0 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
+                maxLength={2000}
+              />
+              {/* Desktop placeholder without (Optional) prefix */}
+              <Textarea
+                id="description-desktop"
                 placeholder="Add meeting details, agenda, or notes..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="min-h-[80px] border-0 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
+                className="hidden sm:block min-h-[80px] border-0 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 text-sm"
                 maxLength={2000}
               />
             </ScrollArea>
