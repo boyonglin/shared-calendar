@@ -520,6 +520,11 @@ router.get(
       );
 
       const allEvents: Array<Record<string, unknown>> = [];
+      const accountErrors: Array<{
+        provider: string;
+        error: string;
+        needsReauth: boolean;
+      }> = [];
 
       for (const account of accounts) {
         try {
@@ -564,10 +569,34 @@ router.get(
             error,
             `Error fetching friend events from ${account.provider}`,
           );
+
+          // Track authentication errors so client can be informed
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+          const needsReauth =
+            errorMessage.includes("invalid_grant") ||
+            errorMessage.includes("Token has been expired or revoked") ||
+            errorMessage.includes("Invalid Credentials");
+
+          accountErrors.push({
+            provider: account.provider,
+            error: needsReauth
+              ? "Friend needs to re-authenticate"
+              : "Failed to fetch events",
+            needsReauth,
+          });
         }
       }
 
-      res.json(allEvents);
+      // Return events with optional error metadata
+      if (accountErrors.length > 0) {
+        res.json({
+          events: allEvents,
+          errors: accountErrors,
+        });
+      } else {
+        res.json(allEvents);
+      }
     } catch (error) {
       next(error);
     }
