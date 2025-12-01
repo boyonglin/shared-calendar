@@ -3,11 +3,13 @@
  */
 import type { Response } from "express";
 import express from "express";
-import { aiService } from "../services/ai";
 import { validateDraftInvitation } from "../middleware/validation";
 import { authenticateUser } from "../middleware/auth";
 import type { AuthRequest } from "../middleware/auth";
 import { createRequestLogger, logError } from "../utils/logger";
+
+// Import from shared core
+import { aiService } from "../../../shared/core";
 
 const router = express.Router();
 

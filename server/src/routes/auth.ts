@@ -1,18 +1,21 @@
 import type { Request, Response } from "express";
 import express from "express";
 import jwt from "jsonwebtoken";
-import { googleAuthService } from "../services/googleAuth";
-import { icloudAuthService } from "../services/icloudAuth";
-import { onecalAuthService } from "../services/onecalAuth";
 import { validateICloudCredentials } from "../middleware/validation";
 import { authenticateUser } from "../middleware/auth";
 import type { AuthRequest } from "../middleware/auth";
 import { env } from "../config/env";
-import { createAuthCode, exchangeAuthCode } from "../utils/authCodes";
+
+// Import from shared core
 import {
+  googleAuthService,
+  icloudAuthService,
+  onecalAuthService,
+  createAuthCode,
+  exchangeAuthCode,
   JWT_COOKIE_MAX_AGE_MS,
   OUTLOOK_AUTH_COOKIE_MAX_AGE_MS,
-} from "../constants";
+} from "../../../shared/core";
 
 const router = express.Router();
 

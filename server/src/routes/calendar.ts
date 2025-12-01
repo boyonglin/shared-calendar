@@ -3,13 +3,6 @@
  */
 import type { Request, Response, NextFunction } from "express";
 import express from "express";
-import { googleAuthService } from "../services/googleAuth";
-import { icloudAuthService } from "../services/icloudAuth";
-import { onecalAuthService } from "../services/onecalAuth";
-import {
-  calendarAccountRepository,
-  type CalendarAccount,
-} from "../repositories/calendarAccountRepository";
 import {
   validateUserId,
   validatePrimaryUserId,
@@ -25,6 +18,15 @@ import {
   UnauthorizedError,
   NotImplementedError,
 } from "../utils/errors";
+
+// Import from shared core
+import {
+  googleAuthService,
+  icloudAuthService,
+  onecalAuthService,
+  calendarAccountRepository,
+  type CalendarAccount,
+} from "../../../shared/core";
 
 const router = express.Router();
 

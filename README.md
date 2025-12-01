@@ -160,7 +160,14 @@ shared-calendar/
 ├── client/                 # Frontend (React + Vite + Tailwind)
 ├── server/                 # Backend (Express + SQLite)
 │   └── API.md              # 📖 Complete API documentation
-├── shared/                 # Shared TypeScript types
+├── shared/                 # Shared code between server and Vercel
+│   ├── types.ts            # Shared TypeScript types
+│   └── core/               # Shared core modules
+│       ├── constants/      # Centralized configuration values
+│       ├── db/             # Database layer (Turso/libSQL)
+│       ├── repositories/   # Data access layer
+│       ├── services/       # Business logic (auth, AI, etc.)
+│       └── utils/          # Utility functions
 ├── api/                    # Vercel serverless functions
 ├── pixi.toml               # Pixi configuration
 └── package.json            # Root package (npm workspaces)

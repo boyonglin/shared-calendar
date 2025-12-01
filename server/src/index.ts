@@ -10,12 +10,13 @@ import authRoutes from "./routes/auth";
 import apiRoutes from "./routes/index";
 import logger from "./utils/logger";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
-import { calendarAccountRepository } from "./repositories";
 import { GRACEFUL_SHUTDOWN_TIMEOUT_MS } from "./constants";
-import { getDb } from "./db"; // Initialize database on startup
+
+// Import shared core
+import { ensureDbInitialized, healthCheck } from "../../shared/core";
 
 // Initialize database connection
-getDb()
+ensureDbInitialized()
   .then(() => {
     logger.info("Database connection established");
   })
@@ -62,7 +63,7 @@ app.use("/api", apiRoutes);
 
 // Health check
 app.get("/api/health", async (_req, res) => {
-  const dbHealthy = await calendarAccountRepository.healthCheck();
+  const dbHealthy = await healthCheck();
   const status = dbHealthy ? "ok" : "degraded";
   const statusCode = dbHealthy ? 200 : 503;
 
