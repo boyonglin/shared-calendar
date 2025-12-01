@@ -180,7 +180,6 @@ export function CalendarView({
 
           {/* Scrollable calendar container with max height */}
           <ScrollArea className="max-h-[60vh]">
-
             {/* All-day row */}
             <div className="border-l border-r sm:border-b border-gray-200">
               {/* Time indicator row for mobile */}

@@ -358,7 +358,9 @@ export function FriendsManager({
                   <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                     <Users className="w-12 h-12 text-gray-300 mb-3" />
                     {searchQuery ? (
-                      <p className="font-medium">No friends matching &quot;{searchQuery}&quot;</p>
+                      <p className="font-medium">
+                        No friends matching &quot;{searchQuery}&quot;
+                      </p>
                     ) : (
                       <>
                         <p className="font-medium">No friends added yet.</p>
@@ -447,7 +449,10 @@ export function FriendsManager({
                 Enter your friend&apos;s email address to send them an
                 invitation to share calendars.
               </p>
-              <form onSubmit={handleAddFriend} className="w-full space-y-3 mt-4">
+              <form
+                onSubmit={handleAddFriend}
+                className="w-full space-y-3 mt-4"
+              >
                 <Input
                   type="email"
                   placeholder="friend@example.com"

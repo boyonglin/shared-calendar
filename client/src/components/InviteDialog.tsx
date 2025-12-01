@@ -162,7 +162,7 @@ export function InviteDialog({
   const formatDateTime = () => {
     if (!timeSlot) return { mobile: "", web: "" };
     const { date, hour, minute = 0, isAllDay } = timeSlot;
-    
+
     // Mobile format: Fri, Dec 5, 2025
     const mobileDate = date.toLocaleDateString("en-US", {
       weekday: "short",
@@ -170,7 +170,7 @@ export function InviteDialog({
       day: "numeric",
       year: "numeric",
     });
-    
+
     // Web format: Friday, December 5, 2025
     const webDate = date.toLocaleDateString("en-US", {
       weekday: "long",
@@ -178,17 +178,17 @@ export function InviteDialog({
       day: "numeric",
       year: "numeric",
     });
-    
+
     if (isAllDay) {
       return {
         mobile: `${mobileDate} (All day)`,
         web: `${webDate} (All day)`,
       };
     }
-    
+
     const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
     const timeStr = `${displayHour}:${minute === 0 ? "00" : String(minute).padStart(2, "0")} ${hour >= 12 ? "PM" : "AM"}`;
-    
+
     return {
       mobile: `${mobileDate} at ${timeStr}`,
       web: `${webDate} at ${timeStr}`,
@@ -210,8 +210,12 @@ export function InviteDialog({
             <div className="py-3 space-y-2">
               <div className="flex items-center gap-2 text-gray-700">
                 <Calendar className="w-4 h-4" />
-                <span className="text-sm sm:hidden">{formatDateTime().mobile}</span>
-                <span className="text-sm hidden sm:inline">{formatDateTime().web}</span>
+                <span className="text-sm sm:hidden">
+                  {formatDateTime().mobile}
+                </span>
+                <span className="text-sm hidden sm:inline">
+                  {formatDateTime().web}
+                </span>
               </div>
               {!timeSlot.isAllDay && (
                 <div className="flex items-center gap-2 text-gray-700">

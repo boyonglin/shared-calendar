@@ -55,12 +55,12 @@ export function EventBlock({
     if (blockRef.current) {
       const rect = blockRef.current.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
-      
+
       // Calculate left position, clamping to keep tooltip within viewport
       let left = rect.left + rect.width / 2;
       // Ensure tooltip doesn't go off-screen (assuming max-width of ~200px, so 100px on each side)
       left = Math.max(100, Math.min(viewportWidth - 100, left));
-      
+
       setTooltipPosition({
         top: rect.top - 8, // Position above the element with some margin
         left: left,
@@ -84,7 +84,7 @@ export function EventBlock({
         setShowTooltip(true);
       }, 500); // 500ms long press
     },
-    [updateTooltipPosition]
+    [updateTooltipPosition],
   );
 
   const handleTouchEnd = useCallback(() => {
@@ -96,7 +96,7 @@ export function EventBlock({
     if (showTooltip) {
       hideTooltipTimer.current = window.setTimeout(
         () => setShowTooltip(false),
-        3000 // Increased to 3 seconds for better readability
+        3000, // Increased to 3 seconds for better readability
       );
     }
   }, [showTooltip]);
@@ -131,7 +131,7 @@ export function EventBlock({
           {displayText}
           <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-gray-900"></div>
         </div>,
-        document.body
+        document.body,
       )
     : null;
 
