@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { CalendarEvent } from "../types";
 
 interface EventBlockProps {
@@ -13,23 +14,90 @@ export function EventBlock({
   isCurrentUser,
 }: EventBlockProps) {
   const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const longPressTimer = useRef<number | null>(null);
+  const hideTooltipTimer = useRef<number | null>(null);
+  const blockRef = useRef<HTMLDivElement>(null);
   const displayText = isCurrentUser && event.title ? event.title : "Busy";
 
-  const handleTouchStart = useCallback((_e: React.TouchEvent) => {
-    longPressTimer.current = window.setTimeout(() => {
-      setShowTooltip(true);
-    }, 500); // 500ms long press
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      if (longPressTimer.current) {
+        window.clearTimeout(longPressTimer.current);
+      }
+      if (hideTooltipTimer.current) {
+        window.clearTimeout(hideTooltipTimer.current);
+      }
+    };
   }, []);
+
+  // Hide tooltip on scroll
+  useEffect(() => {
+    if (!showTooltip) return;
+
+    const handleScroll = () => {
+      setShowTooltip(false);
+      if (hideTooltipTimer.current) {
+        window.clearTimeout(hideTooltipTimer.current);
+        hideTooltipTimer.current = null;
+      }
+    };
+
+    // Listen to scroll on window and any scrollable parent
+    window.addEventListener("scroll", handleScroll, true);
+    return () => {
+      window.removeEventListener("scroll", handleScroll, true);
+    };
+  }, [showTooltip]);
+
+  const updateTooltipPosition = useCallback(() => {
+    if (blockRef.current) {
+      const rect = blockRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      
+      // Calculate left position, clamping to keep tooltip within viewport
+      let left = rect.left + rect.width / 2;
+      // Ensure tooltip doesn't go off-screen (assuming max-width of ~200px, so 100px on each side)
+      left = Math.max(100, Math.min(viewportWidth - 100, left));
+      
+      setTooltipPosition({
+        top: rect.top - 8, // Position above the element with some margin
+        left: left,
+      });
+    }
+  }, []);
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      // Prevent iOS text selection and callout menu
+      e.preventDefault();
+
+      // Clear any existing hide timer
+      if (hideTooltipTimer.current) {
+        window.clearTimeout(hideTooltipTimer.current);
+        hideTooltipTimer.current = null;
+      }
+
+      longPressTimer.current = window.setTimeout(() => {
+        updateTooltipPosition();
+        setShowTooltip(true);
+      }, 500); // 500ms long press
+    },
+    [updateTooltipPosition]
+  );
 
   const handleTouchEnd = useCallback(() => {
     if (longPressTimer.current) {
       window.clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
-    // Hide tooltip after a delay so user can read it
+    // Hide tooltip after a longer delay so user can read it
     if (showTooltip) {
-      window.setTimeout(() => setShowTooltip(false), 1500);
+      hideTooltipTimer.current = window.setTimeout(
+        () => setShowTooltip(false),
+        3000 // Increased to 3 seconds for better readability
+      );
     }
   }, [showTooltip]);
 
@@ -46,28 +114,47 @@ export function EventBlock({
     e.preventDefault();
   }, []);
 
-  return (
-    <div
-      className="rounded text-white text-sm relative overflow-visible flex items-center justify-center w-full h-8 sm:w-auto sm:h-auto sm:p-2 touch-none"
-      style={{
-        backgroundColor: userColor,
-        opacity: 0.9,
-      }}
-      title={isCurrentUser && event.title ? event.title : undefined}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onTouchMove={handleTouchMove}
-      onContextMenu={handleContextMenu}
-    >
-      <span className="hidden sm:inline truncate">{displayText}</span>
-
-      {/* Mobile tooltip on long press */}
-      {showTooltip && (
-        <div className="sm:hidden absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-3 px-2 py-1 bg-gray-900 text-white text-xs rounded shadow-lg whitespace-nowrap">
+  // Tooltip component rendered via portal to avoid z-index issues
+  const tooltip = showTooltip
+    ? createPortal(
+        <div
+          className="sm:hidden fixed z-[9999] px-3 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-xl pointer-events-none text-center"
+          style={{
+            top: tooltipPosition.top,
+            left: tooltipPosition.left,
+            transform: "translate(-50%, -100%)",
+            maxWidth: "min(200px, 80vw)",
+            wordWrap: "break-word",
+            whiteSpace: "normal",
+          }}
+        >
           {displayText}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-        </div>
-      )}
-    </div>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-gray-900"></div>
+        </div>,
+        document.body
+      )
+    : null;
+
+  return (
+    <>
+      <div
+        ref={blockRef}
+        className="rounded text-white text-sm relative overflow-visible flex items-center justify-center w-full h-8 sm:w-auto sm:h-auto sm:p-2 touch-none select-none"
+        style={{
+          backgroundColor: userColor,
+          opacity: 0.9,
+          WebkitTouchCallout: "none",
+          WebkitUserSelect: "none",
+        }}
+        title={isCurrentUser && event.title ? event.title : undefined}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchMove}
+        onContextMenu={handleContextMenu}
+      >
+        <span className="hidden sm:inline truncate">{displayText}</span>
+      </div>
+      {tooltip}
+    </>
   );
 }

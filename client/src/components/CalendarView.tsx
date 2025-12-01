@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader } from "./ui/card";
 import { Button } from "./ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { EventBlock } from "./EventBlock";
+import { ScrollArea } from "./ui/scroll-area";
 
 interface CalendarViewProps {
   users: User[];
@@ -155,28 +156,30 @@ export function CalendarView({
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
-          <div>
-            {/* Header row with days - 7 columns on mobile, 8 on desktop */}
-            <div className="grid grid-cols-7 sm:grid-cols-8 gap-px bg-gray-200 border border-gray-200">
-              <div className="bg-white p-1 sm:p-3 hidden sm:block">
-                <span className="text-gray-600 text-xs sm:text-base">Time</span>
-              </div>
-              {weekDays.map((day, index) => (
-                <div
-                  key={index}
-                  className={`p-1 sm:p-3 text-center ${
-                    isToday(day) ? "bg-gray-100" : "bg-white"
-                  }`}
-                >
-                  <div className="text-gray-900 text-xs sm:text-base">
-                    {getDayName(day)}
-                  </div>
-                  <div className="text-gray-600 text-xs hidden sm:block">
-                    {formatDate(day)}
-                  </div>
-                </div>
-              ))}
+          {/* Header row with days - 7 columns on mobile, 8 on desktop - FIXED outside scroll */}
+          <div className="grid grid-cols-7 sm:grid-cols-8 gap-px bg-gray-200 border border-gray-200">
+            <div className="bg-white p-1 sm:p-3 hidden sm:block">
+              <span className="text-gray-600 text-xs sm:text-base">Time</span>
             </div>
+            {weekDays.map((day, index) => (
+              <div
+                key={index}
+                className={`p-1 sm:p-3 text-center ${
+                  isToday(day) ? "bg-gray-100" : "bg-white"
+                }`}
+              >
+                <div className="text-gray-900 text-xs sm:text-base">
+                  {getDayName(day)}
+                </div>
+                <div className="text-gray-600 text-xs hidden sm:block">
+                  {formatDate(day)}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Scrollable calendar container with max height */}
+          <ScrollArea className="max-h-[60vh]">
 
             {/* All-day row */}
             <div className="border-l border-r sm:border-b border-gray-200">
@@ -275,7 +278,7 @@ export function CalendarView({
                 </div>
               ))}
             </div>
-          </div>
+          </ScrollArea>
         </div>
 
         <div className="mt-4 flex flex-col sm:flex-row sm:items-start gap-4 p-4 bg-gray-50 rounded-lg">
