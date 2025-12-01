@@ -355,15 +355,16 @@ export function FriendsManager({
                     <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
                   </div>
                 ) : filteredFriends.length === 0 ? (
-                  <div className="py-8 text-center text-gray-500 text-sm">
-                    <Users className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                    <Users className="w-12 h-12 text-gray-300 mb-3" />
                     {searchQuery ? (
-                      <>No friends matching &quot;{searchQuery}&quot;</>
+                      <p className="font-medium">No friends matching &quot;{searchQuery}&quot;</p>
                     ) : (
                       <>
-                        No friends added yet.
-                        <br />
-                        Add friends to see their availability!
+                        <p className="font-medium">No friends added yet.</p>
+                        <p className="text-sm text-gray-400">
+                          Add friends to see their availability!
+                        </p>
                       </>
                     )}
                   </div>
@@ -439,17 +440,14 @@ export function FriendsManager({
 
           {/* Add Friend Tab */}
           <TabsContent value="add" className="mt-4">
-            <div className="flex flex-col items-center justify-center py-6 space-y-4 h-[320px]">
-              <UserPlus className="w-12 h-12 text-gray-400" />
-              <div className="text-center">
-                <h3 className="font-medium text-gray-900">Add a Friend</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  Enter your friend&apos;s email address to send them an
-                  <br />
-                  invitation to share calendars.
-                </p>
-              </div>
-              <form onSubmit={handleAddFriend} className="w-full space-y-3">
+            <div className="flex flex-col items-center justify-center py-12 text-gray-500 h-[320px]">
+              <UserPlus className="w-12 h-12 text-gray-300 mb-3" />
+              <p className="font-medium">Add a Friend</p>
+              <p className="text-sm text-gray-400 text-center">
+                Enter your friend&apos;s email address to send them an
+                invitation to share calendars.
+              </p>
+              <form onSubmit={handleAddFriend} className="w-full space-y-3 mt-4">
                 <Input
                   type="email"
                   placeholder="friend@example.com"
