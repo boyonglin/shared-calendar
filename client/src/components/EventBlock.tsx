@@ -104,7 +104,7 @@ export function EventBlock({
   const handleTouchStart = useCallback(() => {
     // Reset long press flag
     wasLongPress.current = false;
-    
+
     // Clear any existing hide timer
     if (hideTooltipTimer.current) {
       window.clearTimeout(hideTooltipTimer.current);
@@ -125,26 +125,29 @@ export function EventBlock({
     }, 500); // 500ms long press
   }, [updateTooltipPosition, instanceId]);
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (longPressTimer.current) {
-      window.clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-    
-    // If this was a long press, prevent the click event from propagating
-    if (wasLongPress.current) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    
-    // Hide tooltip after a longer delay so user can read it
-    if (showTooltip) {
-      hideTooltipTimer.current = window.setTimeout(
-        () => setShowTooltip(false),
-        3000, // Increased to 3 seconds for better readability
-      );
-    }
-  }, [showTooltip]);
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (longPressTimer.current) {
+        window.clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+      }
+
+      // If this was a long press, prevent the click event from propagating
+      if (wasLongPress.current) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      // Hide tooltip after a longer delay so user can read it
+      if (showTooltip) {
+        hideTooltipTimer.current = window.setTimeout(
+          () => setShowTooltip(false),
+          3000, // Increased to 3 seconds for better readability
+        );
+      }
+    },
+    [showTooltip],
+  );
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     // Prevent click event from bubbling up after a long press
