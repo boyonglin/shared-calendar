@@ -311,7 +311,9 @@ export function SettingsModal({
             <AlertDialogDescription>
               This will permanently delete your account and all associated data,
               including your calendar connections, friend connections, and
-              settings. This action cannot be undone.
+              settings.
+              <br />
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -322,6 +324,7 @@ export function SettingsModal({
                   try {
                     await onRevokeAccount();
                     setShowRevokeDialog(false);
+                    onClose();
                   } catch (error) {
                     const message =
                       error instanceof Error
