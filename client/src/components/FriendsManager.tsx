@@ -355,15 +355,18 @@ export function FriendsManager({
                     <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
                   </div>
                 ) : filteredFriends.length === 0 ? (
-                  <div className="py-8 text-center text-gray-500 text-sm">
-                    <Users className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                    <Users className="w-12 h-12 text-gray-300 mb-3" />
                     {searchQuery ? (
-                      <>No friends matching &quot;{searchQuery}&quot;</>
+                      <p className="font-medium">
+                        No friends matching &quot;{searchQuery}&quot;
+                      </p>
                     ) : (
                       <>
-                        No friends added yet.
-                        <br />
-                        Add friends to see their availability!
+                        <p className="font-medium">No friends added yet.</p>
+                        <p className="text-sm text-gray-400">
+                          Add friends to see their availability!
+                        </p>
                       </>
                     )}
                   </div>
@@ -372,26 +375,28 @@ export function FriendsManager({
                     {filteredFriends.map((friend) => (
                       <div
                         key={friend.id}
-                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50"
+                        className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border hover:bg-gray-50"
                       >
-                        <div className="flex items-center gap-3">
-                          <UserAvatar
-                            name={friend.friendName}
-                            email={friend.friendEmail}
-                            color={friend.friendColor}
-                          />
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="hidden sm:block shrink-0">
+                            <UserAvatar
+                              name={friend.friendName}
+                              email={friend.friendEmail}
+                              color={friend.friendColor}
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-gray-900 truncate">
                               {friend.friendName || friend.friendEmail}
                             </div>
                             {friend.friendName && (
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-gray-500 break-all">
                                 {friend.friendEmail}
                               </div>
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           <Badge
                             variant={
                               friend.status === "accepted"
@@ -437,17 +442,17 @@ export function FriendsManager({
 
           {/* Add Friend Tab */}
           <TabsContent value="add" className="mt-4">
-            <div className="flex flex-col items-center justify-center py-6 space-y-4 h-[320px]">
-              <UserPlus className="w-12 h-12 text-gray-400" />
-              <div className="text-center">
-                <h3 className="font-medium text-gray-900">Add a Friend</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  Enter your friend&apos;s email address to send them an
-                  <br />
-                  invitation to share calendars.
-                </p>
-              </div>
-              <form onSubmit={handleAddFriend} className="w-full space-y-3">
+            <div className="flex flex-col items-center justify-center py-12 text-gray-500 h-[320px]">
+              <UserPlus className="w-12 h-12 text-gray-300 mb-3" />
+              <p className="font-medium">Add a Friend</p>
+              <p className="text-sm text-gray-400 text-center">
+                Enter your friend&apos;s email address to send them an
+                invitation to share calendars.
+              </p>
+              <form
+                onSubmit={handleAddFriend}
+                className="w-full space-y-3 mt-4"
+              >
                 <Input
                   type="email"
                   placeholder="friend@example.com"
@@ -490,11 +495,13 @@ export function FriendsManager({
                       key={request.id}
                       className="flex items-center justify-between p-3 rounded-lg border"
                     >
-                      <div className="flex items-center gap-3">
-                        <UserAvatar
-                          name={request.friendName}
-                          email={request.friendEmail}
-                        />
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="hidden sm:block">
+                          <UserAvatar
+                            name={request.friendName}
+                            email={request.friendEmail}
+                          />
+                        </div>
                         <div>
                           <div className="text-sm font-medium text-gray-900">
                             {request.friendName || request.friendEmail}

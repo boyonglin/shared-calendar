@@ -30,6 +30,15 @@ export interface FriendEvent {
   friendConnectionId: number;
 }
 
+export interface FriendEventsResponse {
+  events: FriendEvent[];
+  errors?: Array<{
+    provider: string;
+    error: string;
+    needsReauth: boolean;
+  }>;
+}
+
 export interface IncomingRequest extends UserConnection {
   friendName: string;
   friendColor: string;
@@ -80,13 +89,29 @@ export const friendsApi = {
     apiClient.post<SyncPendingResponse>("/api/friends/sync-pending"),
 
   // Get a friend's calendar events
-  getFriendEvents: (friendId: number, timeMin?: Date, timeMax?: Date) => {
+  getFriendEvents: async (
+    friendId: number,
+    timeMin?: Date,
+    timeMax?: Date,
+  ): Promise<FriendEvent[]> => {
     const params = new URLSearchParams();
     if (timeMin) params.append("timeMin", timeMin.toISOString());
     if (timeMax) params.append("timeMax", timeMax.toISOString());
     const query = params.toString() ? `?${params.toString()}` : "";
-    return apiClient.get<FriendEvent[]>(
+    const response = await apiClient.get<FriendEventsResponse>(
       `/api/friends/${friendId}/events${query}`,
     );
+
+    // Log any sync errors for awareness
+    if (response.errors && response.errors.length > 0) {
+      const reauthErrors = response.errors.filter((e) => e.needsReauth);
+      if (reauthErrors.length > 0) {
+        console.warn(
+          `Friend calendar sync issue: ${reauthErrors.map((e) => e.provider).join(", ")} - ${reauthErrors[0].error}`,
+        );
+      }
+    }
+
+    return response.events || [];
   },
 };
