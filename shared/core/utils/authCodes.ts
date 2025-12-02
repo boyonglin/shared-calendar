@@ -76,9 +76,3 @@ function cleanupExpiredCodes() {
 if (typeof globalThis !== "undefined" && globalThis.setInterval) {
   globalThis.setInterval(cleanupExpiredCodes, AUTH_CODE_CLEANUP_INTERVAL_MS);
 }
-
-// Export for testing
-export const __testing = {
-  getCodeCount: () => authCodes.size,
-  clearAll: () => authCodes.clear(),
-};
