@@ -26,7 +26,19 @@ export interface RevokeResponse {
   message: string;
 }
 
+export interface MeResponse {
+  id: string;
+  email?: string;
+  name?: string;
+  picture?: string;
+}
+
 export const authApi = {
+  /**
+   * Verify current session and get user info from JWT cookie
+   * Used to restore session on app startup (especially for PWA)
+   */
+  me: () => apiClient.get<MeResponse>("/api/auth/me"),
   getUser: (userId: string) =>
     apiClient.get<GoogleUser>(`/api/users/${userId}`),
   connectICloud: (credentials: ICloudConnectRequest) =>

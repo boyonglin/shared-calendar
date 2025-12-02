@@ -98,6 +98,35 @@ router.post("/exchange", (req: Request, res: Response) => {
   });
 });
 
+/**
+ * GET /auth/me
+ * Verify current session and return user info from JWT
+ * Used to restore session on app startup (especially for PWA)
+ */
+router.get("/me", authenticateUser, async (req: Request, res: Response) => {
+  const { userId, email } = (req as AuthRequest).user!;
+
+  try {
+    // Try to fetch full user profile from database
+    const user = await googleAuthService.getUser(userId);
+
+    if (user) {
+      res.json({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        picture: user.picture,
+      });
+    } else {
+      // User exists in JWT but not in DB - return basic info
+      res.json({ id: userId, email });
+    }
+  } catch {
+    // Fallback to JWT data if DB query fails
+    res.json({ id: userId, email });
+  }
+});
+
 router.post(
   "/icloud",
   authenticateUser,
