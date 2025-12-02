@@ -184,11 +184,11 @@ export function SettingsModal({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <div className="border border-gray-200 rounded-lg p-3">
-            <h3 className="text-sm font-medium text-gray-900">
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 dark:bg-gray-800">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
               Gemini API Key
             </h3>
-            <p className="text-xs text-gray-500 mt-1 mb-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
               Draft invitations faster with AI—just add your key, stored locally
               in your browser.
             </p>
@@ -211,7 +211,7 @@ export function SettingsModal({
                   <button
                     type="button"
                     onClick={() => setShowApiKey(!showApiKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                     aria-label={showApiKey ? "Hide API key" : "Show API key"}
                   >
                     {showApiKey ? (
@@ -225,7 +225,7 @@ export function SettingsModal({
               {effectiveHasExistingKey && effectiveStoredKey && (
                 <div className="flex items-center justify-between">
                   <p
-                    className={`text-xs flex items-center gap-1 ${isKeyValid === false ? "text-amber-600" : "text-green-600"}`}
+                    className={`text-xs flex items-center gap-1 ${isKeyValid === false ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`}
                   >
                     {isValidating ? (
                       "Validating..."
@@ -249,13 +249,13 @@ export function SettingsModal({
                 </div>
               )}
               {!effectiveHasExistingKey && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Don&apos;t have an API key?{" "}
                   <a
                     href="https://aistudio.google.com/app/apikey"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                    className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
                   >
                     Get one from Google AI Studio
                     <ExternalLink className="w-3 h-3" />
@@ -266,9 +266,8 @@ export function SettingsModal({
                 {effectiveHasExistingKey && (
                   <Button
                     type="button"
-                    variant="outline"
                     onClick={handleRemove}
-                    className="flex-1 text-red-600 border-red-300 hover:bg-red-600 hover:text-white hover:border-red-600"
+                    className="flex-1 bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600"
                   >
                     Remove
                   </Button>
@@ -286,16 +285,17 @@ export function SettingsModal({
         </div>
 
         {onRevokeAccount && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-            <h3 className="text-sm font-medium text-red-700">Danger Zone</h3>
-            <p className="text-xs text-red-600 mt-1 mb-3">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+            <h3 className="text-sm font-medium text-red-700 dark:text-red-400">
+              Danger Zone
+            </h3>
+            <p className="text-xs text-red-600 dark:text-red-400 mt-1 mb-3">
               Permanently delete your account and all associated data.
             </p>
             <Button
-              variant="outline"
               onClick={() => setShowRevokeDialog(true)}
               disabled={isRevoking}
-              className="w-full text-red-600 border-red-300 hover:bg-red-600 hover:text-white hover:border-red-600"
+              className="w-full bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600"
             >
               <Trash2 className="w-4 h-4 mr-2" />
               {isRevoking ? "Deleting..." : "Delete account"}
@@ -336,7 +336,7 @@ export function SettingsModal({
                   }
                 }
               }}
-              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              className="bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600"
             >
               {isRevoking ? "Deleting..." : "Delete account"}
             </AlertDialogAction>

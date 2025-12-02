@@ -25,6 +25,7 @@ interface UserProfileDropdownProps {
   onRefreshEvents: () => void;
   onSignOut: () => void;
   onOpenSettings: () => void;
+  isDarkMode?: boolean;
 }
 
 export function UserProfileDropdown({
@@ -35,6 +36,7 @@ export function UserProfileDropdown({
   onRefreshEvents,
   onSignOut,
   onOpenSettings,
+  isDarkMode = false,
 }: UserProfileDropdownProps) {
   const {
     iCloudStatus,
@@ -54,7 +56,9 @@ export function UserProfileDropdown({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-2 w-full sm:w-auto hover:bg-gray-50 rounded-lg px-3 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+      <DropdownMenuTrigger
+        className={`flex items-center gap-2 w-full sm:w-auto rounded-lg px-3 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-50"}`}
+      >
         <div
           className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
           style={{ backgroundColor: currentUser.color }}
@@ -62,12 +66,20 @@ export function UserProfileDropdown({
           {currentUser.name.charAt(0)}
         </div>
         <div className="flex flex-col items-start">
-          <span className="text-sm font-medium text-gray-900">
+          <span
+            className={`text-sm font-medium ${isDarkMode ? "text-white" : "text-gray-900"}`}
+          >
             {currentUser.name}
           </span>
-          <span className="text-xs text-gray-500">{currentUser.email}</span>
+          <span
+            className={`text-xs ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+          >
+            {currentUser.email}
+          </span>
         </div>
-        <ChevronDown className="w-4 h-4 text-gray-500 ml-auto sm:ml-0" />
+        <ChevronDown
+          className={`w-4 h-4 ml-auto sm:ml-0 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+        />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] sm:w-56">
         <DropdownMenuItem
@@ -98,7 +110,7 @@ export function UserProfileDropdown({
           >
             <DropdownMenuTrigger asChild>
               <button
-                className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 gap-3 text-sm outline-none transition-colors hover:bg-gray-50 focus:bg-gray-50 data-[state=open]:bg-gray-50 text-gray-900 [&_svg]:pointer-events-none [&_svg]:shrink-0"
+                className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 gap-3 text-sm outline-none transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 focus:bg-gray-50 dark:focus:bg-gray-700 data-[state=open]:bg-gray-50 dark:data-[state=open]:bg-gray-700 text-gray-900 dark:text-gray-100 [&_svg]:pointer-events-none [&_svg]:shrink-0"
                 type="button"
               >
                 <Cloud className="size-4 text-muted-foreground" />
@@ -127,7 +139,7 @@ export function UserProfileDropdown({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={handleRemoveICloud}
-                className="cursor-pointer text-red-600 focus:text-red-600"
+                className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
               >
                 <LogOut className="size-4" />
                 <span>Remove connection</span>
@@ -154,7 +166,7 @@ export function UserProfileDropdown({
           >
             <DropdownMenuTrigger asChild>
               <button
-                className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 gap-3 text-sm outline-none transition-colors hover:bg-gray-50 focus:bg-gray-50 data-[state=open]:bg-gray-50 text-gray-900 [&_svg]:pointer-events-none [&_svg]:shrink-0"
+                className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 gap-3 text-sm outline-none transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 focus:bg-gray-50 dark:focus:bg-gray-700 data-[state=open]:bg-gray-50 dark:data-[state=open]:bg-gray-700 text-gray-900 dark:text-gray-100 [&_svg]:pointer-events-none [&_svg]:shrink-0"
                 type="button"
               >
                 <Mail className="size-4 text-muted-foreground" />
@@ -183,7 +195,7 @@ export function UserProfileDropdown({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={handleRemoveOutlook}
-                className="cursor-pointer text-red-600 focus:text-red-600"
+                className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
               >
                 <LogOut className="size-4" />
                 <span>Remove connection</span>
@@ -203,7 +215,7 @@ export function UserProfileDropdown({
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={onSignOut}
-          className="cursor-pointer text-red-600 focus:text-red-600"
+          className="cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
         >
           <LogOut className="size-4" />
           <span>Sign out</span>

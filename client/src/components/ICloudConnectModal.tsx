@@ -74,7 +74,7 @@ export function ICloudConnectModal({
                 disabled={isLoading}
                 className="rounded-r-none border-r-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-input"
               />
-              <span className="inline-flex h-9 items-center px-3 text-sm text-muted-foreground bg-muted border border-input rounded-r-md">
+              <span className="inline-flex h-9 items-center px-3 text-sm text-muted-foreground">
                 @icloud.com
               </span>
             </div>
