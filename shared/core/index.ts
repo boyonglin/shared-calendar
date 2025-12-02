@@ -48,6 +48,8 @@ export {
   decrypt,
   createAuthCode,
   exchangeAuthCode,
+  generateOAuthState,
+  validateOAuthState,
   isValidEmail,
   parseDateParam,
   validateFriendId,

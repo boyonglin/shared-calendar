@@ -23,6 +23,8 @@ import {
   // Utilities
   createAuthCode,
   exchangeAuthCode,
+  generateOAuthState,
+  validateOAuthState,
   isValidEmail,
   parseDateParam,
   generateFriendColor,
@@ -31,6 +33,7 @@ import {
   // Constants
   JWT_COOKIE_MAX_AGE_MS,
   OUTLOOK_AUTH_COOKIE_MAX_AGE_MS,
+  GOOGLE_AUTH_COOKIE_MAX_AGE_MS,
 } from "../shared/core/index.js";
 
 // =============================================================================
@@ -73,7 +76,16 @@ function verifyToken(req: VercelRequest): JwtPayload | null {
 // =============================================================================
 
 async function handleGoogleAuth(res: VercelResponse) {
-  const url = googleAuthService.getAuthUrl();
+  // Generate a secure state token for CSRF protection
+  const state = generateOAuthState();
+
+  // Store the state in a secure, HTTP-only cookie
+  res.setHeader(
+    "Set-Cookie",
+    `google_auth_state=${state}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${GOOGLE_AUTH_COOKIE_MAX_AGE_MS / 1000}`,
+  );
+
+  const url = googleAuthService.getAuthUrl(state);
   return res.redirect(url);
 }
 
@@ -82,15 +94,40 @@ async function handleGoogleCallback(
   res: VercelResponse,
 ): Promise<VercelResponse> {
   const code = req.query.code as string;
+  const stateFromQuery = req.query.state as string | undefined;
   const error = req.query.error as string;
 
+  // Extract state from cookie
+  const cookieHeader = req.headers.cookie || "";
+  const stateMatch = cookieHeader.match(/google_auth_state=([^;]+)/);
+  const stateFromCookie = stateMatch?.[1];
+
+  // Clear the state cookie regardless of outcome
+  const clearStateCookie =
+    "google_auth_state=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0";
+
   if (error) {
+    res.setHeader("Set-Cookie", clearStateCookie);
     return res.redirect(
       `${CLIENT_URL}?auth=error&message=${encodeURIComponent(error)}`,
     );
   }
 
+  // Validate state parameter to prevent CSRF attacks
+  // The state from the query must match what we stored in the cookie
+  if (!stateFromQuery || stateFromQuery !== stateFromCookie) {
+    res.setHeader("Set-Cookie", clearStateCookie);
+    return res.redirect(`${CLIENT_URL}?auth=error&message=invalid_state`);
+  }
+
+  // Validate and consume the state token (single-use)
+  if (!validateOAuthState(stateFromQuery)) {
+    res.setHeader("Set-Cookie", clearStateCookie);
+    return res.redirect(`${CLIENT_URL}?auth=error&message=expired_state`);
+  }
+
   if (!code) {
+    res.setHeader("Set-Cookie", clearStateCookie);
     return res.redirect(`${CLIENT_URL}?auth=error&message=missing_code`);
   }
 
@@ -98,6 +135,7 @@ async function handleGoogleCallback(
     const result = await googleAuthService.handleCallback(code);
 
     if (!result.user.email) {
+      res.setHeader("Set-Cookie", clearStateCookie);
       return res.redirect(`${CLIENT_URL}?auth=error&message=email_required`);
     }
 
@@ -107,10 +145,11 @@ async function handleGoogleCallback(
       { expiresIn: "30d" },
     );
 
-    res.setHeader(
-      "Set-Cookie",
+    // Set both the JWT token and clear the state cookie
+    res.setHeader("Set-Cookie", [
+      clearStateCookie,
       `token=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${JWT_COOKIE_MAX_AGE_MS / 1000}`,
-    );
+    ]);
 
     const authCode = createAuthCode({
       userId: result.user.id,
@@ -121,6 +160,7 @@ async function handleGoogleCallback(
     return res.redirect(`${CLIENT_URL}?auth=success&code=${authCode}`);
   } catch (err) {
     console.error("Google callback error:", err);
+    res.setHeader("Set-Cookie", clearStateCookie);
     const message = err instanceof Error ? err.message : "unknown_error";
     return res.redirect(
       `${CLIENT_URL}?auth=error&message=${encodeURIComponent(message)}`,

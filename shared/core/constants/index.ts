@@ -33,6 +33,15 @@ export const AUTH_CODE_EXPIRATION_MS = 5 * ONE_MINUTE_MS;
 /** Auth code cleanup interval (1 minute) */
 export const AUTH_CODE_CLEANUP_INTERVAL_MS = ONE_MINUTE_MS;
 
+/** OAuth state token expiration time (10 minutes) */
+export const OAUTH_STATE_EXPIRATION_MS = 10 * ONE_MINUTE_MS;
+
+/** OAuth state token cleanup interval (1 minute) */
+export const OAUTH_STATE_CLEANUP_INTERVAL_MS = ONE_MINUTE_MS;
+
+/** Google OAuth state cookie max age (10 minutes) */
+export const GOOGLE_AUTH_COOKIE_MAX_AGE_MS = 10 * ONE_MINUTE_MS;
+
 /** JWT cookie max age (30 days) */
 export const JWT_COOKIE_MAX_AGE_MS = 30 * ONE_DAY_MS;
 

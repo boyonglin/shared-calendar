@@ -13,8 +13,11 @@ import {
   onecalAuthService,
   createAuthCode,
   exchangeAuthCode,
+  generateOAuthState,
+  validateOAuthState,
   JWT_COOKIE_MAX_AGE_MS,
   OUTLOOK_AUTH_COOKIE_MAX_AGE_MS,
+  GOOGLE_AUTH_COOKIE_MAX_AGE_MS,
 } from "../../../shared/core";
 
 const router = express.Router();
@@ -27,15 +30,60 @@ interface OutlookStatePayload {
 }
 
 router.get("/google", (req: Request, res: Response) => {
-  const url = googleAuthService.getAuthUrl();
+  // Generate a secure state token for CSRF protection
+  const state = generateOAuthState();
+
+  // Store the state in a secure, HTTP-only cookie
+  res.cookie("google_auth_state", state, {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: GOOGLE_AUTH_COOKIE_MAX_AGE_MS,
+  });
+
+  const url = googleAuthService.getAuthUrl(state);
   res.redirect(url);
 });
 
 router.get("/google/callback", async (req: Request, res: Response) => {
-  const { code } = req.query;
+  const { code, state: stateFromQuery, error } = req.query;
+  const stateFromCookie = req.cookies?.google_auth_state;
+
+  // Clear the state cookie regardless of outcome
+  res.clearCookie("google_auth_state", {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
+
+  if (error) {
+    console.error("OAuth error from Google:", error);
+    res.redirect(
+      `${env.CLIENT_URL}?auth=error&message=${encodeURIComponent(String(error))}`,
+    );
+    return;
+  }
+
+  // Validate state parameter to prevent CSRF attacks
+  if (
+    !stateFromQuery ||
+    typeof stateFromQuery !== "string" ||
+    stateFromQuery !== stateFromCookie
+  ) {
+    console.error("OAuth state mismatch - possible CSRF attack");
+    res.redirect(`${env.CLIENT_URL}?auth=error&message=invalid_state`);
+    return;
+  }
+
+  // Validate and consume the state token (single-use)
+  if (!validateOAuthState(stateFromQuery)) {
+    console.error("OAuth state expired or already used");
+    res.redirect(`${env.CLIENT_URL}?auth=error&message=expired_state`);
+    return;
+  }
 
   if (!code || typeof code !== "string") {
-    res.status(400).send("Missing code");
+    res.redirect(`${env.CLIENT_URL}?auth=error&message=missing_code`);
     return;
   }
 
