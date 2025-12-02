@@ -1,0 +1,31 @@
+{
+  "name": "shared-calendar-shared",
+  "version": "1.0.0",
+  "description": "Shared modules for shared calendar application",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "calendar",
+    "shared"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@libsql/client": "^0.15.15",
+    "googleapis": "^166.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^11.0.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.10.1",
+    "@types/uuid": "^10.0.0",
+    "typescript": "^5.3.3"
+  }
+}

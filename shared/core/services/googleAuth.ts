@@ -3,13 +3,61 @@
  *
  * Handles Google OAuth and Calendar API operations.
  */
-import { google } from "googleapis";
+import { google, type calendar_v3 } from "googleapis";
 import {
   calendarAccountRepository,
   type CalendarAccount,
 } from "../repositories/index.js";
 import { userConnectionRepository } from "../repositories/index.js";
 import { GOOGLE_OAUTH_SCOPES, GOOGLE_REVOKE_URL } from "../constants/index.js";
+
+/**
+ * Google Auth Service interface
+ */
+interface GoogleAuthService {
+  getAuthUrl: (state?: string) => string;
+  handleCallback: (code: string) => Promise<{
+    user: {
+      id: string;
+      email: string;
+      name: string | null | undefined;
+      picture: string | null | undefined;
+    };
+    tokens: {
+      access_token?: string | null;
+      refresh_token?: string | null;
+      scope?: string;
+      token_type?: string | null;
+      expiry_date?: number | null;
+    };
+  }>;
+  getUser: (userId: string) => Promise<{
+    profile: {
+      email: string | null;
+      name: string;
+      picture: string;
+      sub: string;
+    };
+    provider: string;
+  } | null>;
+  getCalendarEvents: (
+    userId: string,
+    timeMin?: Date,
+    timeMax?: Date,
+  ) => Promise<calendar_v3.Schema$Event[] | undefined>;
+  createEvent: (
+    userId: string,
+    eventData: {
+      summary: string;
+      description?: string;
+      start: { dateTime?: string; date?: string };
+      end: { dateTime?: string; date?: string };
+      attendees?: { email: string }[];
+    },
+    account?: CalendarAccount,
+  ) => Promise<calendar_v3.Schema$Event>;
+  revokeAccount: (userId: string) => Promise<void>;
+}
 
 /**
  * Get environment variables
@@ -44,34 +92,45 @@ function createOAuth2ClientForUser(
   const client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
   client.setCredentials(credentials);
 
-  client.on("tokens", async (tokens) => {
-    if (tokens.access_token) {
-      await calendarAccountRepository.updateAccessToken(
-        userId,
-        tokens.access_token,
-      );
-    }
-    if (tokens.refresh_token) {
-      await calendarAccountRepository.updateRefreshToken(
-        userId,
-        tokens.refresh_token,
-      );
-    }
-  });
+  client.on(
+    "tokens",
+    async (tokens: {
+      access_token?: string | null;
+      refresh_token?: string | null;
+    }) => {
+      try {
+        if (tokens.access_token) {
+          await calendarAccountRepository.updateAccessToken(
+            userId,
+            tokens.access_token,
+          );
+        }
+        if (tokens.refresh_token) {
+          await calendarAccountRepository.updateRefreshToken(
+            userId,
+            tokens.refresh_token,
+          );
+        }
+      } catch (error) {
+        console.error(`Failed to refresh tokens for user ${userId}:`, error);
+      }
+    },
+  );
 
   return client;
 }
 
-export const googleAuthService = {
+export const googleAuthService: GoogleAuthService = {
   /**
    * Generate OAuth authorization URL
    */
-  getAuthUrl: () => {
+  getAuthUrl: (state?: string) => {
     const oauth2Client = createBaseOAuth2Client();
     return oauth2Client.generateAuthUrl({
       access_type: "offline",
       scope: GOOGLE_OAUTH_SCOPES,
       prompt: "consent",
+      state,
     });
   },
 
