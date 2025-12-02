@@ -1,12 +1,12 @@
 /**
  * Shared Friend Utilities
  */
-import { FRIEND_COLORS } from "../constants/index.js";
+import { FRIEND_COLORS, type FriendColor } from "../constants/index.js";
 
 /**
  * Generate a consistent color for a friend based on their email
  */
-export function generateFriendColor(email: string): string {
+export function generateFriendColor(email: string): FriendColor {
   let hash = 0;
   for (let i = 0; i < email.length; i++) {
     hash = email.charCodeAt(i) + ((hash << 5) - hash);

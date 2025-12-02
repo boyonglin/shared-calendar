@@ -8,6 +8,7 @@ import { createClient, type Client } from "@libsql/client";
 
 let dbInstance: Client | null = null;
 let isInitialized = false;
+let initPromise: Promise<Client> | null = null;
 
 /**
  * Database schema initialization SQL
@@ -66,28 +67,37 @@ async function initializeSchema(client: Client): Promise<void> {
 
 /**
  * Get or create the database client
+ * Uses promise-based initialization to prevent race conditions
  */
 export async function getDb(): Promise<Client> {
   if (dbInstance && isInitialized) {
     return dbInstance;
   }
 
-  const url = process.env.TURSO_DATABASE_URL;
-  const authToken = process.env.TURSO_AUTH_TOKEN;
-
-  if (!url) {
-    throw new Error("TURSO_DATABASE_URL environment variable is required");
+  if (initPromise) {
+    return initPromise;
   }
 
-  dbInstance = createClient({
-    url,
-    authToken,
-  });
+  initPromise = (async () => {
+    const url = process.env.TURSO_DATABASE_URL;
+    const authToken = process.env.TURSO_AUTH_TOKEN;
 
-  await initializeSchema(dbInstance);
-  isInitialized = true;
+    if (!url) {
+      throw new Error("TURSO_DATABASE_URL environment variable is required");
+    }
 
-  return dbInstance;
+    dbInstance = createClient({
+      url,
+      authToken,
+    });
+
+    await initializeSchema(dbInstance);
+    isInitialized = true;
+
+    return dbInstance;
+  })();
+
+  return initPromise;
 }
 
 /**
@@ -105,6 +115,7 @@ export function closeDb(): void {
     dbInstance.close();
     dbInstance = null;
     isInitialized = false;
+    initPromise = null;
   }
 }
 

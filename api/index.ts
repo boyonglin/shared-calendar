@@ -97,6 +97,10 @@ async function handleGoogleCallback(
   try {
     const result = await googleAuthService.handleCallback(code);
 
+    if (!result.user.email) {
+      return res.redirect(`${CLIENT_URL}?auth=error&message=email_required`);
+    }
+
     const token = jwt.sign(
       { userId: result.user.id, email: result.user.email },
       JWT_SECRET,
@@ -110,7 +114,7 @@ async function handleGoogleCallback(
 
     const authCode = createAuthCode({
       userId: result.user.id,
-      email: result.user.email!,
+      email: result.user.email,
       provider: "google",
     });
 
@@ -814,16 +818,22 @@ async function handleAddFriend(
     normalizedEmail,
   );
 
+  if (!connection) {
+    return res
+      .status(500)
+      .json({ error: "Failed to create friend connection" });
+  }
+
   return res.status(201).json({
     success: true,
     connection: {
-      id: connection!.id,
-      userId: connection!.user_id,
-      friendEmail: connection!.friend_email,
-      friendUserId: connection!.friend_user_id,
+      id: connection.id,
+      userId: connection.user_id,
+      friendEmail: connection.friend_email,
+      friendUserId: connection.friend_user_id,
       friendName: extractFriendName(friendAccount?.metadata, normalizedEmail),
-      status: connection!.status,
-      createdAt: connection!.created_at,
+      status: connection.status,
+      createdAt: connection.created_at,
     },
     message:
       status === "requested"
