@@ -10,6 +10,8 @@ import { UserProfileDropdown } from "./components/UserProfileDropdown";
 import { GoogleSignInButton } from "./components/GoogleSignInButton";
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
+import { Button } from "./components/ui/button";
+import { Moon, Sun } from "lucide-react";
 import {
   addDays,
   addMinutes,
@@ -36,9 +38,13 @@ import { mockUsers, mockEvents } from "./data/mockData";
 function AppContent({
   weekStart,
   setWeekStart,
+  isDarkMode,
+  toggleDarkMode,
 }: {
   weekStart: Date;
   setWeekStart: (date: Date) => void;
+  isDarkMode: boolean;
+  toggleDarkMode: () => void;
 }) {
   const { user, signIn, signOut, revokeAccount, isRevoking } = useGoogleAuth();
   const {
@@ -178,13 +184,15 @@ function AppContent({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <header className="border-b bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h1 className="text-gray-900">Calendar Sharing</h1>
-              <p className="text-gray-600 mt-1">
+              <h1 className="text-gray-900 dark:text-white">
+                Calendar Sharing
+              </h1>
+              <p className="mt-1 text-gray-600 dark:text-gray-400">
                 View and share availability with your team
               </p>
             </div>
@@ -204,6 +212,21 @@ function AppContent({
                   />
                 )
               )}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={toggleDarkMode}
+                aria-label={
+                  isDarkMode ? "Switch to light mode" : "Switch to dark mode"
+                }
+                className="size-10 border-gray-200 dark:border-gray-600"
+              >
+                {isDarkMode ? (
+                  <Sun className="w-4 h-4" />
+                ) : (
+                  <Moon className="w-4 h-4 text-gray-900" />
+                )}
+              </Button>
             </div>
           </div>
         </div>
@@ -283,12 +306,40 @@ export default function App() {
     return weekStart;
   });
 
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Check localStorage or system preference
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("darkMode");
+      if (saved !== null) {
+        return JSON.parse(saved);
+      }
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    return false;
+  });
+
+  // Update document class for dark mode
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
+  }, [isDarkMode]);
+
+  const toggleDarkMode = () => {
+    setIsDarkMode((prev: boolean) => !prev);
+  };
+
   return (
     <GoogleAuthProvider>
       <CalendarProviderWrapper weekStart={currentWeekStart}>
         <AppContent
           weekStart={currentWeekStart}
           setWeekStart={setCurrentWeekStart}
+          isDarkMode={isDarkMode}
+          toggleDarkMode={toggleDarkMode}
         />
         <Analytics />
       </CalendarProviderWrapper>

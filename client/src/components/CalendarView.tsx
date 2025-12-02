@@ -125,10 +125,12 @@ export function CalendarView({
   };
 
   return (
-    <Card>
+    <Card className="dark:bg-gray-800 dark:border-gray-700">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <span className="text-gray-900">{formatWeekRange()}</span>
+          <span className="text-gray-900 dark:text-white">
+            {formatWeekRange()}
+          </span>
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -157,21 +159,25 @@ export function CalendarView({
       <CardContent>
         <div className="overflow-x-auto">
           {/* Header row with days - 7 columns on mobile, 8 on desktop - FIXED outside scroll */}
-          <div className="grid grid-cols-7 sm:grid-cols-8 gap-px bg-gray-200 border border-gray-200 rounded-t-lg overflow-hidden">
-            <div className="bg-white p-1 sm:p-3 hidden sm:block">
-              <span className="text-gray-600 text-xs sm:text-base">Time</span>
+          <div className="grid grid-cols-7 sm:grid-cols-8 gap-px border rounded-t-lg overflow-hidden bg-gray-200 border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+            <div className="p-1 sm:p-3 hidden sm:block bg-white dark:bg-gray-800">
+              <span className="text-xs sm:text-base text-gray-600 dark:text-gray-400">
+                Time
+              </span>
             </div>
             {weekDays.map((day, index) => (
               <div
                 key={index}
                 className={`p-1 sm:p-3 text-center ${
-                  isToday(day) ? "bg-gray-100" : "bg-white"
+                  isToday(day)
+                    ? "bg-gray-100 dark:bg-gray-700"
+                    : "bg-white dark:bg-gray-800"
                 }`}
               >
-                <div className="text-gray-900 text-xs sm:text-base">
+                <div className="text-xs sm:text-base text-gray-900 dark:text-white">
                   {getDayName(day)}
                 </div>
-                <div className="text-gray-600 text-xs hidden sm:block">
+                <div className="text-xs hidden sm:block text-gray-600 dark:text-gray-400">
                   {formatDate(day)}
                 </div>
               </div>
@@ -181,16 +187,20 @@ export function CalendarView({
           {/* Scrollable calendar container with max height */}
           <ScrollArea className="max-h-[60vh]">
             {/* All-day row */}
-            <div className="border-l border-r sm:border-b border-gray-200">
+            <div className="border-l border-r sm:border-b border-gray-200 dark:border-gray-600">
               {/* Time indicator row for mobile */}
               <div className="sm:hidden flex items-center px-2 py-1">
-                <div className="flex-1 h-px bg-gray-300"></div>
-                <span className="text-gray-400 text-[10px] px-2">All-day</span>
-                <div className="flex-1 h-px bg-gray-300"></div>
+                <div className="flex-1 h-px bg-gray-300 dark:bg-gray-600"></div>
+                <span className="text-[10px] px-2 text-gray-400 dark:text-gray-500">
+                  All-day
+                </span>
+                <div className="flex-1 h-px bg-gray-300 dark:bg-gray-600"></div>
               </div>
-              <div className="grid grid-cols-7 sm:grid-cols-8 gap-px bg-gray-200 min-h-[40px] sm:min-h-[80px]">
-                <div className="bg-white p-1 sm:p-3 hidden sm:flex items-start">
-                  <span className="text-gray-600 text-xs">All-day</span>
+              <div className="grid grid-cols-7 sm:grid-cols-8 gap-px min-h-[40px] sm:min-h-[80px] bg-gray-200 dark:bg-gray-700">
+                <div className="p-1 sm:p-3 hidden sm:flex items-start bg-white dark:bg-gray-800">
+                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                    All-day
+                  </span>
                 </div>
                 {weekDays.map((day, dayIndex) => {
                   const allDayEvents = getAllDayEventsForDate(day);
@@ -199,8 +209,10 @@ export function CalendarView({
                   return (
                     <div
                       key={dayIndex}
-                      className={`p-1 cursor-pointer hover:bg-gray-200 transition-colors relative ${
-                        isToday(day) ? "bg-gray-100" : "bg-white"
+                      className={`p-1 cursor-pointer transition-colors relative ${
+                        isToday(day)
+                          ? "bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
+                          : "bg-white hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-600"
                       }`}
                       onClick={() => handleAllDayClick(day)}
                     >
@@ -223,24 +235,24 @@ export function CalendarView({
             </div>
 
             {/* Time slots */}
-            <div className="border-l border-r border-b border-gray-200 rounded-b-lg overflow-hidden">
+            <div className="border-l border-r border-b rounded-b-lg overflow-hidden border-gray-200 dark:border-gray-600">
               {timeSlots.map(({ hour, minute }) => (
                 <div key={`${hour}-${minute}`}>
                   {/* Time indicator row for mobile - only show on the hour */}
                   {minute === 0 && (
                     <div className="sm:hidden flex items-center px-2 py-1">
-                      <div className="flex-1 h-px bg-gray-300"></div>
-                      <span className="text-gray-400 text-[10px] px-2">
+                      <div className="flex-1 h-px bg-gray-300 dark:bg-gray-600"></div>
+                      <span className="text-[10px] px-2 text-gray-400 dark:text-gray-500">
                         {hour > 12 ? hour - 12 : hour || 12}{" "}
                         {hour >= 12 ? "PM" : "AM"}
                       </span>
-                      <div className="flex-1 h-px bg-gray-300"></div>
+                      <div className="flex-1 h-px bg-gray-300 dark:bg-gray-600"></div>
                     </div>
                   )}
-                  <div className="grid grid-cols-7 sm:grid-cols-8 gap-px bg-gray-200 min-h-[32px] sm:min-h-[40px]">
-                    <div className="bg-white p-1 sm:p-2 hidden sm:flex items-start">
+                  <div className="grid grid-cols-7 sm:grid-cols-8 gap-px min-h-[32px] sm:min-h-[40px] bg-gray-200 dark:bg-gray-700">
+                    <div className="p-1 sm:p-2 hidden sm:flex items-start bg-white dark:bg-gray-800">
                       {minute === 0 && (
-                        <span className="text-gray-600 text-[10px] sm:text-xs">
+                        <span className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
                           {hour > 12 ? hour - 12 : hour || 12}:00{" "}
                           {hour >= 12 ? "PM" : "AM"}
                         </span>
@@ -253,8 +265,10 @@ export function CalendarView({
                       return (
                         <div
                           key={dayIndex}
-                          className={`p-1 cursor-pointer hover:bg-gray-200 transition-colors relative ${
-                            isToday(day) ? "bg-gray-100" : "bg-white"
+                          className={`p-1 cursor-pointer transition-colors relative ${
+                            isToday(day)
+                              ? "bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
+                              : "bg-white hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-600"
                           }`}
                           onClick={() => handleSlotClick(day, hour, minute)}
                         >
@@ -280,10 +294,12 @@ export function CalendarView({
           </ScrollArea>
         </div>
 
-        <div className="mt-4 flex flex-col sm:flex-row sm:items-start gap-4 p-4 bg-gray-50 rounded-lg">
+        <div className="mt-4 flex flex-col sm:flex-row sm:items-start gap-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-gray-700">Team Members:</span>
+              <span className="text-gray-700 dark:text-gray-300">
+                Team Members:
+              </span>
             </div>
             <div className="flex flex-wrap gap-4">
               {users.map((user) => (
@@ -292,12 +308,14 @@ export function CalendarView({
                     className="w-4 h-4 rounded"
                     style={{ backgroundColor: user.color }}
                   />
-                  <span className="text-gray-700 text-sm">{user.name}</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    {user.name}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
-          <div className="border-t border-gray-200 pt-4 sm:border-t-0 sm:pt-0 text-gray-600 text-sm">
+          <div className="border-t pt-4 sm:border-t-0 sm:pt-0 text-sm border-gray-200 text-gray-600 dark:border-gray-600 dark:text-gray-400">
             <p>• Click any free slot to send an invite</p>
             <p className="sm:hidden">• Long press to see event name</p>
             <p>• Colored blocks = Busy</p>

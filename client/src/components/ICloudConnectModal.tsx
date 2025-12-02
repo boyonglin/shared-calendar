@@ -74,7 +74,7 @@ export function ICloudConnectModal({
                 disabled={isLoading}
                 className="rounded-r-none border-r-0 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-input"
               />
-              <span className="inline-flex h-9 items-center px-3 text-sm text-muted-foreground bg-muted border border-input rounded-r-md">
+              <span className="inline-flex h-9 items-center px-3 text-sm text-muted-foreground">
                 @icloud.com
               </span>
             </div>
@@ -97,7 +97,7 @@ export function ICloudConnectModal({
                 href="https://support.apple.com/en-us/HT204397"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
               >
                 Learn how to create one
                 <ExternalLink className="w-3 h-3" />

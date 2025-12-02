@@ -327,12 +327,12 @@ export function FriendsManager({
 
           {/* Messages - shown on all tabs */}
           {error && (
-            <div className="mt-4 bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-xs">
+            <div className="mt-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg p-3 text-xs">
               {error}
             </div>
           )}
           {successMessage && (
-            <div className="mt-4 bg-green-50 border border-green-200 text-green-700 rounded-lg p-3 text-xs">
+            <div className="mt-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 rounded-lg p-3 text-xs">
               {successMessage}
             </div>
           )}
@@ -355,8 +355,8 @@ export function FriendsManager({
                     <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
                   </div>
                 ) : filteredFriends.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                    <Users className="w-12 h-12 text-gray-300 mb-3" />
+                  <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+                    <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
                     {searchQuery ? (
                       <p className="font-medium">
                         No friends matching &quot;{searchQuery}&quot;
@@ -364,7 +364,7 @@ export function FriendsManager({
                     ) : (
                       <>
                         <p className="font-medium">No friends added yet.</p>
-                        <p className="text-sm text-gray-400">
+                        <p className="text-sm text-gray-400 dark:text-gray-500">
                           Add friends to see their availability!
                         </p>
                       </>
@@ -375,7 +375,7 @@ export function FriendsManager({
                     {filteredFriends.map((friend) => (
                       <div
                         key={friend.id}
-                        className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border hover:bg-gray-50"
+                        className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
                           <div className="hidden sm:block shrink-0">
@@ -386,11 +386,11 @@ export function FriendsManager({
                             />
                           </div>
                           <div className="min-w-0">
-                            <div className="text-sm font-medium text-gray-900 truncate">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
                               {friend.friendName || friend.friendEmail}
                             </div>
                             {friend.friendName && (
-                              <div className="text-xs text-gray-500 break-all">
+                              <div className="text-xs text-gray-500 dark:text-gray-400 break-all">
                                 {friend.friendEmail}
                               </div>
                             )}
@@ -442,10 +442,10 @@ export function FriendsManager({
 
           {/* Add Friend Tab */}
           <TabsContent value="add" className="mt-4">
-            <div className="flex flex-col items-center justify-center py-12 text-gray-500 h-[320px]">
-              <UserPlus className="w-12 h-12 text-gray-300 mb-3" />
+            <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400 h-[320px]">
+              <UserPlus className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
               <p className="font-medium">Add a Friend</p>
-              <p className="text-sm text-gray-400 text-center">
+              <p className="text-sm text-gray-400 dark:text-gray-500 text-center">
                 Enter your friend&apos;s email address to send them an
                 invitation to share calendars.
               </p>
@@ -481,10 +481,10 @@ export function FriendsManager({
           <TabsContent value="requests" className="mt-4">
             <ScrollArea className="h-[320px]">
               {incomingRequests.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                  <Inbox className="w-12 h-12 text-gray-300 mb-3" />
+                <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+                  <Inbox className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
                   <p className="font-medium">No pending requests.</p>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-gray-400 dark:text-gray-500">
                     Requests sent to you will appear here.
                   </p>
                 </div>
@@ -493,7 +493,7 @@ export function FriendsManager({
                   {incomingRequests.map((request) => (
                     <div
                       key={request.id}
-                      className="flex items-center justify-between p-3 rounded-lg border"
+                      className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="hidden sm:block">
@@ -503,12 +503,12 @@ export function FriendsManager({
                           />
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">
                             {request.friendName || request.friendEmail}
                           </div>
                           {request.friendName &&
                             request.friendName !== request.friendEmail && (
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
                                 {request.friendEmail}
                               </div>
                             )}

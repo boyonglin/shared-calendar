@@ -222,7 +222,7 @@ export function InviteDialog({
         <div className="flex-1 overflow-y-auto scrollbar-hide space-y-4 py-4 -mx-6 px-6">
           {timeSlot && (
             <div className="py-3 space-y-2">
-              <div className="flex items-center gap-2 text-gray-700">
+              <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                 <Calendar className="w-4 h-4" />
                 <span className="text-sm sm:hidden">
                   {formatDateTime().mobile}
@@ -232,7 +232,7 @@ export function InviteDialog({
                 </span>
               </div>
               {!timeSlot.isAllDay && (
-                <div className="flex items-center gap-2 text-gray-700">
+                <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                   <Clock className="w-4 h-4" />
                   <div className="flex items-center gap-2">
                     <span className="text-sm">Duration:</span>
@@ -296,7 +296,7 @@ export function InviteDialog({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 text-xs gap-1 text-purple-600 hover:text-purple-700 hover:bg-purple-50 px-2"
+                  className="h-8 text-xs gap-1 text-purple-500 dark:text-purple-400 hover:text-purple-600 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 px-2"
                   onClick={handleAIDraft}
                   disabled={isGenerating || !title.trim()}
                 >
@@ -307,7 +307,7 @@ export function InviteDialog({
             </div>
             <ScrollArea
               type="auto"
-              className="min-h-[80px] max-h-[180px] rounded-md border"
+              className="min-h-[80px] max-h-[180px] rounded-md border border-gray-200 dark:border-gray-600"
             >
               <Textarea
                 id="description"
@@ -326,7 +326,10 @@ export function InviteDialog({
 
           <div className="space-y-2">
             <Label>Invite Attendees</Label>
-            <ScrollArea type="auto" className="max-h-[180px] rounded-lg border">
+            <ScrollArea
+              type="auto"
+              className="max-h-[180px] rounded-lg border border-gray-200 dark:border-gray-600"
+            >
               <div className="p-3 space-y-3">
                 {users.map((user) => (
                   <div key={user.id} className="flex items-center gap-3">
@@ -346,8 +349,10 @@ export function InviteDialog({
                         {user.name.charAt(0)}
                       </div>
                       <div>
-                        <div className="text-gray-900 text-sm">{user.name}</div>
-                        <div className="text-gray-500 text-xs">
+                        <div className="text-sm text-gray-900 dark:text-white">
+                          {user.name}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
                           {user.email}
                         </div>
                       </div>
@@ -358,8 +363,8 @@ export function InviteDialog({
             </ScrollArea>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-blue-800 text-xs">
+          <div className="rounded-lg p-3 bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+            <p className="text-xs text-blue-800 dark:text-blue-300">
               This will create an event in your Google Calendar and send invites
               to selected attendees.
             </p>

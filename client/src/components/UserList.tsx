@@ -24,10 +24,10 @@ export function UserList({
   incomingRequestCount = 0,
 }: UserListProps) {
   return (
-    <Card>
+    <Card className="dark:bg-gray-800 dark:border-gray-700">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between lg:flex-col lg:items-stretch lg:gap-3">
-          <CardTitle>Team Members</CardTitle>
+          <CardTitle className="dark:text-white">Team Members</CardTitle>
           {isLoggedIn && onManageFriends && (
             <Button
               variant="outline"
@@ -77,13 +77,17 @@ export function UserList({
                 {user.name.charAt(0)}
               </div>
               <div className="flex-1">
-                <div className="text-gray-900">
+                <div className="text-gray-900 dark:text-white">
                   {user.name}
                   {user.id === currentUserId && (
-                    <span className="text-gray-500 ml-1">(You)</span>
+                    <span className="text-gray-500 dark:text-gray-400 ml-1">
+                      (You)
+                    </span>
                   )}
                 </div>
-                <div className="text-gray-500 text-sm">{user.email}</div>
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  {user.email}
+                </div>
               </div>
             </label>
           </div>
