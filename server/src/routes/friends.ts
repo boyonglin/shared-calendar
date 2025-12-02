@@ -3,17 +3,23 @@
  */
 import type { Response, NextFunction } from "express";
 import express from "express";
-import { googleAuthService } from "../services/googleAuth";
-import { icloudAuthService } from "../services/icloudAuth";
-import { onecalAuthService } from "../services/onecalAuth";
-import { calendarAccountRepository } from "../repositories/calendarAccountRepository";
-import { userConnectionRepository } from "../repositories/userConnectionRepository";
 import { isValidEmail } from "../middleware/validation";
 import { authenticateUser } from "../middleware/auth";
 import type { AuthRequest } from "../middleware/auth";
 import { createRequestLogger, logError } from "../utils/logger";
 import { BadRequestError, NotFoundError, ConflictError } from "../utils/errors";
-import { FRIEND_COLORS } from "../constants";
+
+// Import from shared core
+import {
+  googleAuthService,
+  icloudAuthService,
+  onecalAuthService,
+  calendarAccountRepository,
+  userConnectionRepository,
+  generateFriendColor,
+  extractFriendName,
+  parseDateParam,
+} from "../../../shared/core";
 
 const router = express.Router();
 
@@ -22,49 +28,11 @@ const router = express.Router();
 // =============================================================================
 
 /**
- * Generate a consistent color for a friend based on their email
- */
-function generateFriendColor(email: string): string {
-  let hash = 0;
-  for (let i = 0; i < email.length; i++) {
-    hash = email.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return FRIEND_COLORS[Math.abs(hash) % FRIEND_COLORS.length];
-}
-
-/**
- * Extract friend name from metadata or fall back to email
- */
-function extractFriendName(
-  metadata: string | undefined | null,
-  email: string,
-): string {
-  if (metadata) {
-    try {
-      const parsed = JSON.parse(metadata);
-      return parsed.name || email;
-    } catch {
-      // Use email as fallback
-    }
-  }
-  return email;
-}
-
-/**
  * Validate friend ID parameter
  */
 function validateFriendId(friendIdStr: string): number | null {
   const friendId = parseInt(friendIdStr, 10);
   return isNaN(friendId) ? null : friendId;
-}
-
-/**
- * Parse and validate date query parameters
- */
-function parseDateParam(value: unknown): Date | undefined {
-  if (!value) return undefined;
-  const date = new Date(value as string);
-  return isNaN(date.getTime()) ? undefined : date;
 }
 
 // =============================================================================

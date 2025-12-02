@@ -3,9 +3,11 @@
  */
 import type { Request, Response } from "express";
 import express from "express";
-import { googleAuthService } from "../services/googleAuth";
 import { validateUserIdParam } from "../middleware/validation";
 import { createRequestLogger, logError } from "../utils/logger";
+
+// Import from shared core
+import { googleAuthService } from "../../../shared/core";
 
 const router = express.Router();
 
