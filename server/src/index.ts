@@ -10,10 +10,13 @@ import authRoutes from "./routes/auth";
 import apiRoutes from "./routes/index";
 import logger from "./utils/logger";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
-import { GRACEFUL_SHUTDOWN_TIMEOUT_MS } from "./constants";
 
 // Import shared core
-import { ensureDbInitialized, healthCheck } from "../../shared/core";
+import {
+  ensureDbInitialized,
+  healthCheck,
+  GRACEFUL_SHUTDOWN_TIMEOUT_MS,
+} from "../../shared/core";
 
 // Initialize database connection
 ensureDbInitialized()
