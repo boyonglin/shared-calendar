@@ -159,7 +159,6 @@ ENCRYPTION_KEY=your_32_byte_encryption_key_or_64_hex_chars
 shared-calendar/
 ├── client/                 # Frontend (React + Vite + Tailwind)
 ├── server/                 # Backend (Express + SQLite)
-│   └── API.md              # 📖 Complete API documentation
 ├── shared/                 # Shared code between server and Vercel
 │   ├── types.ts            # Shared TypeScript types
 │   └── core/               # Shared core modules
@@ -177,7 +176,7 @@ shared-calendar/
 
 ## 📚 API Documentation
 
-See [`server/API.md`](./server/API.md) for complete API documentation including:
+See [`API.md`](./API.md) for complete API documentation including:
 
 - **Authentication**: Google OAuth, iCloud CalDAV, Outlook (OneCal) endpoints
 - **Calendar Management**: CRUD operations for calendar events

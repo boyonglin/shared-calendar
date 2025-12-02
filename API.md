@@ -1,6 +1,9 @@
 # Shared Calendar API Documentation
 
-Base URL: `http://localhost:3001`
+Base URL:
+
+- **Local**: `http://localhost:3001`
+- **Production**: `https://shared-calendar-vibe.vercel.app`
 
 ## Overview
 
@@ -19,8 +22,10 @@ Most endpoints require authentication via JWT token stored in an HTTP-only cooki
 
 1. User initiates OAuth flow via `/api/auth/google` or `/api/auth/outlook`
 2. After successful OAuth, server sets HTTP-only cookie with JWT
-3. Subsequent requests automatically include cookie for authentication
-4. JWT contains: `{ userId: string, email: string }`
+3. Server redirects with a short-lived exchange code (not userId) for security
+4. Client exchanges the code for user data via `/api/auth/exchange`
+5. Subsequent requests automatically include cookie for authentication
+6. JWT contains: `{ userId: string, email: string }`
 
 ---
 
@@ -48,9 +53,37 @@ OAuth callback handler. Google redirects here after user consent.
 **Success Response**:
 
 - Sets `token` cookie (HTTP-only, 30 days)
-- HTTP 302 redirect to `{CLIENT_URL}?auth=success&userId={userId}`
+- HTTP 302 redirect to `{CLIENT_URL}?auth=success&code={authCode}`
 
 **Error Response**: HTTP 302 redirect to `{CLIENT_URL}?auth=error`
+
+---
+
+#### `POST /api/auth/exchange`
+
+Exchange a short-lived auth code for user data. This is used after OAuth callback to securely retrieve user information without exposing it in the URL.
+
+**Request Body**:
+
+```json
+{
+  "code": "short_lived_auth_code"
+}
+```
+
+**Success Response** (200):
+
+```json
+{
+  "userId": "google_user_id",
+  "email": "user@gmail.com",
+  "provider": "google"
+}
+```
+
+**Error Responses**:
+
+- `400`: Missing code or invalid/expired code
 
 ---
 
@@ -111,9 +144,33 @@ OAuth callback handler for Outlook.
 |------|------|----------|-------------|
 | `endUserAccountId` | string | Yes | OneCal account ID |
 
-**Success Response**: HTTP 302 redirect to `{CLIENT_URL}?auth=success&provider=outlook&outlookUserId={userId}`
+**Success Response**: HTTP 302 redirect to `{CLIENT_URL}?auth=success&provider=outlook&code={authCode}`
 
 **Error Response**: HTTP 400/500 with error message
+
+---
+
+### Account Revocation
+
+#### `DELETE /api/auth/revoke`
+
+Revoke Google authorization and delete all user data. This removes the user's account, all connected calendar accounts, and friend connections.
+
+**Authentication**: Required
+
+**Success Response** (200):
+
+```json
+{
+  "success": true,
+  "message": "Account successfully revoked"
+}
+```
+
+**Error Responses**:
+
+- `401`: Not authenticated
+- `500`: Failed to revoke account
 
 ---
 
@@ -174,7 +231,9 @@ Fetch events from ALL connected calendar accounts for a user.
     "summary": "Meeting Title",
     "start": { "dateTime": "2025-01-15T10:00:00Z" },
     "end": { "dateTime": "2025-01-15T11:00:00Z" },
-    "userId": "user_id"
+    "userId": "user_id",
+    "accountType": "google",
+    "accountEmail": "user@gmail.com"
   }
 ]
 ```
@@ -183,6 +242,37 @@ Fetch events from ALL connected calendar accounts for a user.
 
 - `400`: Invalid date parameter
 - `401`: Not authenticated
+
+---
+
+### `GET /api/calendar/events-stream/:primaryUserId`
+
+Fetch events using Server-Sent Events (SSE) for real-time streaming. Events are sent as they become available from each provider.
+
+**Authentication**: Required
+
+**Path Parameters**:
+| Name | Type | Description |
+|------|------|-------------|
+| `primaryUserId` | string | Primary user ID |
+
+**Query Parameters**:
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `timeMin` | ISO 8601 | No | Start of time range |
+| `timeMax` | ISO 8601 | No | End of time range |
+
+**Response**: Server-Sent Events stream
+
+**Event Types**:
+
+```
+data: {"type": "events", "provider": "google", "events": [...]}
+
+data: {"type": "error", "provider": "icloud", "message": "Failed to fetch events"}
+
+data: {"type": "complete"}
+```
 
 ---
 
@@ -243,10 +333,9 @@ Create a new calendar event.
 
 **Error Responses**:
 
-- `400`: Invalid request body
+- `400`: Invalid request body / Only Google calendar supported
 - `401`: Not authenticated
 - `404`: User not found
-- `501`: Provider not supported for event creation
 
 ---
 
@@ -293,14 +382,13 @@ Remove iCloud connection.
 
 ```json
 {
-  "success": true,
-  "message": "iCloud account disconnected"
+  "success": true
 }
 ```
 
 **Error Responses**:
 
-- `404`: iCloud account not found
+- `401`: Not authenticated
 
 ---
 
@@ -322,6 +410,14 @@ Check if user has Outlook connected.
 }
 ```
 
+or
+
+```json
+{
+  "connected": false
+}
+```
+
 ---
 
 #### `DELETE /api/calendar/outlook/:userId`
@@ -339,8 +435,7 @@ Remove Outlook connection.
 
 ```json
 {
-  "success": true,
-  "message": "Outlook account disconnected"
+  "success": true
 }
 ```
 
@@ -563,16 +658,19 @@ Get friend's calendar events (only for mutually accepted connections).
 **Success Response** (200):
 
 ```json
-[
-  {
-    "id": "event_id",
-    "summary": "Friend's Meeting",
-    "start": { "dateTime": "2025-01-15T10:00:00Z" },
-    "end": { "dateTime": "2025-01-15T11:00:00Z" },
-    "userId": "friend_user_id",
-    "friendConnectionId": 1
-  }
-]
+{
+  "events": [
+    {
+      "id": "event_id",
+      "summary": "Friend's Meeting",
+      "start": { "dateTime": "2025-01-15T10:00:00Z" },
+      "end": { "dateTime": "2025-01-15T11:00:00Z" },
+      "userId": "friend_user_id",
+      "friendConnectionId": 1
+    }
+  ],
+  "errors": []
+}
 ```
 
 **Error Responses**:
@@ -601,7 +699,7 @@ Generate an AI-powered invitation draft for a calendar event.
   "attendees": ["Alice", "Bob"],
   "location": "Conference Room A",
   "tone": "professional",
-  "geminiApiKey": "optional_custom_api_key"
+  "geminiApiKey": "your_gemini_api_key"
 }
 ```
 
@@ -617,13 +715,13 @@ Generate an AI-powered invitation draft for a calendar event.
 
 **Error Responses**:
 
-- `400`: Invalid request body
+- `400`: Invalid request body / Invalid API key format / Invalid datetime format
 - `401`: Not authenticated
-- `500`: AI generation failed / API key not configured
+- `500`: AI generation failed
 
 ---
 
-## Health Check
+## Utility Endpoints
 
 ### `GET /api/health`
 
@@ -635,6 +733,39 @@ Health check endpoint (no rate limiting).
 {
   "status": "ok",
   "timestamp": "2025-01-15T10:00:00.000Z"
+}
+```
+
+**Degraded Response** (503):
+
+```json
+{
+  "status": "degraded",
+  "timestamp": "2025-01-15T10:00:00.000Z"
+}
+```
+
+---
+
+### `GET /api/privacy`
+
+Redirects to the privacy policy page.
+
+**Response**: HTTP 301 redirect to privacy policy URL
+
+---
+
+### `GET /api`
+
+Root API endpoint with version and available endpoints.
+
+**Success Response** (200):
+
+```json
+{
+  "message": "Shared Calendar API",
+  "version": "1.0.0",
+  "endpoints": ["GET /api/health", "GET /api/auth/google", "..."]
 }
 ```
 
@@ -655,10 +786,11 @@ Common HTTP status codes:
 - `400`: Bad Request (invalid input)
 - `401`: Unauthorized (not authenticated)
 - `404`: Not Found
+- `405`: Method Not Allowed
 - `409`: Conflict (duplicate resource)
 - `429`: Too Many Requests (rate limited)
 - `500`: Internal Server Error
-- `501`: Not Implemented
+- `503`: Service Unavailable (database issues)
 
 ---
 
@@ -678,5 +810,5 @@ Required environment variables for the server:
 | `ENCRYPTION_KEY`       | 32-byte key for encrypting iCloud passwords                                 |
 | `ONECAL_APP_ID`        | OneCal app ID (for Outlook)                                                 |
 | `ONECAL_API_KEY`       | OneCal API key (for Outlook)                                                |
-| `GEMINI_API_KEY`       | Google Gemini API key (for AI features)                                     |
+| `GEMINI_API_KEY`       | Google Gemini API key (for AI features) - optional, can be user-provided    |
 | `LOG_LEVEL`            | Logging level: `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace` |
