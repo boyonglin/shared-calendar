@@ -150,6 +150,41 @@ async function handleAuthExchange(
   });
 }
 
+/**
+ * GET /auth/me
+ * Verify current session and return user info from JWT
+ * Used to restore session on app startup (especially for PWA)
+ */
+async function handleAuthMe(
+  req: VercelRequest,
+  res: VercelResponse,
+): Promise<VercelResponse> {
+  const user = verifyToken(req);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  try {
+    // Try to fetch full user profile from database
+    const dbUser = await googleAuthService.getUser(user.userId);
+
+    if (dbUser) {
+      return res.status(200).json({
+        id: dbUser.profile.sub,
+        email: dbUser.profile.email,
+        name: dbUser.profile.name,
+        picture: dbUser.profile.picture,
+      });
+    } else {
+      // User exists in JWT but not in DB - return basic info
+      return res.status(200).json({ id: user.userId, email: user.email });
+    }
+  } catch {
+    // Fallback to JWT data if DB query fails
+    return res.status(200).json({ id: user.userId, email: user.email });
+  }
+}
+
 async function handleGetUser(
   userId: string,
   res: VercelResponse,
@@ -1199,6 +1234,9 @@ export default async function handler(
     if (path === "/api/auth/exchange") {
       return handleAuthExchange(req, res);
     }
+    if (path === "/api/auth/me" && req.method === "GET") {
+      return handleAuthMe(req, res);
+    }
     if (path === "/api/auth/outlook") {
       return handleOutlookAuth(req, res);
     }
@@ -1320,6 +1358,7 @@ export default async function handler(
           "GET /api/health",
           "GET /api/auth/google",
           "GET /api/auth/google/callback",
+          "GET /api/auth/me",
           "GET /api/auth/outlook",
           "GET /api/auth/outlook/callback",
           "POST /api/auth/exchange",

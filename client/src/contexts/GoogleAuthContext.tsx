@@ -20,6 +20,44 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
   });
   const [isRevoking, setIsRevoking] = useState(false);
 
+  // Verify session on app startup using JWT cookie
+  useEffect(() => {
+    const verifySession = async () => {
+      // Skip if we're handling an OAuth callback
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("auth")) {
+        return;
+      }
+
+      try {
+        // Try to verify session with server using JWT cookie
+        const userData = await authApi.me();
+        if (userData?.id) {
+          const restoredUser: GoogleUser = {
+            profile: {
+              sub: userData.id,
+              email: userData.email || "",
+              name: userData.name || userData.email || "User",
+              picture: userData.picture,
+            },
+            provider: "google",
+          };
+          setUser(restoredUser);
+          saveUserSession(restoredUser);
+        }
+      } catch {
+        // JWT cookie is invalid or expired - clear local session
+        const storedSession = restoreSession();
+        if (storedSession) {
+          clearStoredSession();
+          setUser(null);
+        }
+      }
+    };
+
+    verifySession();
+  }, []);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const authSuccess = params.get("auth");
