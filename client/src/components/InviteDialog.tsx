@@ -38,7 +38,6 @@ interface InviteDialogProps {
     duration: number,
   ) => void;
   onOpenSettings?: () => void;
-  isDarkMode?: boolean;
 }
 
 export function InviteDialog({
@@ -48,7 +47,6 @@ export function InviteDialog({
   onClose,
   onSendInvite,
   onOpenSettings,
-  isDarkMode = false,
 }: InviteDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -224,9 +222,7 @@ export function InviteDialog({
         <div className="flex-1 overflow-y-auto scrollbar-hide space-y-4 py-4 -mx-6 px-6">
           {timeSlot && (
             <div className="py-3 space-y-2">
-              <div
-                className={`flex items-center gap-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
-              >
+              <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                 <Calendar className="w-4 h-4" />
                 <span className="text-sm sm:hidden">
                   {formatDateTime().mobile}
@@ -236,9 +232,7 @@ export function InviteDialog({
                 </span>
               </div>
               {!timeSlot.isAllDay && (
-                <div
-                  className={`flex items-center gap-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
-                >
+                <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                   <Clock className="w-4 h-4" />
                   <div className="flex items-center gap-2">
                     <span className="text-sm">Duration:</span>
@@ -352,14 +346,10 @@ export function InviteDialog({
                         {user.name.charAt(0)}
                       </div>
                       <div>
-                        <div
-                          className={`text-sm ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                        >
+                        <div className="text-sm text-gray-900 dark:text-white">
                           {user.name}
                         </div>
-                        <div
-                          className={`text-xs ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                        >
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
                           {user.email}
                         </div>
                       </div>
@@ -370,12 +360,8 @@ export function InviteDialog({
             </ScrollArea>
           </div>
 
-          <div
-            className={`rounded-lg p-3 ${isDarkMode ? "bg-blue-900/20 border border-blue-800" : "bg-blue-50 border border-blue-200"}`}
-          >
-            <p
-              className={`text-xs ${isDarkMode ? "text-blue-300" : "text-blue-800"}`}
-            >
+          <div className="rounded-lg p-3 bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+            <p className="text-xs text-blue-800 dark:text-blue-300">
               This will create an event in your Google Calendar and send invites
               to selected attendees.
             </p>

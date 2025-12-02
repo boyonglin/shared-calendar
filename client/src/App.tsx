@@ -184,21 +184,15 @@ function AppContent({
   };
 
   return (
-    <div
-      className={`min-h-screen ${isDarkMode ? "dark bg-gray-900" : "bg-gray-50"}`}
-    >
-      <header
-        className={`border-b ${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
-      >
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <header className="border-b bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h1 className={isDarkMode ? "text-white" : "text-gray-900"}>
+              <h1 className="text-gray-900 dark:text-white">
                 Calendar Sharing
               </h1>
-              <p
-                className={`mt-1 ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}
-              >
+              <p className="mt-1 text-gray-600 dark:text-gray-400">
                 View and share availability with your team
               </p>
             </div>
@@ -215,11 +209,15 @@ function AppContent({
                     onRefreshEvents={refreshEvents}
                     onSignOut={signOut}
                     onOpenSettings={() => openModal("settings")}
-                    isDarkMode={isDarkMode}
                   />
                 )
               )}
-              <Button variant="outline" size="icon" onClick={toggleDarkMode}>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={toggleDarkMode}
+                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              >
                 {isDarkMode ? (
                   <Sun className="w-4 h-4" />
                 ) : (
@@ -242,7 +240,6 @@ function AppContent({
               onManageFriends={() => openModal("friends")}
               isLoggedIn={!!user}
               incomingRequestCount={incomingRequestCount}
-              isDarkMode={isDarkMode}
             />
           </div>
 
@@ -254,7 +251,6 @@ function AppContent({
               weekStart={weekStart}
               onTimeSlotSelect={handleTimeSlotSelect}
               onWeekChange={handleWeekChange}
-              isDarkMode={isDarkMode}
             />
           </div>
         </div>
@@ -267,7 +263,6 @@ function AppContent({
         onClose={() => setSelectedTimeSlot(null)}
         onSendInvite={handleSendInvite}
         onOpenSettings={() => openModal("settings")}
-        isDarkMode={isDarkMode}
       />
 
       <ICloudConnectModal

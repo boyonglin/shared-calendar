@@ -12,7 +12,6 @@ interface UserListProps {
   onManageFriends?: () => void;
   isLoggedIn?: boolean;
   incomingRequestCount?: number;
-  isDarkMode?: boolean;
 }
 
 export function UserList({
@@ -23,13 +22,12 @@ export function UserList({
   onManageFriends,
   isLoggedIn,
   incomingRequestCount = 0,
-  isDarkMode = false,
 }: UserListProps) {
   return (
-    <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
+    <Card className="dark:bg-gray-800 dark:border-gray-700">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between lg:flex-col lg:items-stretch lg:gap-3">
-          <CardTitle className={isDarkMode ? "text-white" : ""}>
+          <CardTitle className="dark:text-white">
             Team Members
           </CardTitle>
           {isLoggedIn && onManageFriends && (
@@ -81,21 +79,15 @@ export function UserList({
                 {user.name.charAt(0)}
               </div>
               <div className="flex-1">
-                <div className={isDarkMode ? "text-white" : "text-gray-900"}>
+                <div className="text-gray-900 dark:text-white">
                   {user.name}
                   {user.id === currentUserId && (
-                    <span
-                      className={
-                        isDarkMode ? "text-gray-400 ml-1" : "text-gray-500 ml-1"
-                      }
-                    >
+                    <span className="text-gray-500 dark:text-gray-400 ml-1">
                       (You)
                     </span>
                   )}
                 </div>
-                <div
-                  className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                >
+                <div className="text-sm text-gray-500 dark:text-gray-400">
                   {user.email}
                 </div>
               </div>

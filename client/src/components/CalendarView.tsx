@@ -14,7 +14,6 @@ interface CalendarViewProps {
   onWeekChange: (direction: "prev" | "next" | "today") => void;
   startHour?: number;
   endHour?: number;
-  isDarkMode?: boolean;
 }
 
 export function CalendarView({
@@ -26,7 +25,6 @@ export function CalendarView({
   onWeekChange,
   startHour = 6,
   endHour = 22,
-  isDarkMode = false,
 }: CalendarViewProps) {
   // Validate hour range
   const validStartHour = Math.max(0, Math.min(23, startHour));
@@ -127,10 +125,10 @@ export function CalendarView({
   };
 
   return (
-    <Card className={isDarkMode ? "bg-gray-800 border-gray-700" : ""}>
+    <Card className="dark:bg-gray-800 dark:border-gray-700">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <span className={isDarkMode ? "text-white" : "text-gray-900"}>
+          <span className="text-gray-900 dark:text-white">
             {formatWeekRange()}
           </span>
           <div className="flex gap-2">
@@ -161,15 +159,9 @@ export function CalendarView({
       <CardContent>
         <div className="overflow-x-auto">
           {/* Header row with days - 7 columns on mobile, 8 on desktop - FIXED outside scroll */}
-          <div
-            className={`grid grid-cols-7 sm:grid-cols-8 gap-px border rounded-t-lg overflow-hidden ${isDarkMode ? "bg-gray-700 border-gray-600" : "bg-gray-200 border-gray-200"}`}
-          >
-            <div
-              className={`p-1 sm:p-3 hidden sm:block ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
-            >
-              <span
-                className={`text-xs sm:text-base ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}
-              >
+          <div className="grid grid-cols-7 sm:grid-cols-8 gap-px border rounded-t-lg overflow-hidden bg-gray-200 border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+            <div className="p-1 sm:p-3 hidden sm:block bg-white dark:bg-gray-800">
+              <span className="text-xs sm:text-base text-gray-600 dark:text-gray-400">
                 Time
               </span>
             </div>
@@ -178,22 +170,14 @@ export function CalendarView({
                 key={index}
                 className={`p-1 sm:p-3 text-center ${
                   isToday(day)
-                    ? isDarkMode
-                      ? "bg-gray-700"
-                      : "bg-gray-100"
-                    : isDarkMode
-                      ? "bg-gray-800"
-                      : "bg-white"
+                    ? "bg-gray-100 dark:bg-gray-700"
+                    : "bg-white dark:bg-gray-800"
                 }`}
               >
-                <div
-                  className={`text-xs sm:text-base ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                >
+                <div className="text-xs sm:text-base text-gray-900 dark:text-white">
                   {getDayName(day)}
                 </div>
-                <div
-                  className={`text-xs hidden sm:block ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}
-                >
+                <div className="text-xs hidden sm:block text-gray-600 dark:text-gray-400">
                   {formatDate(day)}
                 </div>
               </div>
@@ -203,32 +187,18 @@ export function CalendarView({
           {/* Scrollable calendar container with max height */}
           <ScrollArea className="max-h-[60vh]">
             {/* All-day row */}
-            <div
-              className={`border-l border-r sm:border-b ${isDarkMode ? "border-gray-600" : "border-gray-200"}`}
-            >
+            <div className="border-l border-r sm:border-b border-gray-200 dark:border-gray-600">
               {/* Time indicator row for mobile */}
               <div className="sm:hidden flex items-center px-2 py-1">
-                <div
-                  className={`flex-1 h-px ${isDarkMode ? "bg-gray-600" : "bg-gray-300"}`}
-                ></div>
-                <span
-                  className={`text-[10px] px-2 ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}
-                >
+                <div className="flex-1 h-px bg-gray-300 dark:bg-gray-600"></div>
+                <span className="text-[10px] px-2 text-gray-400 dark:text-gray-500">
                   All-day
                 </span>
-                <div
-                  className={`flex-1 h-px ${isDarkMode ? "bg-gray-600" : "bg-gray-300"}`}
-                ></div>
+                <div className="flex-1 h-px bg-gray-300 dark:bg-gray-600"></div>
               </div>
-              <div
-                className={`grid grid-cols-7 sm:grid-cols-8 gap-px min-h-[40px] sm:min-h-[80px] ${isDarkMode ? "bg-gray-700" : "bg-gray-200"}`}
-              >
-                <div
-                  className={`p-1 sm:p-3 hidden sm:flex items-start ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
-                >
-                  <span
-                    className={`text-xs ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}
-                  >
+              <div className="grid grid-cols-7 sm:grid-cols-8 gap-px min-h-[40px] sm:min-h-[80px] bg-gray-200 dark:bg-gray-700">
+                <div className="p-1 sm:p-3 hidden sm:flex items-start bg-white dark:bg-gray-800">
+                  <span className="text-xs text-gray-600 dark:text-gray-400">
                     All-day
                   </span>
                 </div>
@@ -241,12 +211,8 @@ export function CalendarView({
                       key={dayIndex}
                       className={`p-1 cursor-pointer transition-colors relative ${
                         isToday(day)
-                          ? isDarkMode
-                            ? "bg-gray-700 hover:bg-gray-600"
-                            : "bg-gray-100 hover:bg-gray-200"
-                          : isDarkMode
-                            ? "bg-gray-800 hover:bg-gray-600"
-                            : "bg-white hover:bg-gray-200"
+                          ? "bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
+                          : "bg-white hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-600"
                       }`}
                       onClick={() => handleAllDayClick(day)}
                     >
@@ -269,38 +235,24 @@ export function CalendarView({
             </div>
 
             {/* Time slots */}
-            <div
-              className={`border-l border-r border-b rounded-b-lg overflow-hidden ${isDarkMode ? "border-gray-600" : "border-gray-200"}`}
-            >
+            <div className="border-l border-r border-b rounded-b-lg overflow-hidden border-gray-200 dark:border-gray-600">
               {timeSlots.map(({ hour, minute }) => (
                 <div key={`${hour}-${minute}`}>
                   {/* Time indicator row for mobile - only show on the hour */}
                   {minute === 0 && (
                     <div className="sm:hidden flex items-center px-2 py-1">
-                      <div
-                        className={`flex-1 h-px ${isDarkMode ? "bg-gray-600" : "bg-gray-300"}`}
-                      ></div>
-                      <span
-                        className={`text-[10px] px-2 ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}
-                      >
+                      <div className="flex-1 h-px bg-gray-300 dark:bg-gray-600"></div>
+                      <span className="text-[10px] px-2 text-gray-400 dark:text-gray-500">
                         {hour > 12 ? hour - 12 : hour || 12}{" "}
                         {hour >= 12 ? "PM" : "AM"}
                       </span>
-                      <div
-                        className={`flex-1 h-px ${isDarkMode ? "bg-gray-600" : "bg-gray-300"}`}
-                      ></div>
+                      <div className="flex-1 h-px bg-gray-300 dark:bg-gray-600"></div>
                     </div>
                   )}
-                  <div
-                    className={`grid grid-cols-7 sm:grid-cols-8 gap-px min-h-[32px] sm:min-h-[40px] ${isDarkMode ? "bg-gray-700" : "bg-gray-200"}`}
-                  >
-                    <div
-                      className={`p-1 sm:p-2 hidden sm:flex items-start ${isDarkMode ? "bg-gray-800" : "bg-white"}`}
-                    >
+                  <div className="grid grid-cols-7 sm:grid-cols-8 gap-px min-h-[32px] sm:min-h-[40px] bg-gray-200 dark:bg-gray-700">
+                    <div className="p-1 sm:p-2 hidden sm:flex items-start bg-white dark:bg-gray-800">
                       {minute === 0 && (
-                        <span
-                          className={`text-[10px] sm:text-xs ${isDarkMode ? "text-gray-400" : "text-gray-600"}`}
-                        >
+                        <span className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
                           {hour > 12 ? hour - 12 : hour || 12}:00{" "}
                           {hour >= 12 ? "PM" : "AM"}
                         </span>
@@ -315,12 +267,8 @@ export function CalendarView({
                           key={dayIndex}
                           className={`p-1 cursor-pointer transition-colors relative ${
                             isToday(day)
-                              ? isDarkMode
-                                ? "bg-gray-700 hover:bg-gray-600"
-                                : "bg-gray-100 hover:bg-gray-200"
-                              : isDarkMode
-                                ? "bg-gray-800 hover:bg-gray-600"
-                                : "bg-white hover:bg-gray-200"
+                              ? "bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
+                              : "bg-white hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-600"
                           }`}
                           onClick={() => handleSlotClick(day, hour, minute)}
                         >
@@ -346,12 +294,10 @@ export function CalendarView({
           </ScrollArea>
         </div>
 
-        <div
-          className={`mt-4 flex flex-col sm:flex-row sm:items-start gap-4 p-4 rounded-lg ${isDarkMode ? "bg-gray-700" : "bg-gray-50"}`}
-        >
+        <div className="mt-4 flex flex-col sm:flex-row sm:items-start gap-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
-              <span className={isDarkMode ? "text-gray-300" : "text-gray-700"}>
+              <span className="text-gray-700 dark:text-gray-300">
                 Team Members:
               </span>
             </div>
@@ -362,18 +308,14 @@ export function CalendarView({
                     className="w-4 h-4 rounded"
                     style={{ backgroundColor: user.color }}
                   />
-                  <span
-                    className={`text-sm ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
-                  >
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
                     {user.name}
                   </span>
                 </div>
               ))}
             </div>
           </div>
-          <div
-            className={`border-t pt-4 sm:border-t-0 sm:pt-0 text-sm ${isDarkMode ? "border-gray-600 text-gray-400" : "border-gray-200 text-gray-600"}`}
-          >
+          <div className="border-t pt-4 sm:border-t-0 sm:pt-0 text-sm border-gray-200 text-gray-600 dark:border-gray-600 dark:text-gray-400">
             <p>• Click any free slot to send an invite</p>
             <p className="sm:hidden">• Long press to see event name</p>
             <p>• Colored blocks = Busy</p>
