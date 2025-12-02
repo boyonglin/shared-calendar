@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Analytics } from "@vercel/analytics/react";
 import { CalendarView } from "./components/CalendarView";
 import { UserList } from "./components/UserList";
 import { InviteDialog } from "./components/InviteDialog";
@@ -289,6 +290,7 @@ export default function App() {
           weekStart={currentWeekStart}
           setWeekStart={setCurrentWeekStart}
         />
+        <Analytics />
       </CalendarProviderWrapper>
     </GoogleAuthProvider>
   );
