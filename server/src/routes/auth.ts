@@ -112,10 +112,10 @@ router.get("/me", authenticateUser, async (req: Request, res: Response) => {
 
     if (user) {
       res.json({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        picture: user.picture,
+        id: user.profile.sub,
+        email: user.profile.email,
+        name: user.profile.name,
+        picture: user.profile.picture,
       });
     } else {
       // User exists in JWT but not in DB - return basic info

@@ -170,10 +170,10 @@ async function handleAuthMe(
 
     if (dbUser) {
       return res.status(200).json({
-        id: dbUser.id,
-        email: dbUser.email,
-        name: dbUser.name,
-        picture: dbUser.picture,
+        id: dbUser.profile.sub,
+        email: dbUser.profile.email,
+        name: dbUser.profile.name,
+        picture: dbUser.profile.picture,
       });
     } else {
       // User exists in JWT but not in DB - return basic info

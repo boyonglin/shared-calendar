@@ -19,7 +19,6 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
     return storedSession ? storedSession.user : null;
   });
   const [isRevoking, setIsRevoking] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(true);
 
   // Verify session on app startup using JWT cookie
   useEffect(() => {
@@ -27,7 +26,6 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
       // Skip if we're handling an OAuth callback
       const params = new URLSearchParams(window.location.search);
       if (params.get("auth")) {
-        setIsVerifying(false);
         return;
       }
 
@@ -36,10 +34,13 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
         const userData = await authApi.me();
         if (userData?.id) {
           const restoredUser: GoogleUser = {
-            id: userData.id,
-            email: userData.email || "",
-            name: userData.name || userData.email || "User",
-            picture: userData.picture,
+            profile: {
+              sub: userData.id,
+              email: userData.email || "",
+              name: userData.name || userData.email || "User",
+              picture: userData.picture,
+            },
+            provider: "google",
           };
           setUser(restoredUser);
           saveUserSession(restoredUser);
@@ -51,8 +52,6 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
           clearStoredSession();
           setUser(null);
         }
-      } finally {
-        setIsVerifying(false);
       }
     };
 
