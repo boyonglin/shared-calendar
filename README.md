@@ -176,14 +176,24 @@ shared-calendar/
 
 ## 📚 API Documentation
 
-See [`API.md`](./API.md) for complete API documentation including:
+The API specification is available in [`openapi.json`](./openapi.json) (OpenAPI 3.0 format).
 
-- **Authentication**: Google OAuth, iCloud CalDAV, Outlook (OneCal) endpoints
-- **Calendar Management**: CRUD operations for calendar events
-- **Friends**: Social features for sharing calendars
-- **AI Features**: Invitation draft generation
-- **Request/Response Examples**: Full examples for all endpoints
-- **Error Handling**: Standard error response formats
+### Environment Variables Reference
+
+| Variable               | Description                                                                 |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `PORT`                 | Server port (default: 3001)                                                 |
+| `CLIENT_URL`           | Frontend URL for CORS and redirects                                         |
+| `NODE_ENV`             | `development` \| `production` \| `test`                                     |
+| `GOOGLE_CLIENT_ID`     | Google OAuth client ID                                                      |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret                                                  |
+| `GOOGLE_REDIRECT_URI`  | Google OAuth callback URL                                                   |
+| `JWT_SECRET`           | Secret for signing JWTs (min 32 chars)                                      |
+| `ENCRYPTION_KEY`       | 32-byte key for encrypting iCloud passwords                                 |
+| `ONECAL_APP_ID`        | OneCal app ID (for Outlook)                                                 |
+| `ONECAL_API_KEY`       | OneCal API key (for Outlook)                                                |
+| `GEMINI_API_KEY`       | Google Gemini API key (for AI features) - optional, can be user-provided    |
+| `LOG_LEVEL`            | Logging level: `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace` |
 
 ---
 
@@ -214,7 +224,6 @@ See [`API.md`](./API.md) for complete API documentation including:
 
 ### In Progress
 
-- 🚧 User interface: dark theme
 - 🚧 AI calendar assistant: scheduling conflicts, suggest optimal times
 
 ---
