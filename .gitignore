@@ -7,17 +7,16 @@ node_modules/
 .env.*.local
 
 # Build outputs
-api/dist/
-client/build/
-client/dist/
-server/dist/
+dist/
+build/
+dev-dist/
 
 # OAuth credentials
 credentials.json
 
-# Cache
+# Framework
 .vite/
-.history/
+.vercel/
 
 # Database
 *.db
@@ -25,17 +24,13 @@ credentials.json
 *.db-shm
 *.db-wal
 
-# Vercel
-.vercel
-
 # IDE
 .idea/
+.history/
+.vscode/
 *.swp
 *.swo
 .DS_Store
-
-# PWA development
-client/dev-dist/
 
 # Pixi
 .pixi/
