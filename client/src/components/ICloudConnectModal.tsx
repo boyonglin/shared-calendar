@@ -97,7 +97,7 @@ export function ICloudConnectModal({
                 href="https://support.apple.com/en-us/HT204397"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
               >
                 Learn how to create one
                 <ExternalLink className="w-3 h-3" />

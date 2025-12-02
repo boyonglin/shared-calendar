@@ -216,7 +216,10 @@ function AppContent({
                 variant="outline"
                 size="icon"
                 onClick={toggleDarkMode}
-                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                aria-label={
+                  isDarkMode ? "Switch to light mode" : "Switch to dark mode"
+                }
+                className="size-10 border-gray-200 dark:border-gray-600"
               >
                 {isDarkMode ? (
                   <Sun className="w-4 h-4" />

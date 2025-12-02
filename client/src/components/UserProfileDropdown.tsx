@@ -16,7 +16,8 @@ import {
 import type { User } from "../types";
 
 // Shared class for submenu trigger buttons
-const submenuTriggerClassName = "relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 gap-3 text-sm outline-none transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 focus:bg-gray-50 dark:focus:bg-gray-700 data-[state=open]:bg-gray-50 dark:data-[state=open]:bg-gray-700 text-gray-900 dark:text-gray-100 [&_svg]:pointer-events-none [&_svg]:shrink-0";
+const submenuTriggerClassName =
+  "relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 gap-3 text-sm outline-none transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 focus:bg-gray-50 dark:focus:bg-gray-700 data-[state=open]:bg-gray-50 dark:data-[state=open]:bg-gray-700 text-gray-900 dark:text-gray-100 [&_svg]:pointer-events-none [&_svg]:shrink-0";
 import type { UseICloudConnectionReturn } from "../hooks/useICloudConnection";
 import type { UseOutlookConnectionReturn } from "../hooks/useOutlookConnection";
 
@@ -57,9 +58,7 @@ export function UserProfileDropdown({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        className="flex items-center gap-2 w-full sm:w-auto rounded-lg px-3 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 hover:bg-gray-50 dark:hover:bg-gray-700"
-      >
+      <DropdownMenuTrigger className="flex items-center gap-2 w-full sm:w-auto rounded-lg px-3 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 hover:bg-gray-50 dark:hover:bg-gray-700">
         <div
           className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium"
           style={{ backgroundColor: currentUser.color }}

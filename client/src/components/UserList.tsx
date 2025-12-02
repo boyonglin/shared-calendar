@@ -27,9 +27,7 @@ export function UserList({
     <Card className="dark:bg-gray-800 dark:border-gray-700">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between lg:flex-col lg:items-stretch lg:gap-3">
-          <CardTitle className="dark:text-white">
-            Team Members
-          </CardTitle>
+          <CardTitle className="dark:text-white">Team Members</CardTitle>
           {isLoggedIn && onManageFriends && (
             <Button
               variant="outline"

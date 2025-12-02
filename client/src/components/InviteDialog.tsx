@@ -307,7 +307,7 @@ export function InviteDialog({
             </div>
             <ScrollArea
               type="auto"
-              className="min-h-[80px] max-h-[180px] rounded-md border"
+              className="min-h-[80px] max-h-[180px] rounded-md border border-gray-200 dark:border-gray-600"
             >
               <Textarea
                 id="description"
@@ -326,7 +326,10 @@ export function InviteDialog({
 
           <div className="space-y-2">
             <Label>Invite Attendees</Label>
-            <ScrollArea type="auto" className="max-h-[180px] rounded-lg border">
+            <ScrollArea
+              type="auto"
+              className="max-h-[180px] rounded-lg border border-gray-200 dark:border-gray-600"
+            >
               <div className="p-3 space-y-3">
                 {users.map((user) => (
                   <div key={user.id} className="flex items-center gap-3">
