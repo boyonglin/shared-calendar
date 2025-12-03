@@ -7,7 +7,8 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@vercel/node": "^5.5.13"
+    "@vercel/node": "^5.5.13",
+    "form-data": "^4.0.1"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
