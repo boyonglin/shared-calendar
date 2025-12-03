@@ -4,7 +4,7 @@
  * Handles iCloud CalDAV authentication and calendar operations.
  */
 import { DAVClient } from "tsdav";
-import * as ical from "node-ical";
+import ical from "node-ical";
 import { v4 as uuidv4 } from "uuid";
 import { calendarAccountRepository } from "../repositories/index.js";
 import { encrypt, decrypt } from "../utils/encryption.js";
