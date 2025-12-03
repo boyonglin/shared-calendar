@@ -3,13 +3,12 @@
  */
 import type { Response, NextFunction } from "express";
 import express from "express";
-import { isValidEmail } from "../middleware/validation";
 import { authenticateUser } from "../middleware/auth";
 import type { AuthRequest } from "../middleware/auth";
 import { createRequestLogger, logError } from "../utils/logger";
 import { BadRequestError, NotFoundError, ConflictError } from "../utils/errors";
 
-// Import from shared core
+// Import from shared core - all validation and utility functions are centralized here
 import {
   googleAuthService,
   icloudAuthService,
@@ -19,21 +18,11 @@ import {
   generateFriendColor,
   extractFriendName,
   parseDateParam,
+  isValidEmail,
+  validateFriendId,
 } from "../../../shared/core";
 
 const router = express.Router();
-
-// =============================================================================
-// Helper Functions
-// =============================================================================
-
-/**
- * Validate friend ID parameter
- */
-function validateFriendId(friendIdStr: string): number | null {
-  const friendId = parseInt(friendIdStr, 10);
-  return isNaN(friendId) ? null : friendId;
-}
 
 // =============================================================================
 // Routes
