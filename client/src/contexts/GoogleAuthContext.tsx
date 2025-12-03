@@ -99,8 +99,11 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
             // Save session to localStorage (tokens managed by HTTP-only cookies)
             saveUserSession(data);
           }
-        } catch {
-          // Silently handle error - code may be expired or invalid
+        } catch (error) {
+          // Log error for debugging, but don't show to user - code may be expired or invalid
+          if (import.meta.env.DEV) {
+            console.warn("Auth callback failed:", error);
+          }
         }
       }
     };
@@ -117,8 +120,8 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
     try {
       // Call server to clear the HTTP-only JWT cookie
       await authApi.logout();
-    } catch (error) {
-      console.error("Failed to logout from server:", error);
+    } catch {
+      // Logout continues regardless - local session will be cleared
     }
     setUser(null);
     clearStoredSession();
