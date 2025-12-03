@@ -303,7 +303,7 @@ export function SettingsModal({
             <Button
               onClick={() => setShowRevokeDialog(true)}
               disabled={isRevoking}
-              className="w-full bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600"
+              className="w-full bg-red-600/70 dark:bg-red-700/60 text-white/90 hover:bg-red-600 hover:text-white dark:hover:bg-red-600"
             >
               <Trash2 className="w-4 h-4 mr-2" />
               {isRevoking ? "Deleting..." : "Delete account"}
@@ -344,7 +344,7 @@ export function SettingsModal({
                   }
                 }
               }}
-              className="bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600"
+              className="bg-red-600/70 dark:bg-red-700/60 text-white/90 hover:bg-red-600 hover:text-white dark:hover:bg-red-600"
             >
               {isRevoking ? "Deleting..." : "Delete account"}
             </AlertDialogAction>
