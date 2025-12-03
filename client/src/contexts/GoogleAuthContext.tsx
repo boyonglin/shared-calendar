@@ -29,6 +29,13 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // Only verify with server if we have a stored session to check
+      // This avoids unnecessary 401 errors when not signed in
+      const storedSession = restoreSession();
+      if (!storedSession) {
+        return;
+      }
+
       try {
         // Try to verify session with server using JWT cookie
         const userData = await authApi.me();
@@ -47,11 +54,8 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
         }
       } catch {
         // JWT cookie is invalid or expired - clear local session
-        const storedSession = restoreSession();
-        if (storedSession) {
-          clearStoredSession();
-          setUser(null);
-        }
+        clearStoredSession();
+        setUser(null);
       }
     };
 
