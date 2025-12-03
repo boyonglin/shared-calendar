@@ -46,7 +46,7 @@ export interface GoogleAuthContextType {
   user: GoogleUser | null;
   isRevoking: boolean;
   signIn: () => void;
-  signOut: () => void;
+  signOut: () => Promise<void>;
   revokeAccount: () => Promise<void>;
 }
 

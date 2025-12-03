@@ -49,6 +49,10 @@ export const authApi = {
   exchangeCode: (code: string) =>
     apiClient.post<ExchangeCodeResponse>("/api/auth/exchange", { code }),
   /**
+   * Sign out the current user by clearing the JWT cookie
+   */
+  logout: () => apiClient.post<{ success: boolean; message: string }>("/api/auth/logout"),
+  /**
    * Revoke Google authorization and delete all user data
    */
   revokeAccount: () => apiClient.delete<RevokeResponse>("/api/auth/revoke"),

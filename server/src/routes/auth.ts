@@ -267,6 +267,21 @@ router.get("/outlook/callback", async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /auth/logout
+ * Sign out the current user by clearing the JWT cookie
+ */
+router.post("/logout", (_req: Request, res: Response) => {
+  // Clear the JWT cookie
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: COOKIE_SAME_SITE,
+  });
+
+  res.json({ success: true, message: "Logged out successfully" });
+});
+
+/**
  * DELETE /auth/revoke
  * Revoke Google authorization and delete all user data
  */

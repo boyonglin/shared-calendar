@@ -106,7 +106,13 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
     window.location.href = `${API_BASE_URL}/api/auth/google`;
   };
 
-  const signOut = () => {
+  const signOut = async () => {
+    try {
+      // Call server to clear the HTTP-only JWT cookie
+      await authApi.logout();
+    } catch (error) {
+      console.error("Failed to logout from server:", error);
+    }
     setUser(null);
     clearStoredSession();
   };
