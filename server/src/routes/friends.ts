@@ -6,7 +6,11 @@ import express from "express";
 import { authenticateUser } from "../middleware/auth.js";
 import type { AuthRequest } from "../middleware/auth.js";
 import { createRequestLogger, logError } from "../utils/logger.js";
-import { BadRequestError, NotFoundError, ConflictError } from "../utils/errors.js";
+import {
+  BadRequestError,
+  NotFoundError,
+  ConflictError,
+} from "../utils/errors.js";
 
 // Import from shared core - all validation and utility functions are centralized here
 import {
