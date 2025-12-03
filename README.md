@@ -180,20 +180,19 @@ The API specification is available in [`openapi.json`](./openapi.json) (OpenAPI 
 
 ### Environment Variables Reference
 
-| Variable               | Description                                                                 |
-| ---------------------- | --------------------------------------------------------------------------- |
-| `PORT`                 | Server port (default: 3001)                                                 |
-| `CLIENT_URL`           | Frontend URL for CORS and redirects                                         |
-| `NODE_ENV`             | `development` \| `production` \| `test`                                     |
-| `GOOGLE_CLIENT_ID`     | Google OAuth client ID                                                      |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret                                                  |
-| `GOOGLE_REDIRECT_URI`  | Google OAuth callback URL                                                   |
-| `JWT_SECRET`           | Secret for signing JWTs (min 32 chars)                                      |
-| `ENCRYPTION_KEY`       | 32-byte key for encrypting iCloud passwords                                 |
-| `ONECAL_APP_ID`        | OneCal app ID (for Outlook)                                                 |
-| `ONECAL_API_KEY`       | OneCal API key (for Outlook)                                                |
-| `GEMINI_API_KEY`       | Google Gemini API key (for AI features) - optional, can be user-provided    |
-
+| Variable               | Description                                                              |
+| ---------------------- | ------------------------------------------------------------------------ |
+| `PORT`                 | Server port (default: 3001)                                              |
+| `CLIENT_URL`           | Frontend URL for CORS and redirects                                      |
+| `NODE_ENV`             | `development` \| `production` \| `test`                                  |
+| `GOOGLE_CLIENT_ID`     | Google OAuth client ID                                                   |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret                                               |
+| `GOOGLE_REDIRECT_URI`  | Google OAuth callback URL                                                |
+| `JWT_SECRET`           | Secret for signing JWTs (min 32 chars)                                   |
+| `ENCRYPTION_KEY`       | 32-byte key for encrypting iCloud passwords                              |
+| `ONECAL_APP_ID`        | OneCal app ID (for Outlook)                                              |
+| `ONECAL_API_KEY`       | OneCal API key (for Outlook)                                             |
+| `GEMINI_API_KEY`       | Google Gemini API key (for AI features) - optional, can be user-provided |
 
 ---
 

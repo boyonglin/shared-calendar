@@ -17,7 +17,7 @@
     "googleapis": "^146.0.0",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
-    "node-ical": "^0.20.1",
+    "node-ical": "^0.22.1",
     "pino": "^10.1.0",
     "pino-pretty": "^13.1.2",
     "tsdav": "^2.1.6",

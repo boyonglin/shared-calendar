@@ -22,7 +22,7 @@ export function parseDateParam(value: unknown): Date | undefined {
 
 /**
  * Parse and validate time range parameters from query params
- * Returns an object with timeMin and timeMax, or throws an error message
+ * Returns an object with timeMin and timeMax, or an error property if validation fails
  */
 export function parseTimeRangeParams(query: {
   timeMin?: unknown;
