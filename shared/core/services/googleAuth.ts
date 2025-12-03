@@ -9,7 +9,14 @@ import {
   type CalendarAccount,
 } from "../repositories/index.js";
 import { userConnectionRepository } from "../repositories/index.js";
-import { GOOGLE_OAUTH_SCOPES, GOOGLE_REVOKE_URL } from "../constants/index.js";
+import {
+  GOOGLE_OAUTH_SCOPES,
+  GOOGLE_REVOKE_URL,
+  DEFAULT_API_FETCH_DAYS,
+} from "../constants/index.js";
+import { createServiceLogger, logServiceError } from "../utils/logger.js";
+
+const logger = createServiceLogger("googleAuth");
 
 /**
  * Google Auth Service interface
@@ -112,7 +119,11 @@ function createOAuth2ClientForUser(
           );
         }
       } catch (error) {
-        console.error(`Failed to refresh tokens for user ${userId}:`, error);
+        logServiceError(
+          logger,
+          error,
+          `Failed to refresh tokens for user ${userId}`,
+        );
       }
     },
   );
@@ -255,7 +266,7 @@ export const googleAuthService: GoogleAuthService = {
     const now = new Date();
     const defaultTimeMin = now.toISOString();
     const defaultTimeMax = new Date(now.getTime());
-    defaultTimeMax.setDate(defaultTimeMax.getDate() + 28);
+    defaultTimeMax.setDate(defaultTimeMax.getDate() + DEFAULT_API_FETCH_DAYS);
 
     const res = await calendar.events.list({
       calendarId: "primary",
@@ -322,12 +333,13 @@ export const googleAuthService: GoogleAuthService = {
           body: `token=${encodeURIComponent(account.access_token)}`,
         });
         if (!response.ok) {
-          console.warn(
-            `Google token revocation failed with status ${response.status}`,
+          logger.warn(
+            { status: response.status },
+            "Google token revocation failed",
           );
         }
       } catch (error) {
-        console.error("Failed to revoke token with Google:", error);
+        logServiceError(logger, error, "Failed to revoke token with Google");
       }
     }
 

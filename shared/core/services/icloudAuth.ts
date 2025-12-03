@@ -8,7 +8,13 @@ import ical from "node-ical";
 import { v4 as uuidv4 } from "uuid";
 import { calendarAccountRepository } from "../repositories/index.js";
 import { encrypt, decrypt } from "../utils/encryption.js";
-import { ICLOUD_CALDAV_URL } from "../constants/index.js";
+import {
+  ICLOUD_CALDAV_URL,
+  DEFAULT_API_FETCH_DAYS,
+} from "../constants/index.js";
+import { createServiceLogger, logServiceError } from "../utils/logger.js";
+
+const logger = createServiceLogger("icloudAuth");
 
 export const icloudAuthService = {
   /**
@@ -55,7 +61,7 @@ export const icloudAuthService = {
         },
       };
     } catch (error) {
-      console.error("iCloud verification failed:", error);
+      logServiceError(logger, error, "iCloud verification failed");
       throw new Error(
         "Failed to verify iCloud credentials. Please check your Apple ID and App-Specific Password.",
       );
@@ -83,7 +89,7 @@ export const icloudAuthService = {
     try {
       password = decrypt(account.encrypted_password);
     } catch (e) {
-      console.error("Failed to decrypt password", e);
+      logServiceError(logger, e, "Failed to decrypt password");
       throw new Error("Authentication error");
     }
 
@@ -110,7 +116,10 @@ export const icloudAuthService = {
 
       const now = timeMin || new Date();
       const fourWeeksLater =
-        timeMax || new Date(new Date().setDate(new Date().getDate() + 28));
+        timeMax ||
+        new Date(
+          new Date().setDate(new Date().getDate() + DEFAULT_API_FETCH_DAYS),
+        );
 
       for (const calendar of calendars) {
         const objects = await client.fetchCalendarObjects({
@@ -147,7 +156,11 @@ export const icloudAuthService = {
                 }
               }
             } catch (parseErr) {
-              console.error("Error parsing iCloud calendar object:", parseErr);
+              logServiceError(
+                logger,
+                parseErr,
+                "Error parsing iCloud calendar object",
+              );
             }
           }
         }
@@ -155,7 +168,7 @@ export const icloudAuthService = {
 
       return allEvents;
     } catch (error) {
-      console.error("Error fetching iCloud events:", error);
+      logServiceError(logger, error, "Error fetching iCloud events");
       if (error instanceof Error && error.message.includes("401")) {
         throw new Error("Unauthorized");
       }

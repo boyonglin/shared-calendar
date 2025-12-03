@@ -17,3 +17,8 @@ export {
   buildAIPrompt,
   sanitizeEventDetails,
 } from "./ai.js";
+export {
+  sharedLogger,
+  createServiceLogger,
+  logServiceError,
+} from "./logger.js";

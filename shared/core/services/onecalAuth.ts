@@ -4,7 +4,10 @@
  * Handles Outlook/Microsoft Calendar integration via OneCal API.
  */
 import { calendarAccountRepository } from "../repositories/index.js";
-import { ONECAL_API_BASE } from "../constants/index.js";
+import { ONECAL_API_BASE, DEFAULT_API_FETCH_DAYS } from "../constants/index.js";
+import { createServiceLogger, logServiceError } from "../utils/logger.js";
+
+const logger = createServiceLogger("onecalAuth");
 
 interface OnecalEndUserAccount {
   id: string;
@@ -174,7 +177,10 @@ export const onecalAuthService = {
     const allEvents: TransformedEvent[] = [];
     const now = timeMin || new Date();
     const fourWeeksLater =
-      timeMax || new Date(new Date().setDate(new Date().getDate() + 28));
+      timeMax ||
+      new Date(
+        new Date().setDate(new Date().getDate() + DEFAULT_API_FETCH_DAYS),
+      );
 
     for (const calendar of calendars) {
       try {
@@ -205,9 +211,10 @@ export const onecalAuthService = {
           });
         }
       } catch (error) {
-        console.error(
-          `Error fetching events from calendar ${calendar.id}:`,
+        logServiceError(
+          logger,
           error,
+          `Error fetching events from calendar ${calendar.id}`,
         );
       }
     }
