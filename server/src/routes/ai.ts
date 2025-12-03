@@ -1,12 +1,11 @@
 /**
  * AI routes - handles AI-powered features like invitation drafts
  */
-import type { Response } from "express";
+import type { Response, NextFunction } from "express";
 import express from "express";
 import { validateDraftInvitation } from "../middleware/validation.js";
 import { authenticateUser } from "../middleware/auth.js";
 import type { AuthRequest } from "../middleware/auth.js";
-import { createRequestLogger, logError } from "../utils/logger.js";
 
 // Import from shared core
 import { aiService } from "../../../shared/core/index.js";
@@ -21,7 +20,7 @@ router.post(
   "/draft-invitation",
   authenticateUser,
   validateDraftInvitation,
-  async (req: AuthRequest, res: Response) => {
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const {
         title,
@@ -49,18 +48,7 @@ router.post(
 
       res.json({ draft });
     } catch (error) {
-      const log = createRequestLogger({
-        requestId: (req as AuthRequest & { requestId?: string }).requestId,
-        method: req.method,
-        path: req.path,
-        userId: req.user?.userId,
-      });
-      logError(log, error, "Error generating invitation draft");
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to generate invitation draft";
-      res.status(500).json({ error: message });
+      next(error);
     }
   },
 );

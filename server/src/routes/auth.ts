@@ -15,6 +15,7 @@ import {
   exchangeAuthCode,
   JWT_COOKIE_MAX_AGE_MS,
   OUTLOOK_AUTH_COOKIE_MAX_AGE_MS,
+  COOKIE_SAME_SITE,
 } from "../../../shared/core/index.js";
 
 const router = express.Router();
@@ -53,7 +54,7 @@ router.get("/google/callback", async (req: Request, res: Response) => {
     res.cookie("token", token, {
       httpOnly: true,
       secure: env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: COOKIE_SAME_SITE,
       maxAge: JWT_COOKIE_MAX_AGE_MS,
     });
 
@@ -181,7 +182,7 @@ router.get("/outlook", authenticateUser, (req: Request, res: Response) => {
     res.cookie("outlook_auth_state", stateToken, {
       httpOnly: true,
       secure: env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: COOKIE_SAME_SITE,
       maxAge: OUTLOOK_AUTH_COOKIE_MAX_AGE_MS,
     });
 
@@ -202,7 +203,7 @@ router.get("/outlook/callback", async (req: Request, res: Response) => {
   res.clearCookie("outlook_auth_state", {
     httpOnly: true,
     secure: env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: COOKIE_SAME_SITE,
   });
 
   if (!endUserAccountId || typeof endUserAccountId !== "string") {
@@ -282,7 +283,7 @@ router.delete(
       res.clearCookie("token", {
         httpOnly: true,
         secure: env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: COOKIE_SAME_SITE,
       });
 
       res.json({ success: true, message: "Account successfully revoked" });
