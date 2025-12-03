@@ -2,6 +2,7 @@
   "name": "shared-calendar-server",
   "version": "1.0.0",
   "description": "Backend API for shared calendar application",
+  "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",

@@ -1,10 +1,10 @@
 import type { Request, Response } from "express";
 import express from "express";
 import jwt from "jsonwebtoken";
-import { validateICloudCredentials } from "../middleware/validation";
-import { authenticateUser } from "../middleware/auth";
-import type { AuthRequest } from "../middleware/auth";
-import { env } from "../config/env";
+import { validateICloudCredentials } from "../middleware/validation.js";
+import { authenticateUser } from "../middleware/auth.js";
+import type { AuthRequest } from "../middleware/auth.js";
+import { env } from "../config/env.js";
 
 // Import from shared core
 import {
@@ -15,7 +15,7 @@ import {
   exchangeAuthCode,
   JWT_COOKIE_MAX_AGE_MS,
   OUTLOOK_AUTH_COOKIE_MAX_AGE_MS,
-} from "../../../shared/core";
+} from "../../../shared/core/index.js";
 
 const router = express.Router();
 

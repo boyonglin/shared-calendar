@@ -14,13 +14,13 @@ import type { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
-import authRoutes from "./routes/auth";
-import apiRoutes from "./routes/index";
-import logger from "./utils/logger";
-import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+import authRoutes from "./routes/auth.js";
+import apiRoutes from "./routes/index.js";
+import logger from "./utils/logger.js";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 
 // Import shared core
-import { healthCheck } from "../../shared/core";
+import { healthCheck } from "../../shared/core/index.js";
 
 // Environment configuration
 const CLIENT_URL =

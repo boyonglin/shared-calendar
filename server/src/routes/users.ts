@@ -3,11 +3,11 @@
  */
 import type { Request, Response } from "express";
 import express from "express";
-import { validateUserIdParam } from "../middleware/validation";
-import { createRequestLogger, logError } from "../utils/logger";
+import { validateUserIdParam } from "../middleware/validation.js";
+import { createRequestLogger, logError } from "../utils/logger.js";
 
 // Import from shared core
-import { googleAuthService } from "../../../shared/core";
+import { googleAuthService } from "../../../shared/core/index.js";
 
 const router = express.Router();
 

@@ -3,7 +3,7 @@ import { body, param, validationResult } from "express-validator";
 
 // Import shared validation utilities to avoid duplication
 // All core validation functions are defined once in shared/core
-export { isValidEmail } from "../../../shared/core";
+export { isValidEmail } from "../../../shared/core/index.js";
 
 // Validation middleware to check for errors
 export const validate = (

@@ -6,12 +6,12 @@
  */
 
 // IMPORTANT: Import env first to ensure dotenv is loaded before any other modules
-import { env } from "./config/env";
-import { app, logger } from "./app";
+import { env } from "./config/env.js";
+import { app, logger } from "./app.js";
 import {
   ensureDbInitialized,
   GRACEFUL_SHUTDOWN_TIMEOUT_MS,
-} from "../../shared/core";
+} from "../../shared/core/index.js";
 
 // Initialize database connection
 ensureDbInitialized()

@@ -3,13 +3,13 @@
  */
 import type { Response } from "express";
 import express from "express";
-import { validateDraftInvitation } from "../middleware/validation";
-import { authenticateUser } from "../middleware/auth";
-import type { AuthRequest } from "../middleware/auth";
-import { createRequestLogger, logError } from "../utils/logger";
+import { validateDraftInvitation } from "../middleware/validation.js";
+import { authenticateUser } from "../middleware/auth.js";
+import type { AuthRequest } from "../middleware/auth.js";
+import { createRequestLogger, logError } from "../utils/logger.js";
 
 // Import from shared core
-import { aiService } from "../../../shared/core";
+import { aiService } from "../../../shared/core/index.js";
 
 const router = express.Router();
 

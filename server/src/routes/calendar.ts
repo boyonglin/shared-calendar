@@ -7,17 +7,17 @@ import {
   validateUserId,
   validatePrimaryUserId,
   validateCreateEvent,
-} from "../middleware/validation";
-import { authenticateUser } from "../middleware/auth";
-import type { AuthRequest } from "../middleware/auth";
-import { createRequestLogger, logError } from "../utils/logger";
+} from "../middleware/validation.js";
+import { authenticateUser } from "../middleware/auth.js";
+import type { AuthRequest } from "../middleware/auth.js";
+import { createRequestLogger, logError } from "../utils/logger.js";
 import {
   BadRequestError,
   NotFoundError,
   ForbiddenError,
   UnauthorizedError,
   NotImplementedError,
-} from "../utils/errors";
+} from "../utils/errors.js";
 
 // Import from shared core
 import {
@@ -27,7 +27,7 @@ import {
   calendarAccountRepository,
   parseTimeRangeParams,
   type CalendarAccount,
-} from "../../../shared/core";
+} from "../../../shared/core/index.js";
 
 const router = express.Router();
 

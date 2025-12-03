@@ -8,10 +8,10 @@
  * - /api/ai/*        - AI-powered features
  */
 import express from "express";
-import usersRoutes from "./users";
-import calendarRoutes from "./calendar";
-import friendsRoutes from "./friends";
-import aiRoutes from "./ai";
+import usersRoutes from "./users.js";
+import calendarRoutes from "./calendar.js";
+import friendsRoutes from "./friends.js";
+import aiRoutes from "./ai.js";
 
 const router = express.Router();
 

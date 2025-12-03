@@ -5,9 +5,9 @@
  * with consistent error format.
  */
 import type { Request, Response, NextFunction } from "express";
-import { isAppError } from "../utils/errors";
-import { createRequestLogger, logError } from "../utils/logger";
-import { env } from "../config/env";
+import { isAppError } from "../utils/errors.js";
+import { createRequestLogger, logError } from "../utils/logger.js";
+import { env } from "../config/env.js";
 
 interface ErrorResponse {
   error: string;

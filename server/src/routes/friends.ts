@@ -3,10 +3,10 @@
  */
 import type { Response, NextFunction } from "express";
 import express from "express";
-import { authenticateUser } from "../middleware/auth";
-import type { AuthRequest } from "../middleware/auth";
-import { createRequestLogger, logError } from "../utils/logger";
-import { BadRequestError, NotFoundError, ConflictError } from "../utils/errors";
+import { authenticateUser } from "../middleware/auth.js";
+import type { AuthRequest } from "../middleware/auth.js";
+import { createRequestLogger, logError } from "../utils/logger.js";
+import { BadRequestError, NotFoundError, ConflictError } from "../utils/errors.js";
 
 // Import from shared core - all validation and utility functions are centralized here
 import {
@@ -20,7 +20,7 @@ import {
   parseTimeRangeParams,
   isValidEmail,
   validateFriendId,
-} from "../../../shared/core";
+} from "../../../shared/core/index.js";
 
 const router = express.Router();
 
