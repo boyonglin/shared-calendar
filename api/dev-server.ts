@@ -9,8 +9,8 @@ import dotenv from "dotenv";
 // Load environment variables from root .env
 dotenv.config({ path: "../.env" });
 
-import { app } from "../server/src/app";
-import { ensureDbInitialized } from "../shared/core";
+import { app } from "../server/src/app.js";
+import { ensureDbInitialized } from "../shared/core/index.js";
 
 const PORT = process.env.PORT || 3001;
 

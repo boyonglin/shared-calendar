@@ -11,8 +11,8 @@
 import dotenv from "dotenv";
 dotenv.config({ path: "../.env" });
 
-import { app } from "../server/src/app";
-import { ensureDbInitialized } from "../shared/core";
+import { app } from "../server/src/app.js";
+import { ensureDbInitialized } from "../shared/core/index.js";
 
 // Initialize database on cold start
 ensureDbInitialized().catch(console.error);
