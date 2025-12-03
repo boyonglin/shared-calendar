@@ -25,6 +25,7 @@ import { Calendar, Clock, Sparkles } from "lucide-react";
 import { generateInvitationDraft } from "../services/api/ai";
 import { toast } from "sonner";
 import { getGeminiApiKey } from "./SettingsModal";
+import { closeAllTooltips } from "./EventBlock";
 
 interface InviteDialogProps {
   isOpen: boolean;
@@ -70,6 +71,13 @@ export function InviteDialog({
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  // Close all tooltips when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      closeAllTooltips();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) {

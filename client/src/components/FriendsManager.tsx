@@ -26,6 +26,7 @@ import {
   type FriendWithColor,
   type IncomingRequest,
 } from "@/services/api/friends";
+import { closeAllTooltips } from "./EventBlock";
 
 // Generate a temporary ID for optimistic updates
 const generateTempId = () => -Date.now();
@@ -135,6 +136,7 @@ export function FriendsManager({
   useEffect(() => {
     if (isOpen) {
       setActiveTab(initialTab);
+      closeAllTooltips();
       fetchFriends();
       fetchIncomingRequests();
     }

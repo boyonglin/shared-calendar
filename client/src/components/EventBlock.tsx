@@ -3,7 +3,16 @@ import { createPortal } from "react-dom";
 import type { CalendarEvent } from "../types";
 
 // Custom event name for closing all tooltips
-const CLOSE_TOOLTIPS_EVENT = "eventblock:closetooltips";
+export const CLOSE_TOOLTIPS_EVENT = "eventblock:closetooltips";
+
+// Helper function to close all tooltips - can be called from other components
+export function closeAllTooltips() {
+  document.dispatchEvent(
+    new globalThis.CustomEvent(CLOSE_TOOLTIPS_EVENT, {
+      detail: { sourceId: "external" },
+    }),
+  );
+}
 
 interface EventBlockProps {
   event: CalendarEvent;

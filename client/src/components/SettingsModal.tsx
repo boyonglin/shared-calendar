@@ -27,6 +27,7 @@ import {
   Check,
 } from "lucide-react";
 import { toast } from "sonner";
+import { closeAllTooltips } from "./EventBlock";
 
 const GEMINI_API_KEY_STORAGE_KEY = "gemini_api_key";
 const GEMINI_API_KEY_VALID_KEY = "gemini_api_key_valid";
@@ -90,6 +91,13 @@ export function SettingsModal({
 
   // Read stored key on each render to get current state
   const storedKey = localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY);
+
+  // Close all tooltips when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      closeAllTooltips();
+    }
+  }, [isOpen]);
 
   // Track key state accounting for removal action
   const effectiveStoredKey = removed ? null : storedKey;

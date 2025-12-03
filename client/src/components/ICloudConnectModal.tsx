@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { ExternalLink, Loader2 } from "lucide-react";
 import { authApi } from "@/services/api/auth";
+import { closeAllTooltips } from "./EventBlock";
 
 interface ICloudConnectModalProps {
   isOpen: boolean;
@@ -27,6 +28,13 @@ export function ICloudConnectModal({
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Close all tooltips when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      closeAllTooltips();
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,7 +129,11 @@ export function ICloudConnectModal({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading} className="flex-1">
+            <Button
+              type="submit"
+              disabled={isLoading || !email.trim() || !password.trim()}
+              className="flex-1"
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
