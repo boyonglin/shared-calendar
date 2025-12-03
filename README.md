@@ -93,28 +93,22 @@ The app will be available at:
 
 ### Environment Variables
 
-Create a `.env` file in the root directory with the following variables:
+Configuration is managed via environment variables. Refer to `.env.example` for the complete list.
 
-```env
-# Server Configuration
-PORT=3001
-CLIENT_URL=http://localhost:5173
-NODE_ENV=development
+**Server Variables (`server/.env`)**
 
+- **Server Configuration**: `NODE_ENV`, `PORT`, `CLIENT_URL`
+- **Google OAuth**: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`
+- **OneCal (Optional)**: `ONECAL_APP_ID`, `ONECAL_API_KEY`, `ONECAL_REDIRECT_URI`
+- **Security**: `JWT_SECRET`, `ENCRYPTION_KEY`
 
-# Google OAuth
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-GOOGLE_REDIRECT_URI=http://localhost:3001/api/auth/google/callback
+**Client Variables (`client/.env`)**
 
-# OneCal - Outlook Integration
-ONECAL_APP_ID=your_onecal_app_id
-ONECAL_API_KEY=your_onecal_api_key
+- **API Configuration**: `VITE_API_BASE_URL`
 
-# Security
-JWT_SECRET=your_jwt_secret_min_32_chars_64_for_production
-ENCRYPTION_KEY=your_32_byte_encryption_key_or_64_hex_chars
-```
+**Production / Deployment**
+
+- **Turso Database**: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`
 
 ### Google OAuth Setup
 
@@ -177,23 +171,6 @@ shared-calendar/
 ## 📚 API Documentation
 
 The API specification is available in [`openapi.json`](./openapi.json) (OpenAPI 3.0 format).
-
-### Environment Variables Reference
-
-| Variable               | Description                                                              |
-| ---------------------- | ------------------------------------------------------------------------ |
-| `PORT`                 | Server port (default: 3001)                                              |
-| `CLIENT_URL`           | Frontend URL for CORS and redirects                                      |
-| `NODE_ENV`             | `development` \| `production` \| `test`                                  |
-| `GOOGLE_CLIENT_ID`     | Google OAuth client ID                                                   |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret                                               |
-| `GOOGLE_REDIRECT_URI`  | Google OAuth callback URL                                                |
-| `JWT_SECRET`           | Secret for signing JWTs (min 32 chars)                                   |
-| `ENCRYPTION_KEY`       | 32-byte key for encrypting iCloud passwords                              |
-| `ONECAL_APP_ID`        | OneCal app ID (for Outlook)                                              |
-| `ONECAL_API_KEY`       | OneCal API key (for Outlook)                                             |
-| `ONECAL_REDIRECT_URI`  | OneCal OAuth callback URL (for Outlook)                                  |
-| `GEMINI_API_KEY`       | Google Gemini API key (for AI features) - optional, can be user-provided |
 
 ---
 
