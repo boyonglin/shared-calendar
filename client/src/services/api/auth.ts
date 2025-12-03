@@ -51,7 +51,8 @@ export const authApi = {
   /**
    * Sign out the current user by clearing the JWT cookie
    */
-  logout: () => apiClient.post<{ success: boolean; message: string }>("/api/auth/logout"),
+  logout: () =>
+    apiClient.post<{ success: boolean; message: string }>("/api/auth/logout"),
   /**
    * Revoke Google authorization and delete all user data
    */
