@@ -192,6 +192,7 @@ The API specification is available in [`openapi.json`](./openapi.json) (OpenAPI 
 | `ENCRYPTION_KEY`       | 32-byte key for encrypting iCloud passwords                              |
 | `ONECAL_APP_ID`        | OneCal app ID (for Outlook)                                              |
 | `ONECAL_API_KEY`       | OneCal API key (for Outlook)                                             |
+| `ONECAL_REDIRECT_URI`  | OneCal OAuth callback URL (for Outlook)                                  |
 | `GEMINI_API_KEY`       | Google Gemini API key (for AI features) - optional, can be user-provided |
 
 ---

@@ -31,6 +31,10 @@ const envSchema = z.object({
   // OneCal Configuration (for Outlook Calendar integration)
   ONECAL_APP_ID: z.string().optional(),
   ONECAL_API_KEY: z.string().optional(),
+  ONECAL_REDIRECT_URI: z
+    .string()
+    .url("ONECAL_REDIRECT_URI must be a valid URL")
+    .optional(),
 
   // Gemini Configuration
   GEMINI_API_KEY: z.string().optional(),

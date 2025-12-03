@@ -52,7 +52,13 @@ function getConfig() {
   return {
     appId: process.env.ONECAL_APP_ID,
     apiKey: process.env.ONECAL_API_KEY,
-    clientUrl: process.env.CLIENT_URL || "http://localhost:5173",
+    redirectUri:
+      process.env.ONECAL_REDIRECT_URI ||
+      process.env.GOOGLE_REDIRECT_URI?.replace(
+        "/google/callback",
+        "/outlook/callback",
+      ) ||
+      "http://localhost:3001/api/auth/outlook/callback",
   };
 }
 
@@ -60,9 +66,8 @@ function getConfig() {
  * Build redirect URL based on environment
  */
 function getRedirectUrl(): string {
-  const { clientUrl } = getConfig();
-  const baseUrl = clientUrl.replace(/\/$/, "");
-  return `${baseUrl}/api/auth/outlook/callback`;
+  const { redirectUri } = getConfig();
+  return redirectUri;
 }
 
 export const onecalAuthService = {
