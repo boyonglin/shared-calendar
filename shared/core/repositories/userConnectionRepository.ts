@@ -76,9 +76,12 @@ export const userConnectionRepository = {
     const db = await getDb();
     const result = await db.execute({
       sql: `
-        SELECT uc.*, ca.metadata 
+        SELECT uc.*, (
+          SELECT ca.metadata FROM calendar_accounts ca 
+          WHERE ca.user_id = uc.friend_user_id 
+          LIMIT 1
+        ) as metadata
         FROM user_connections uc
-        LEFT JOIN calendar_accounts ca ON ca.external_email = uc.friend_email
         WHERE uc.user_id = ? AND uc.status != 'incoming'
         ORDER BY uc.created_at DESC
       `,
@@ -93,9 +96,12 @@ export const userConnectionRepository = {
     const db = await getDb();
     const result = await db.execute({
       sql: `
-        SELECT uc.*, ca.metadata 
+        SELECT uc.*, (
+          SELECT ca.metadata FROM calendar_accounts ca 
+          WHERE ca.user_id = uc.friend_user_id 
+          LIMIT 1
+        ) as metadata
         FROM user_connections uc
-        LEFT JOIN calendar_accounts ca ON ca.external_email = uc.friend_email
         WHERE uc.user_id = ? AND uc.status = 'incoming'
         ORDER BY uc.created_at DESC
       `,
@@ -261,9 +267,12 @@ export const userConnectionRepository = {
     const db = await getDb();
     const result = await db.execute({
       sql: `
-        SELECT uc.*, ca.metadata
+        SELECT uc.*, (
+          SELECT ca.metadata FROM calendar_accounts ca 
+          WHERE ca.user_id = uc.user_id 
+          LIMIT 1
+        ) as metadata
         FROM user_connections uc
-        LEFT JOIN calendar_accounts ca ON ca.user_id = uc.user_id
         WHERE LOWER(uc.friend_email) = LOWER(?) AND uc.status IN ('pending', 'requested')
       `,
       args: [friendEmail],
