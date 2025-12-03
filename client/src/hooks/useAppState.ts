@@ -5,7 +5,7 @@
  * to reduce complexity in App.tsx
  */
 import { useState, useCallback, useMemo } from "react";
-import type { User } from "../types";
+import type { User } from "@/types";
 
 export interface ModalState {
   settings: boolean;

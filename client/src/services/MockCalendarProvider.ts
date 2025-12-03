@@ -1,4 +1,4 @@
-import type { CalendarProvider } from "../interfaces/CalendarProvider";
+import type { CalendarProvider } from "@/interfaces/CalendarProvider";
 import type { CalendarEvent } from "@shared/types";
 
 /**

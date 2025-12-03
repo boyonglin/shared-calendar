@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { ICloudStatus } from "../services/api/calendar";
-import { calendarApi } from "../services/api/calendar";
+import type { ICloudStatus } from "@/services/api/calendar";
+import { calendarApi } from "@/services/api/calendar";
 
 export interface UseICloudConnectionReturn {
   iCloudStatus: ICloudStatus;

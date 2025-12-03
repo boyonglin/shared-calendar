@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react";
 import { Analytics } from "@vercel/analytics/react";
-import { CalendarView } from "./components/CalendarView";
-import { UserList } from "./components/UserList";
-import { InviteDialog } from "./components/InviteDialog";
-import { ICloudConnectModal } from "./components/ICloudConnectModal";
-import { SettingsModal } from "./components/SettingsModal";
-import { FriendsManager } from "./components/FriendsManager";
-import { UserProfileDropdown } from "./components/UserProfileDropdown";
-import { GoogleSignInButton } from "./components/GoogleSignInButton";
-import { Toaster } from "./components/ui/sonner";
+import { CalendarView } from "@/components/CalendarView";
+import { UserList } from "@/components/UserList";
+import { InviteDialog } from "@/components/InviteDialog";
+import { ICloudConnectModal } from "@/components/ICloudConnectModal";
+import { SettingsModal } from "@/components/SettingsModal";
+import { FriendsManager } from "@/components/FriendsManager";
+import { UserProfileDropdown } from "@/components/UserProfileDropdown";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { Button } from "./components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Moon, Sun } from "lucide-react";
 import {
   addDays,
@@ -19,21 +19,21 @@ import {
   startOfWeek,
   setHours,
 } from "date-fns";
-import type { User, TimeSlot } from "./types";
+import type { User, TimeSlot } from "@/types";
 import {
   GoogleAuthProvider,
   useGoogleAuth,
-} from "./contexts/GoogleAuthContext";
+} from "@/contexts/GoogleAuthContext";
 import {
   CalendarProviderWrapper,
   useCalendar,
-} from "./contexts/CalendarContext";
-import { useICloudConnection } from "./hooks/useICloudConnection";
-import { useOutlookConnection } from "./hooks/useOutlookConnection";
-import { useFriends } from "./hooks/useFriends";
-import { useCalendarAggregation } from "./hooks/useCalendarAggregation";
-import { useAppState } from "./hooks/useAppState";
-import { mockUsers, mockEvents } from "./data/mockData";
+} from "@/contexts/CalendarContext";
+import { useICloudConnection } from "@/hooks/useICloudConnection";
+import { useOutlookConnection } from "@/hooks/useOutlookConnection";
+import { useFriends } from "@/hooks/useFriends";
+import { useCalendarAggregation } from "@/hooks/useCalendarAggregation";
+import { useAppState } from "@/hooks/useAppState";
+import { mockUsers, mockEvents } from "@/data/mockData";
 
 function AppContent({
   weekStart,
