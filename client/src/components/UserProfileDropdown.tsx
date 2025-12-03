@@ -75,7 +75,10 @@ export function UserProfileDropdown({
         </div>
         <ChevronDown className="w-4 h-4 ml-auto sm:ml-0 text-gray-500 dark:text-gray-400" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[calc(100vw-2rem)] sm:w-56">
+      <DropdownMenuContent
+        align="end"
+        className="w-[var(--radix-dropdown-menu-trigger-width)] sm:w-fit sm:min-w-48 sm:max-w-72"
+      >
         <DropdownMenuItem
           onClick={onRefreshEvents}
           className="cursor-pointer"
@@ -105,8 +108,12 @@ export function UserProfileDropdown({
             <DropdownMenuTrigger asChild>
               <button className={submenuTriggerClassName} type="button">
                 <Cloud className="size-4 text-muted-foreground" />
-                <span className="flex-1 truncate text-left">
-                  iCloud ({iCloudStatus.email?.split("@")[0] || "account"})
+                <span className="flex-1 text-left">
+                  iCloud (
+                  <span className="inline-block max-w-24 truncate align-bottom">
+                    {iCloudStatus.email?.split("@")[0] || "account"}
+                  </span>
+                  )
                 </span>
                 <ChevronDown className="size-3 text-muted-foreground" />
               </button>
@@ -114,7 +121,7 @@ export function UserProfileDropdown({
             <DropdownMenuContent
               side="bottom"
               align="end"
-              className="w-56 shadow-lg"
+              className="w-fit min-w-40 shadow-lg"
               sideOffset={8}
             >
               <DropdownMenuItem
@@ -158,8 +165,12 @@ export function UserProfileDropdown({
             <DropdownMenuTrigger asChild>
               <button className={submenuTriggerClassName} type="button">
                 <Mail className="size-4 text-muted-foreground" />
-                <span className="flex-1 truncate text-left">
-                  Outlook ({outlookStatus.email?.split("@")[0] || "account"})
+                <span className="flex-1 text-left">
+                  Outlook (
+                  <span className="inline-block max-w-24 truncate align-bottom">
+                    {outlookStatus.email?.split("@")[0] || "account"}
+                  </span>
+                  )
                 </span>
                 <ChevronDown className="size-3 text-muted-foreground" />
               </button>
@@ -167,7 +178,7 @@ export function UserProfileDropdown({
             <DropdownMenuContent
               side="bottom"
               align="end"
-              className="w-56 shadow-lg"
+              className="w-fit min-w-40 shadow-lg"
               sideOffset={8}
             >
               <DropdownMenuItem
