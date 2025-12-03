@@ -3,6 +3,10 @@
  */
 
 import { convertToViewerTimezone } from "@/utils/timezone";
+import {
+  CALENDAR_FETCH_DAYS_BEFORE,
+  CALENDAR_FETCH_DAYS_AFTER,
+} from "@shared/core/constants/index";
 
 /**
  * Calculate time range for fetching calendar events
@@ -18,11 +22,11 @@ export function calculateEventTimeRange(weekStart?: Date): {
 
   if (weekStart) {
     timeMin = new Date(weekStart);
-    timeMin.setDate(timeMin.getDate() - 14); // 2 weeks before
+    timeMin.setDate(timeMin.getDate() - CALENDAR_FETCH_DAYS_BEFORE);
     timeMin.setHours(0, 0, 0, 0);
 
     timeMax = new Date(weekStart);
-    timeMax.setDate(timeMax.getDate() + 21); // 3 weeks after
+    timeMax.setDate(timeMax.getDate() + CALENDAR_FETCH_DAYS_AFTER);
     timeMax.setHours(23, 59, 59, 999);
   } else {
     const now = new Date();

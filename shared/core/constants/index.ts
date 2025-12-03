@@ -67,6 +67,50 @@ export const DEFAULT_EVENT_FETCH_WEEKS = 4;
 export const DEFAULT_EVENT_FETCH_RANGE_MS =
   DEFAULT_EVENT_FETCH_WEEKS * ONE_WEEK_MS;
 
+/** Calendar fetch: weeks before current week to fetch */
+export const CALENDAR_FETCH_WEEKS_BEFORE = 2;
+
+/** Calendar fetch: weeks after current week to fetch */
+export const CALENDAR_FETCH_WEEKS_AFTER = 3;
+
+/** Calendar fetch: days before current week start (CALENDAR_FETCH_WEEKS_BEFORE * 7) */
+export const CALENDAR_FETCH_DAYS_BEFORE = CALENDAR_FETCH_WEEKS_BEFORE * 7;
+
+/** Calendar fetch: days after current week start (CALENDAR_FETCH_WEEKS_AFTER * 7) */
+export const CALENDAR_FETCH_DAYS_AFTER = CALENDAR_FETCH_WEEKS_AFTER * 7;
+
+/** Calendar view: days in a week */
+export const DAYS_IN_WEEK = 7;
+
+/** Default API event fetch range in days (4 weeks = 28 days) */
+export const DEFAULT_API_FETCH_DAYS = 28;
+
+// =============================================================================
+// SSE (Server-Sent Events)
+// =============================================================================
+
+/** SSE connection timeout in milliseconds (default: 30 seconds) */
+export const SSE_TIMEOUT_MS = 30_000;
+
+/** SSE heartbeat interval in milliseconds (15 seconds) */
+export const SSE_HEARTBEAT_INTERVAL_MS = 15_000;
+
+// =============================================================================
+// Cookie Configuration
+// =============================================================================
+
+/**
+ * Standard cookie sameSite setting for authentication cookies
+ * Using "lax" to support OAuth redirect flows while still providing
+ * reasonable CSRF protection
+ */
+export const COOKIE_SAME_SITE = "lax" as const;
+
+/**
+ * Cookie sameSite type for TypeScript
+ */
+export type CookieSameSite = "lax" | "strict" | "none";
+
 // =============================================================================
 // Server
 // =============================================================================

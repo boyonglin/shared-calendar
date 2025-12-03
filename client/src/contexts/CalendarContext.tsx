@@ -12,6 +12,10 @@ import type { CalendarProvider } from "@/interfaces/CalendarProvider";
 import { MockCalendarProvider } from "@/services/MockCalendarProvider";
 import { UnifiedCalendarProvider } from "@/services/UnifiedCalendarProvider";
 import { useGoogleAuth } from "./GoogleAuthContext";
+import {
+  CALENDAR_FETCH_DAYS_BEFORE,
+  CALENDAR_FETCH_DAYS_AFTER,
+} from "@shared/core/constants/index";
 
 const AUTO_REFRESH_INTERVAL_MS = 60 * 1000;
 
@@ -124,11 +128,11 @@ export function CalendarProviderWrapper({
     if (weekStart) {
       // Fetch events for 5 weeks total: current week (w0), 2 weeks before (w-1, w-2?), and 2 weeks after
       start = new Date(weekStart);
-      start.setDate(start.getDate() - 14); // 2 weeks before
+      start.setDate(start.getDate() - CALENDAR_FETCH_DAYS_BEFORE);
       start.setHours(0, 0, 0, 0); // Normalize to midnight
 
       end = new Date(weekStart);
-      end.setDate(end.getDate() + 21); // 3 weeks after (covers current week + 2 more)
+      end.setDate(end.getDate() + CALENDAR_FETCH_DAYS_AFTER);
       end.setHours(23, 59, 59, 999); // End of day
     } else {
       // Fallback to broad range if no weekStart provided

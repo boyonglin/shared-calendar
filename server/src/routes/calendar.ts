@@ -26,6 +26,8 @@ import {
   onecalAuthService,
   calendarAccountRepository,
   parseTimeRangeParams,
+  SSE_TIMEOUT_MS,
+  SSE_HEARTBEAT_INTERVAL_MS,
   type CalendarAccount,
 } from "../../../shared/core/index.js";
 
@@ -144,11 +146,9 @@ router.get(
   },
 );
 
-/** SSE connection timeout in milliseconds (30 seconds) */
-const SSE_TIMEOUT_MS = 30_000;
-
-/** SSE heartbeat interval in milliseconds (15 seconds) */
-const SSE_HEARTBEAT_INTERVAL_MS = 15_000;
+// =============================================================================
+// SSE (Server-Sent Events) Calendar Streaming
+// =============================================================================
 
 /**
  * GET /calendar/events-stream/:primaryUserId

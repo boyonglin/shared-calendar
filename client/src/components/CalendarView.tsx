@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { EventBlock } from "./EventBlock";
 import { ScrollArea } from "./ui/scroll-area";
+import { DAYS_IN_WEEK } from "@shared/core/constants/index";
 
 interface CalendarViewProps {
   users: User[];
@@ -38,7 +39,7 @@ export function CalendarView({
       minute: (i % 2) * 30,
     }),
   );
-  const weekDays = Array.from({ length: 7 }, (_, i) => {
+  const weekDays = Array.from({ length: DAYS_IN_WEEK }, (_, i) => {
     const date = new Date(weekStart);
     date.setDate(date.getDate() + i);
     return date;
@@ -50,7 +51,7 @@ export function CalendarView({
 
   const formatWeekRange = () => {
     const end = new Date(weekStart);
-    end.setDate(end.getDate() + 6);
+    end.setDate(end.getDate() + DAYS_IN_WEEK - 1);
     return `${formatDate(weekStart)} - ${formatDate(end)}`;
   };
 
