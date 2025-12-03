@@ -7,6 +7,7 @@ import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth";
+import riscRoutes from "./routes/risc";
 import apiRoutes from "./routes/index";
 import logger from "./utils/logger";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
@@ -61,6 +62,7 @@ app.use(
 app.use(express.json({ limit: "10kb" }));
 
 // Routes
+app.use("/api/auth/risc", riscRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api", apiRoutes);
 
