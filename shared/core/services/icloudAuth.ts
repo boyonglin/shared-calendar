@@ -120,7 +120,7 @@ export const icloudAuthService = {
         for (const obj of objects) {
           if (obj.data) {
             try {
-              const parsed = ical.parseICS(obj.data);
+              const parsed = ical.sync.parseICS(obj.data);
 
               for (const key in parsed) {
                 const event = parsed[key];

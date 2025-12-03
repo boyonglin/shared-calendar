@@ -6,6 +6,7 @@ export { createAuthCode, exchangeAuthCode } from "./authCodes.js";
 export {
   isValidEmail,
   parseDateParam,
+  parseTimeRangeParams,
   validateFriendId,
 } from "./validation.js";
 export { generateFriendColor, extractFriendName } from "./friends.js";

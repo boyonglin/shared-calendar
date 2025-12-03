@@ -12,6 +12,6 @@
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["./**/*.ts", "../shared/**/*.ts"],
+  "include": ["./**/*.ts", "../shared/**/*.ts", "../server/src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

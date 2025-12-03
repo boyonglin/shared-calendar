@@ -14,7 +14,7 @@ const isDevelopment = env.NODE_ENV !== "production";
 
 // Base logger configuration
 export const logger = pino({
-  level: env.LOG_LEVEL || (isDevelopment ? "debug" : "info"),
+  level: isDevelopment ? "debug" : "info",
   // Use pino-pretty in development for readable logs
   transport: isDevelopment
     ? {

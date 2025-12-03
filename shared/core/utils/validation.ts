@@ -12,12 +12,33 @@ export function isValidEmail(email: string): boolean {
 }
 
 /**
- * Validate date parameter
+ * Parse a date parameter, returning undefined if not provided or invalid
  */
 export function parseDateParam(value: unknown): Date | undefined {
   if (!value) return undefined;
   const date = new Date(value as string);
   return isNaN(date.getTime()) ? undefined : date;
+}
+
+/**
+ * Parse and validate time range parameters from query params
+ * Returns an object with timeMin and timeMax, or an error property if validation fails
+ */
+export function parseTimeRangeParams(query: {
+  timeMin?: unknown;
+  timeMax?: unknown;
+}): { timeMin?: Date; timeMax?: Date; error?: string } {
+  const timeMin = parseDateParam(query.timeMin);
+  const timeMax = parseDateParam(query.timeMax);
+
+  if (query.timeMin && !timeMin) {
+    return { error: "Invalid timeMin parameter" };
+  }
+  if (query.timeMax && !timeMax) {
+    return { error: "Invalid timeMax parameter" };
+  }
+
+  return { timeMin, timeMax };
 }
 
 /**

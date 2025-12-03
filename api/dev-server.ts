@@ -1,44 +1,27 @@
 /**
  * Local development server for testing the Vercel API function
+ *
+ * This dev server now uses the same Express app as both
+ * the local server and Vercel deployment, ensuring consistency.
  */
-import express, { type Request, type Response } from "express";
-import cors from "cors";
 import dotenv from "dotenv";
-import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 // Load environment variables from root .env
 dotenv.config({ path: "../.env" });
 
-// Dynamic import for the handler
-const loadHandler = async () => {
-  const module = await import("./index.js");
-  return module.default;
-};
+import { app } from "../server/src/app";
+import { ensureDbInitialized } from "../shared/core";
 
-const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
+// Initialize database
+ensureDbInitialized()
+  .then(() => {
+    console.log("Database initialized");
+  })
+  .catch(console.error);
 
-// Mock Vercel request/response adapter - handle /api and /api/*
-app.all(["/api", "/api/*"], async (req: Request, res: Response) => {
-  try {
-    const handler = await loadHandler();
-
-    // Convert Express req to Vercel format
-    const vercelReq = req as unknown as VercelRequest;
-    const vercelRes = res as unknown as VercelResponse;
-
-    // Call the Vercel handler
-    await handler(vercelReq, vercelRes);
-  } catch (error) {
-    console.error("Handler error:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
+// Start the server
 app.listen(PORT, () => {
   console.log(`🚀 API dev server running at http://localhost:${PORT}`);
   console.log(`📍 Test endpoints:`);

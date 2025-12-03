@@ -25,6 +25,7 @@ import {
   icloudAuthService,
   onecalAuthService,
   calendarAccountRepository,
+  parseTimeRangeParams,
   type CalendarAccount,
 } from "../../../shared/core";
 
@@ -33,22 +34,6 @@ const router = express.Router();
 // =============================================================================
 // Helper Functions
 // =============================================================================
-
-/**
- * Parse and validate date query parameters
- */
-function parseDateParam(
-  value: unknown,
-): { valid: true; date: Date } | { valid: false; error: string } {
-  if (!value) {
-    return { valid: true, date: undefined as unknown as Date };
-  }
-  const date = new Date(value as string);
-  if (isNaN(date.getTime())) {
-    return { valid: false, error: "Invalid date parameter" };
-  }
-  return { valid: true, date };
-}
 
 /**
  * Fetch events from a calendar provider
@@ -105,17 +90,10 @@ router.get(
       const primaryUserId = (req as AuthRequest).user!.userId;
 
       // Validate time parameters
-      const timeMinResult = parseDateParam(req.query.timeMin);
-      if (!timeMinResult.valid) {
-        throw new BadRequestError("Invalid timeMin parameter");
+      const { timeMin, timeMax, error } = parseTimeRangeParams(req.query);
+      if (error) {
+        throw new BadRequestError(error);
       }
-      const timeMaxResult = parseDateParam(req.query.timeMax);
-      if (!timeMaxResult.valid) {
-        throw new BadRequestError("Invalid timeMax parameter");
-      }
-
-      const timeMin = timeMinResult.date || undefined;
-      const timeMax = timeMaxResult.date || undefined;
 
       // Get all calendar accounts linked to this primary user
       const accounts =
@@ -228,18 +206,11 @@ router.get(
     try {
       const primaryUserId = (req as AuthRequest).user!.userId;
 
-      // Validate time parameters before setting up SSE
-      const timeMinResult = parseDateParam(req.query.timeMin);
-      if (!timeMinResult.valid) {
-        throw new BadRequestError("Invalid timeMin parameter");
+      // Validate time parameters
+      const { timeMin, timeMax, error } = parseTimeRangeParams(req.query);
+      if (error) {
+        throw new BadRequestError(error);
       }
-      const timeMaxResult = parseDateParam(req.query.timeMax);
-      if (!timeMaxResult.valid) {
-        throw new BadRequestError("Invalid timeMax parameter");
-      }
-
-      const timeMin = timeMinResult.date || undefined;
-      const timeMax = timeMaxResult.date || undefined;
 
       // Get all calendar accounts linked to this primary user
       const accounts =
@@ -360,17 +331,10 @@ router.get(
       const requestedUserId = req.params.userId;
 
       // Validate time parameters
-      const timeMinResult = parseDateParam(req.query.timeMin);
-      if (!timeMinResult.valid) {
-        throw new BadRequestError("Invalid timeMin parameter");
+      const { timeMin, timeMax, error } = parseTimeRangeParams(req.query);
+      if (error) {
+        throw new BadRequestError(error);
       }
-      const timeMaxResult = parseDateParam(req.query.timeMax);
-      if (!timeMaxResult.valid) {
-        throw new BadRequestError("Invalid timeMax parameter");
-      }
-
-      const timeMin = timeMinResult.date || undefined;
-      const timeMax = timeMaxResult.date || undefined;
 
       // Check which provider this user is using
       const account =
