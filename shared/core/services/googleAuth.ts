@@ -131,6 +131,9 @@ export const googleAuthService: GoogleAuthService = {
       scope: GOOGLE_OAUTH_SCOPES,
       prompt: "consent",
       state,
+      // Enable incremental authorization - allows requesting additional scopes
+      // later while preserving previously granted scopes
+      include_granted_scopes: true,
     });
   },
 

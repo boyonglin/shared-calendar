@@ -3,6 +3,7 @@
  */
 export { encrypt, decrypt } from "./encryption.js";
 export { createAuthCode, exchangeAuthCode } from "./authCodes.js";
+export { generateOAuthState, validateOAuthState } from "./oauthState.js";
 export {
   isValidEmail,
   parseDateParam,
