@@ -25,7 +25,7 @@ import {
   icloudAuthService,
   onecalAuthService,
   calendarAccountRepository,
-  parseDateParam,
+  parseTimeRangeParams,
   type CalendarAccount,
 } from "../../../shared/core";
 
@@ -89,16 +89,10 @@ router.get(
     try {
       const primaryUserId = (req as AuthRequest).user!.userId;
 
-      // Validate time parameters using shared parseDateParam
-      const timeMin = parseDateParam(req.query.timeMin);
-      const timeMax = parseDateParam(req.query.timeMax);
-
-      // Check for invalid date formats (provided but couldn't be parsed)
-      if (req.query.timeMin && !timeMin) {
-        throw new BadRequestError("Invalid timeMin parameter");
-      }
-      if (req.query.timeMax && !timeMax) {
-        throw new BadRequestError("Invalid timeMax parameter");
+      // Validate time parameters
+      const { timeMin, timeMax, error } = parseTimeRangeParams(req.query);
+      if (error) {
+        throw new BadRequestError(error);
       }
 
       // Get all calendar accounts linked to this primary user
@@ -212,16 +206,10 @@ router.get(
     try {
       const primaryUserId = (req as AuthRequest).user!.userId;
 
-      // Validate time parameters using shared parseDateParam
-      const timeMin = parseDateParam(req.query.timeMin);
-      const timeMax = parseDateParam(req.query.timeMax);
-
-      // Check for invalid date formats (provided but couldn't be parsed)
-      if (req.query.timeMin && !timeMin) {
-        throw new BadRequestError("Invalid timeMin parameter");
-      }
-      if (req.query.timeMax && !timeMax) {
-        throw new BadRequestError("Invalid timeMax parameter");
+      // Validate time parameters
+      const { timeMin, timeMax, error } = parseTimeRangeParams(req.query);
+      if (error) {
+        throw new BadRequestError(error);
       }
 
       // Get all calendar accounts linked to this primary user
@@ -342,16 +330,10 @@ router.get(
       const authUserId = (req as AuthRequest).user!.userId;
       const requestedUserId = req.params.userId;
 
-      // Validate time parameters using shared parseDateParam
-      const timeMin = parseDateParam(req.query.timeMin);
-      const timeMax = parseDateParam(req.query.timeMax);
-
-      // Check for invalid date formats (provided but couldn't be parsed)
-      if (req.query.timeMin && !timeMin) {
-        throw new BadRequestError("Invalid timeMin parameter");
-      }
-      if (req.query.timeMax && !timeMax) {
-        throw new BadRequestError("Invalid timeMax parameter");
+      // Validate time parameters
+      const { timeMin, timeMax, error } = parseTimeRangeParams(req.query);
+      if (error) {
+        throw new BadRequestError(error);
       }
 
       // Check which provider this user is using

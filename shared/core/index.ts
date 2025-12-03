@@ -50,6 +50,7 @@ export {
   exchangeAuthCode,
   isValidEmail,
   parseDateParam,
+  parseTimeRangeParams,
   validateFriendId,
   generateFriendColor,
   extractFriendName,

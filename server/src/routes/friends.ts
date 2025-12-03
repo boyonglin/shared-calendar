@@ -17,7 +17,7 @@ import {
   userConnectionRepository,
   generateFriendColor,
   extractFriendName,
-  parseDateParam,
+  parseTimeRangeParams,
   isValidEmail,
   validateFriendId,
 } from "../../../shared/core";
@@ -461,14 +461,10 @@ router.get(
         );
       }
 
-      const timeMin = parseDateParam(req.query.timeMin);
-      const timeMax = parseDateParam(req.query.timeMax);
-
-      if (req.query.timeMin && !timeMin) {
-        throw new BadRequestError("Invalid timeMin parameter");
-      }
-      if (req.query.timeMax && !timeMax) {
-        throw new BadRequestError("Invalid timeMax parameter");
+      // Validate time parameters
+      const { timeMin, timeMax, error } = parseTimeRangeParams(req.query);
+      if (error) {
+        throw new BadRequestError(error);
       }
 
       // Get friend's calendar accounts
