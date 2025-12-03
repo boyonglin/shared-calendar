@@ -407,10 +407,10 @@ export function FriendsManager({
                             }
                             className={`text-xs ${
                               friend.status === "accepted"
-                                ? "bg-green-100 text-green-700 hover:bg-green-100"
+                                ? "bg-green-500/20 text-green-700 dark:text-green-400 hover:bg-green-500/30"
                                 : friend.status === "requested"
-                                  ? "bg-orange-100 text-orange-700 hover:bg-orange-100"
-                                  : "bg-gray-100 text-gray-700 hover:bg-gray-100"
+                                  ? "bg-orange-500/20 text-orange-700 dark:text-orange-400 hover:bg-orange-500/30"
+                                  : "bg-gray-500/20 text-gray-700 dark:text-gray-400 hover:bg-gray-500/30"
                             }`}
                           >
                             {friend.status === "accepted"
