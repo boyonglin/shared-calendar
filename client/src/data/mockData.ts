@@ -3,6 +3,11 @@
  * Used when the user has no friends connected yet
  */
 import type { User, CalendarEvent } from "@shared/types";
+import {
+  CALENDAR_FETCH_DAYS_BEFORE,
+  CALENDAR_FETCH_DAYS_AFTER,
+  ONE_WEEK_MS,
+} from "@shared/core/constants/index";
 
 /**
  * Mock users for demonstration
@@ -58,15 +63,16 @@ function seededRandom(seed: number): () => number {
 
 /**
  * Generate mock events dynamically based on current date
- * Events are spread across 5 weeks: -2 weeks, -1 week, current week, +1 week, +2 weeks
+ * Events span 36 days total: 14 days before today through 21 days after (~5 weeks asymmetric)
+ * Range mirrors CalendarContext fetch window for consistency
  */
 function generateMockEvents(): CalendarEvent[] {
   const events: CalendarEvent[] = [];
-  const userIds = ["mock-2", "mock-3", "mock-4"];
+  const userIds = mockUsers.map((user) => user.id);
 
   // Use week of year as seed for consistency within a session
   const today = new Date();
-  const weekSeed = Math.floor(today.getTime() / (7 * 24 * 60 * 60 * 1000));
+  const weekSeed = Math.floor(today.getTime() / ONE_WEEK_MS);
   const random = seededRandom(weekSeed);
 
   // Event templates with titles and durations
@@ -88,8 +94,12 @@ function generateMockEvents(): CalendarEvent[] {
 
   let eventId = 1;
 
-  // Generate events for 35 days: -14 to +14 (5 weeks: -2, -1, 0, +1, +2)
-  for (let dayOffset = -14; dayOffset <= 14; dayOffset++) {
+  // Mirror CalendarContext range so mock + real providers stay in sync
+  for (
+    let dayOffset = -CALENDAR_FETCH_DAYS_BEFORE;
+    dayOffset <= CALENDAR_FETCH_DAYS_AFTER;
+    dayOffset++
+  ) {
     const checkDate = new Date();
     checkDate.setDate(checkDate.getDate() + dayOffset);
     const dayOfWeek = checkDate.getDay();
@@ -148,6 +158,6 @@ function generateMockEvents(): CalendarEvent[] {
 
 /**
  * Mock events generated dynamically relative to today
- * Covers 5 weeks: -2 weeks, -1 week, current week, +1 week, +2 weeks
+ * Covers 36 days: 14 days before through 21 days after (asymmetric ~5 week window)
  */
 export const mockEvents: CalendarEvent[] = generateMockEvents();

@@ -60,27 +60,14 @@ export const ICLOUD_CALDAV_URL = "https://caldav.icloud.com";
 // Calendar
 // =============================================================================
 
-/** Default calendar event fetch range (4 weeks) */
-export const DEFAULT_EVENT_FETCH_WEEKS = 4;
-
-/** Default calendar event fetch range in milliseconds */
-export const DEFAULT_EVENT_FETCH_RANGE_MS =
-  DEFAULT_EVENT_FETCH_WEEKS * ONE_WEEK_MS;
-
-/** Calendar fetch: weeks before current week to fetch */
-export const CALENDAR_FETCH_WEEKS_BEFORE = 2;
-
-/** Calendar fetch: weeks after current week to fetch */
-export const CALENDAR_FETCH_WEEKS_AFTER = 3;
-
-/** Calendar fetch: days before current week start (CALENDAR_FETCH_WEEKS_BEFORE * 7) */
-export const CALENDAR_FETCH_DAYS_BEFORE = CALENDAR_FETCH_WEEKS_BEFORE * 7;
-
-/** Calendar fetch: days after current week start (CALENDAR_FETCH_WEEKS_AFTER * 7) */
-export const CALENDAR_FETCH_DAYS_AFTER = CALENDAR_FETCH_WEEKS_AFTER * 7;
-
 /** Calendar view: days in a week */
 export const DAYS_IN_WEEK = 7;
+
+/** Calendar fetch: days before current week start (2 weeks) */
+export const CALENDAR_FETCH_DAYS_BEFORE = 14;
+
+/** Calendar fetch: days after current week start (3 weeks) */
+export const CALENDAR_FETCH_DAYS_AFTER = 21;
 
 /** Default API event fetch range in days (4 weeks = 28 days) */
 export const DEFAULT_API_FETCH_DAYS = 28;
@@ -105,11 +92,6 @@ export const SSE_HEARTBEAT_INTERVAL_MS = 15_000;
  * reasonable CSRF protection
  */
 export const COOKIE_SAME_SITE = "lax" as const;
-
-/**
- * Cookie sameSite type for TypeScript
- */
-export type CookieSameSite = "lax" | "strict" | "none";
 
 // =============================================================================
 // Server

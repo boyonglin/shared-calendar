@@ -5,6 +5,7 @@ import { validateICloudCredentials } from "../middleware/validation.js";
 import { authenticateUser } from "../middleware/auth.js";
 import type { AuthRequest } from "../middleware/auth.js";
 import { env } from "../config/env.js";
+import logger, { logError } from "../utils/logger.js";
 
 // Import from shared core
 import {
@@ -67,7 +68,7 @@ router.get("/google/callback", async (req: Request, res: Response) => {
 
     res.redirect(`${env.CLIENT_URL}?auth=success&code=${authCode}`);
   } catch (error) {
-    console.error("Auth error:", error);
+    logError(logger, error, "Google auth callback error");
     res.redirect(`${env.CLIENT_URL}?auth=error`);
   }
 });
@@ -155,7 +156,7 @@ router.post(
       );
       res.json({ ...result, token });
     } catch (error) {
-      console.error("iCloud auth error:", error);
+      logError(logger, error, "iCloud auth error");
       const message =
         error instanceof Error ? error.message : "Authentication failed";
       res.status(401).json({ error: message });
@@ -189,7 +190,7 @@ router.get("/outlook", authenticateUser, (req: Request, res: Response) => {
     const url = onecalAuthService.getAuthUrl();
     res.redirect(url);
   } catch (error) {
-    console.error("Outlook auth error:", error);
+    logError(logger, error, "Outlook auth initialization error");
     const message = error instanceof Error ? error.message : "Unknown error";
     res.status(500).send(`Outlook authentication failed: ${message}`);
   }
@@ -222,11 +223,11 @@ router.get("/outlook/callback", async (req: Request, res: Response) => {
       primaryUserId = payload.userId;
     } catch (err) {
       if (err instanceof jwt.TokenExpiredError) {
-        console.error("JWT verification failed: Token expired", err);
+        logError(logger, err, "Outlook JWT verification failed: Token expired");
       } else if (err instanceof jwt.JsonWebTokenError) {
-        console.error("JWT verification failed: Invalid token", err);
+        logError(logger, err, "Outlook JWT verification failed: Invalid token");
       } else {
-        console.error("JWT verification failed: Unknown error", err);
+        logError(logger, err, "Outlook JWT verification failed: Unknown error");
       }
       // Token is invalid or expired - primaryUserId remains undefined
     }
@@ -256,7 +257,7 @@ router.get("/outlook/callback", async (req: Request, res: Response) => {
       `${env.CLIENT_URL}?auth=success&provider=outlook&code=${authCode}`,
     );
   } catch (error) {
-    console.error("Outlook callback error:", error);
+    logError(logger, error, "Outlook callback error");
     const message = error instanceof Error ? error.message : "Unknown error";
     res
       .status(500)
@@ -303,7 +304,7 @@ router.delete(
 
       res.json({ success: true, message: "Account successfully revoked" });
     } catch (error) {
-      console.error("Revoke error:", error);
+      logError(logger, error, "Account revoke error");
       const message =
         error instanceof Error ? error.message : "Failed to revoke account";
       res.status(500).json({ error: message });

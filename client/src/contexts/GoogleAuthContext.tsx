@@ -63,46 +63,49 @@ export function GoogleAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const authSuccess = params.get("auth");
-    const authCode = params.get("code");
-    const provider = params.get("provider");
+    const handleAuthCallback = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const authSuccess = params.get("auth");
+      const authCode = params.get("code");
+      const provider = params.get("provider");
 
-    if (authSuccess === "success" && authCode) {
-      // Clear params from URL immediately
-      window.history.replaceState({}, "", window.location.pathname);
+      if (authSuccess === "success" && authCode) {
+        // Clear params from URL immediately
+        window.history.replaceState({}, "", window.location.pathname);
 
-      // JWT token is now stored in HTTP-only cookie by the server
+        // JWT token is now stored in HTTP-only cookie by the server
 
-      // If this is an Outlook callback, don't set it as the main user
-      // The Outlook connection will be detected by the useOutlookConnection hook
-      if (provider === "outlook") {
-        // Keep existing Google session, don't do anything
-        return;
-      }
+        // If this is an Outlook callback, don't set it as the main user
+        // The Outlook connection will be detected by the useOutlookConnection hook
+        if (provider === "outlook") {
+          // Keep existing Google session, don't do anything
+          return;
+        }
 
-      // Exchange the auth code for user data, then fetch full profile
-      authApi
-        .exchangeCode(authCode)
-        .then((exchangeData) => {
+        try {
+          // Exchange the auth code for user data
+          const exchangeData = await authApi.exchangeCode(authCode);
+
           // Only proceed if it's a Google account
           if (exchangeData.provider !== "google") {
             return;
           }
+
           // Fetch full user profile
-          return authApi.getUser(exchangeData.userId);
-        })
-        .then((data) => {
+          const data = await authApi.getUser(exchangeData.userId);
+
           if (data) {
             setUser(data);
             // Save session to localStorage (tokens managed by HTTP-only cookies)
             saveUserSession(data);
           }
-        })
-        .catch(() => {
+        } catch {
           // Silently handle error - code may be expired or invalid
-        });
-    }
+        }
+      }
+    };
+
+    handleAuthCallback();
   }, []);
 
   const handleSignIn = () => {

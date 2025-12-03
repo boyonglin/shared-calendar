@@ -59,4 +59,7 @@ export {
   validateTone,
   buildAIPrompt,
   sanitizeEventDetails,
+  sharedLogger,
+  createServiceLogger,
+  logServiceError,
 } from "./utils/index.js";
