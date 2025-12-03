@@ -100,7 +100,7 @@ Create a `.env` file in the root directory with the following variables:
 PORT=3001
 CLIENT_URL=http://localhost:5173
 NODE_ENV=development
-LOG_LEVEL=info
+
 
 # Google OAuth
 GOOGLE_CLIENT_ID=your_google_client_id
@@ -193,7 +193,7 @@ The API specification is available in [`openapi.json`](./openapi.json) (OpenAPI 
 | `ONECAL_APP_ID`        | OneCal app ID (for Outlook)                                                 |
 | `ONECAL_API_KEY`       | OneCal API key (for Outlook)                                                |
 | `GEMINI_API_KEY`       | Google Gemini API key (for AI features) - optional, can be user-provided    |
-| `LOG_LEVEL`            | Logging level: `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace` |
+
 
 ---
 
