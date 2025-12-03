@@ -4,13 +4,14 @@
   "outputDirectory": "client/build",
   "installCommand": "npm install --workspaces",
   "framework": null,
+  "trailingSlash": false,
   "rewrites": [
     {
       "source": "/api/:path*",
       "destination": "/api/index"
     },
     {
-      "source": "/((?!api/|assets/|.*\\.).*)",
+      "source": "/:path((?!assets|api|sw\\.js|workbox|registerSW|manifest|robots|favicon).*)",
       "destination": "/index.html"
     }
   ],
