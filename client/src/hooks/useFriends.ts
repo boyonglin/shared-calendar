@@ -6,7 +6,6 @@ import { friendsApi, type FriendWithColor } from "@/services/api/friends";
 import type { CalendarEvent } from "@shared/types";
 import { calculateEventTimeRange } from "@/utils/calendar";
 import { transformRawEvent } from "@/utils/eventTransform";
-import type { RawCalendarEvent } from "@/services/api/calendar";
 
 export interface UseFriendsReturn {
   friends: FriendWithColor[];
@@ -114,7 +113,7 @@ export function useFriends({
           .getFriendEvents(friend.id, timeMin, timeMax)
           .then((events) =>
             events.map((e) =>
-              transformRawEvent(e as unknown as RawCalendarEvent, {
+              transformRawEvent(e, {
                 userId: friend.friendUserId!,
                 friendConnectionId: friend.id,
               }),

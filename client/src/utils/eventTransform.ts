@@ -5,13 +5,24 @@
  * providers (Google, iCloud, Outlook) into the standardized CalendarEvent format.
  */
 import type { CalendarEvent } from "@shared/types";
-import type { RawCalendarEvent } from "@/services/api/calendar";
 import { convertToViewerTimezone } from "./timezone";
 
 /**
  * Raw event datetime format - can be string or object with dateTime/date
  */
 export type RawEventDateTime = string | { dateTime?: string; date?: string };
+
+/**
+ * Base raw event structure that can be transformed
+ * This is compatible with both RawCalendarEvent and FriendEvent
+ */
+export interface TransformableEvent {
+  id: string;
+  summary?: string;
+  title?: string;
+  start?: RawEventDateTime;
+  end?: RawEventDateTime;
+}
 
 /**
  * Options for transforming raw events
@@ -58,12 +69,12 @@ export function parseRawDateTime(value: RawEventDateTime | undefined): Date {
  * This is the single source of truth for event transformation across the app.
  * Used by both UnifiedCalendarProvider and useFriends hook.
  *
- * @param event - Raw event from calendar API
+ * @param event - Raw event from calendar API (RawCalendarEvent or FriendEvent)
  * @param options - Transformation options including userId
  * @returns Standardized CalendarEvent
  */
 export function transformRawEvent(
-  event: RawCalendarEvent,
+  event: TransformableEvent,
   options: TransformEventOptions,
 ): CalendarEvent {
   const { userId, friendConnectionId } = options;
@@ -96,7 +107,7 @@ export function transformRawEvent(
  * Transform multiple raw events
  */
 export function transformRawEvents(
-  events: RawCalendarEvent[],
+  events: TransformableEvent[],
   options: TransformEventOptions,
 ): CalendarEvent[] {
   return events.map((event) => transformRawEvent(event, options));

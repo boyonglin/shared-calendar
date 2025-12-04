@@ -120,11 +120,8 @@ export function CalendarProviderWrapper({
 
     // Calculate date range using shared utility
     const { timeMin, timeMax } = calculateEventTimeRange(weekStart);
-    const start = timeMin;
-    const end = timeMax;
-
-    const fetchStart = start.getTime();
-    const fetchEnd = end.getTime();
+    const fetchStart = timeMin.getTime();
+    const fetchEnd = timeMax.getTime();
 
     // Check if provider supports streaming (UnifiedCalendarProvider)
     if (provider instanceof UnifiedCalendarProvider) {
@@ -132,8 +129,8 @@ export function CalendarProviderWrapper({
       const receivedProviders = new Set<string>();
 
       streamAbortRef.current = provider.streamEvents(
-        start,
-        end,
+        timeMin,
+        timeMax,
         (newEvents: CalendarEvent[], providerName: string) => {
           receivedProviders.add(providerName);
 
@@ -188,7 +185,7 @@ export function CalendarProviderWrapper({
     } else {
       // Fallback to non-streaming for MockCalendarProvider
       try {
-        const fetchedEvents = await provider.getEvents(start, end);
+        const fetchedEvents = await provider.getEvents(timeMin, timeMax);
 
         setEvents((prevEvents) => {
           // Keep events outside the fetch range

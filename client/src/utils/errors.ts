@@ -151,21 +151,21 @@ export function createApiErrorFromResponse(
 
   switch (statusCode) {
     case 400:
-      return new BadRequestError(message, code);
+      return new BadRequestError(message, code ?? "BAD_REQUEST");
     case 401:
       if (code === "TOKEN_EXPIRED") {
         return new TokenExpiredError(message);
       }
-      return new UnauthorizedError(message, code);
+      return new UnauthorizedError(message, code ?? "UNAUTHORIZED");
     case 403:
-      return new ForbiddenError(message, code);
+      return new ForbiddenError(message, code ?? "FORBIDDEN");
     case 404:
-      return new NotFoundError(message, code);
+      return new NotFoundError(message, code ?? "NOT_FOUND");
     case 409:
-      return new ConflictError(message, code);
+      return new ConflictError(message, code ?? "CONFLICT");
     case 422:
       return new ValidationError(message, data.errors);
     default:
-      return new ApiError(message, statusCode, code);
+      return new ApiError(message, statusCode, code ?? "API_ERROR");
   }
 }
