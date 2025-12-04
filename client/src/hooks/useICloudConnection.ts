@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import type { ICloudStatus } from "@/services/api/calendar";
 import { calendarApi } from "@/services/api/calendar";
 
@@ -60,7 +61,7 @@ export function useICloudConnection({
       await refreshEvents();
     } catch (error) {
       console.error("Failed to disconnect iCloud Calendar:", error);
-      alert("Failed to disconnect iCloud Calendar");
+      toast.error("Failed to disconnect iCloud Calendar");
     }
   };
 

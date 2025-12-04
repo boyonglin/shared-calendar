@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import type { OutlookStatus } from "@/services/api/calendar";
 import { calendarApi } from "@/services/api/calendar";
 import { API_BASE_URL } from "@/config/api";
@@ -63,7 +64,7 @@ export function useOutlookConnection({
       await refreshEvents();
     } catch (error) {
       console.error("Failed to disconnect Outlook Calendar:", error);
-      alert("Failed to disconnect Outlook Calendar");
+      toast.error("Failed to disconnect Outlook Calendar");
     }
   };
 
