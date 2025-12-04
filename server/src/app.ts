@@ -116,17 +116,8 @@ app.get("/api", (_req, res) => {
       "POST /api/friends/:friendId/reject",
       "GET /api/friends/:friendId/events",
       "POST /api/ai/draft-invitation",
-      "GET /api/privacy",
     ],
   });
-});
-
-// Privacy policy redirect
-app.get("/api/privacy", (_req, res) => {
-  res.redirect(
-    301,
-    "https://www.privacypolicies.com/live/206e7238-acb3-4701-ab5c-c102a087fd1a",
-  );
 });
 
 // 404 handler for unmatched routes

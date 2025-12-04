@@ -1,0 +1,7 @@
+# Build outputs
+**/build/
+**/dist/
+**/node_modules/
+
+# Google verification file
+**/googleae9e1b355e817f16.html

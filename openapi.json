@@ -212,16 +212,6 @@
         }
       }
     },
-    "/api/privacy": {
-      "get": {
-        "tags": ["Health"],
-        "operationId": "getPrivacyPolicy",
-        "summary": "Privacy Policy Redirect",
-        "responses": {
-          "301": { "description": "Redirect to privacy policy" }
-        }
-      }
-    },
     "/api/auth/google": {
       "get": {
         "tags": ["Authentication"],

@@ -8,6 +8,7 @@ import { SettingsModal } from "@/components/SettingsModal";
 import { FriendsManager } from "@/components/FriendsManager";
 import { UserProfileDropdown } from "@/components/UserProfileDropdown";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { PrivacyPolicy } from "@/components/PrivacyPolicy";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -184,7 +185,7 @@ function AppContent({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       <header className="border-b bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -232,32 +233,36 @@ function AppContent({
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-1">
-            <UserList
-              users={allUsers}
-              selectedUsers={selectedUsers}
-              currentUserId={currentUser?.id || "1"}
-              onUserToggle={handleUserToggle}
-              onManageFriends={() => openModal("friends")}
-              isLoggedIn={!!user}
-              incomingRequestCount={incomingRequestCount}
-            />
-          </div>
+      <main className="flex-grow">
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="lg:col-span-1">
+              <UserList
+                users={allUsers}
+                selectedUsers={selectedUsers}
+                currentUserId={currentUser?.id || "1"}
+                onUserToggle={handleUserToggle}
+                onManageFriends={() => openModal("friends")}
+                isLoggedIn={!!user}
+                incomingRequestCount={incomingRequestCount}
+              />
+            </div>
 
-          <div className="lg:col-span-3">
-            <CalendarView
-              users={allUsers.filter((u) => selectedUsers.includes(u.id))}
-              events={allEvents.filter((e) => selectedUsers.includes(e.userId))}
-              currentUserId={currentUser?.id || "1"}
-              weekStart={weekStart}
-              onTimeSlotSelect={handleTimeSlotSelect}
-              onWeekChange={handleWeekChange}
-            />
+            <div className="lg:col-span-3">
+              <CalendarView
+                users={allUsers.filter((u) => selectedUsers.includes(u.id))}
+                events={allEvents.filter((e) =>
+                  selectedUsers.includes(e.userId),
+                )}
+                currentUserId={currentUser?.id || "1"}
+                weekStart={weekStart}
+                onTimeSlotSelect={handleTimeSlotSelect}
+                onWeekChange={handleWeekChange}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      </main>
 
       <InviteDialog
         isOpen={selectedTimeSlot !== null}
@@ -290,12 +295,29 @@ function AppContent({
         initialTab={incomingRequestCount > 0 ? "requests" : "friends"}
       />
 
+      {/* Footer */}
+      <footer className="py-4 mt-auto border-t border-gray-200 dark:border-gray-700">
+        <div className="flex justify-center items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+          <span>© {new Date().getFullYear()} Shared Calendar Vibe</span>
+          <span>·</span>
+          <a
+            href="/privacy"
+            className="hover:text-gray-700 dark:hover:text-gray-300"
+          >
+            Privacy
+          </a>
+        </div>
+      </footer>
+
       <Toaster />
     </div>
   );
 }
 
 export default function App() {
+  const [currentPath, setCurrentPath] = useState(
+    () => window.location.pathname,
+  );
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
     const today = new Date();
     const day = today.getDay();
@@ -318,6 +340,15 @@ export default function App() {
     return false;
   });
 
+  // Handle browser navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   // Update document class for dark mode
   useEffect(() => {
     if (isDarkMode) {
@@ -331,6 +362,11 @@ export default function App() {
   const toggleDarkMode = () => {
     setIsDarkMode((prev: boolean) => !prev);
   };
+
+  // Render privacy page if on /privacy route
+  if (currentPath === "/privacy") {
+    return <PrivacyPolicy />;
+  }
 
   return (
     <GoogleAuthProvider>
