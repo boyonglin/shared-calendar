@@ -275,7 +275,7 @@ export function SettingsModal({
                   <Button
                     type="button"
                     onClick={handleRemove}
-                    className="flex-1 bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600"
+                    className="flex-1 bg-red-600/70 dark:bg-red-700/60 text-white/90 hover:bg-red-600 hover:text-white dark:hover:bg-red-600"
                   >
                     Remove
                   </Button>

@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { EventBlock } from "./EventBlock";
 import { ScrollArea } from "./ui/scroll-area";
 import { DAYS_IN_WEEK } from "@shared/core/constants/index";
+import { useState, useEffect } from "react";
 
 interface CalendarViewProps {
   users: User[];
@@ -125,6 +126,36 @@ export function CalendarView({
     return date.toDateString() === today.toDateString();
   };
 
+  // Current time indicator state
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  // Calculate current time slot (rounded to 30-minute intervals)
+  const getCurrentTimeSlot = () => {
+    const now = currentTime;
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    // Round to nearest 30-minute slot: 0-29 -> 0, 30-59 -> 30
+    const roundedMinute = currentMinute < 30 ? 0 : 30;
+
+    if (currentHour < validStartHour || currentHour > validEndHour) {
+      return null; // Current time is outside visible range
+    }
+
+    return { hour: currentHour, minute: roundedMinute };
+  };
+
+  const isTodayInWeek = weekDays.some((day) => isToday(day));
+  const todayIndex = weekDays.findIndex((day) => isToday(day));
+  const currentTimeSlot = getCurrentTimeSlot();
+
   return (
     <Card className="dark:bg-gray-800 dark:border-gray-700">
       <CardHeader>
@@ -237,60 +268,163 @@ export function CalendarView({
 
             {/* Time slots */}
             <div className="border-l border-r border-b rounded-b-lg overflow-hidden border-gray-200 dark:border-gray-600">
-              {timeSlots.map(({ hour, minute }) => (
-                <div key={`${hour}-${minute}`}>
-                  {/* Time indicator row for mobile - only show on the hour */}
-                  {minute === 0 && (
-                    <div className="sm:hidden flex items-center px-2 py-1">
-                      <div className="flex-1 h-px bg-gray-300 dark:bg-gray-600"></div>
-                      <span className="text-[10px] px-2 text-gray-400 dark:text-gray-500">
-                        {hour > 12 ? hour - 12 : hour || 12}{" "}
-                        {hour >= 12 ? "PM" : "AM"}
-                      </span>
-                      <div className="flex-1 h-px bg-gray-300 dark:bg-gray-600"></div>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-7 sm:grid-cols-8 gap-px min-h-[32px] sm:min-h-[40px] bg-gray-200 dark:bg-gray-700">
-                    <div className="p-1 sm:p-2 hidden sm:flex items-start bg-white dark:bg-gray-800">
-                      {minute === 0 && (
-                        <span className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
-                          {hour > 12 ? hour - 12 : hour || 12}:00{" "}
-                          {hour >= 12 ? "PM" : "AM"}
-                        </span>
-                      )}
-                    </div>
-                    {weekDays.map((day, dayIndex) => {
-                      const slotEvents = getEventsInSlot(day, hour, minute);
-                      const hasEvents = slotEvents.length > 0;
+              {timeSlots.map(({ hour, minute }) => {
+                const isCurrentTimeSlot =
+                  isTodayInWeek &&
+                  currentTimeSlot !== null &&
+                  currentTimeSlot.hour === hour &&
+                  currentTimeSlot.minute === minute;
 
-                      return (
-                        <div
-                          key={dayIndex}
-                          className={`p-1 cursor-pointer transition-colors relative ${
-                            isToday(day)
-                              ? "bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
-                              : "bg-white hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-600"
-                          }`}
-                          onClick={() => handleSlotClick(day, hour, minute)}
-                        >
-                          {hasEvents && (
-                            <div className="space-y-1 h-full">
-                              {slotEvents.map((event) => (
-                                <EventBlock
-                                  key={event.id}
-                                  event={event}
-                                  userColor={getUserColor(event.userId)}
-                                  isCurrentUser={event.userId === currentUserId}
+                return (
+                  <div key={`${hour}-${minute}`} className="relative">
+                    {/* Current time indicator - at junction between slots (hidden on mobile when on the hour) */}
+                    {isCurrentTimeSlot && !(currentTimeSlot?.minute === 0) && (
+                      <div className="absolute -top-0.5 left-0 right-0 z-10 pointer-events-none grid grid-cols-7 sm:grid-cols-8 gap-px">
+                        <div className="hidden sm:block" />
+                        {weekDays.map((_day, dayIndex) => (
+                          <div
+                            key={dayIndex}
+                            className="relative px-1 overflow-hidden"
+                          >
+                            {dayIndex === todayIndex && (
+                              <svg
+                                className="w-full h-1"
+                                viewBox="0 0 100 4"
+                                preserveAspectRatio="xMidYMid slice"
+                              >
+                                <path
+                                  d="M0,2 Q2.5,0 5,2 T10,2 T15,2 T20,2 T25,2 T30,2 T35,2 T40,2 T45,2 T50,2 T55,2 T60,2 T65,2 T70,2 T75,2 T80,2 T85,2 T90,2 T95,2 T100,2"
+                                  fill="none"
+                                  stroke="white"
+                                  strokeWidth="1"
+                                  strokeOpacity="0.9"
                                 />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                              </svg>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Desktop: show wavy line on the hour too */}
+                    {isCurrentTimeSlot && currentTimeSlot?.minute === 0 && (
+                      <div className="absolute -top-0.5 left-0 right-0 z-10 pointer-events-none hidden sm:grid grid-cols-8 gap-px">
+                        <div className="block" />
+                        {weekDays.map((_day, dayIndex) => (
+                          <div
+                            key={dayIndex}
+                            className="relative px-1 overflow-hidden"
+                          >
+                            {dayIndex === todayIndex && (
+                              <svg
+                                className="w-full h-1"
+                                viewBox="0 0 100 4"
+                                preserveAspectRatio="xMidYMid slice"
+                              >
+                                <path
+                                  d="M0,2 Q2.5,0 5,2 T10,2 T15,2 T20,2 T25,2 T30,2 T35,2 T40,2 T45,2 T50,2 T55,2 T60,2 T65,2 T70,2 T75,2 T80,2 T85,2 T90,2 T95,2 T100,2"
+                                  fill="none"
+                                  stroke="white"
+                                  strokeWidth="1"
+                                  strokeOpacity="0.9"
+                                />
+                              </svg>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Time indicator row for mobile - only show on the hour */}
+                    {minute === 0 && (
+                      <div className="sm:hidden flex items-center px-2 py-1">
+                        {isCurrentTimeSlot && currentTimeSlot?.minute === 0 ? (
+                          <>
+                            <svg
+                              className="flex-1 h-1"
+                              viewBox="0 0 100 4"
+                              preserveAspectRatio="none"
+                            >
+                              <path
+                                d="M0,2 Q2.5,0 5,2 T10,2 T15,2 T20,2 T25,2 T30,2 T35,2 T40,2 T45,2 T50,2 T55,2 T60,2 T65,2 T70,2 T75,2 T80,2 T85,2 T90,2 T95,2 T100,2"
+                                fill="none"
+                                stroke="white"
+                                strokeWidth="1"
+                                strokeOpacity="0.9"
+                              />
+                            </svg>
+                            <span className="text-[10px] px-2 text-white">
+                              {hour > 12 ? hour - 12 : hour || 12}{" "}
+                              {hour >= 12 ? "PM" : "AM"}
+                            </span>
+                            <svg
+                              className="flex-1 h-1"
+                              viewBox="0 0 100 4"
+                              preserveAspectRatio="none"
+                            >
+                              <path
+                                d="M0,2 Q2.5,0 5,2 T10,2 T15,2 T20,2 T25,2 T30,2 T35,2 T40,2 T45,2 T50,2 T55,2 T60,2 T65,2 T70,2 T75,2 T80,2 T85,2 T90,2 T95,2 T100,2"
+                                fill="none"
+                                stroke="white"
+                                strokeWidth="1"
+                                strokeOpacity="0.9"
+                              />
+                            </svg>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex-1 h-px bg-gray-300 dark:bg-gray-600"></div>
+                            <span className="text-[10px] px-2 text-gray-400 dark:text-gray-500">
+                              {hour > 12 ? hour - 12 : hour || 12}{" "}
+                              {hour >= 12 ? "PM" : "AM"}
+                            </span>
+                            <div className="flex-1 h-px bg-gray-300 dark:bg-gray-600"></div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-7 sm:grid-cols-8 gap-px min-h-[32px] sm:min-h-[40px] bg-gray-200 dark:bg-gray-700">
+                      <div className="p-1 sm:p-2 hidden sm:flex items-start bg-white dark:bg-gray-800">
+                        {minute === 0 && (
+                          <span className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
+                            {hour > 12 ? hour - 12 : hour || 12}:00{" "}
+                            {hour >= 12 ? "PM" : "AM"}
+                          </span>
+                        )}
+                      </div>
+                      {weekDays.map((day, dayIndex) => {
+                        const slotEvents = getEventsInSlot(day, hour, minute);
+                        const hasEvents = slotEvents.length > 0;
+
+                        return (
+                          <div
+                            key={dayIndex}
+                            className={`p-1 cursor-pointer transition-colors relative ${
+                              isToday(day)
+                                ? "bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
+                                : "bg-white hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-600"
+                            }`}
+                            onClick={() => handleSlotClick(day, hour, minute)}
+                          >
+                            {hasEvents && (
+                              <div className="space-y-1 h-full">
+                                {slotEvents.map((event) => (
+                                  <EventBlock
+                                    key={event.id}
+                                    event={event}
+                                    userColor={getUserColor(event.userId)}
+                                    isCurrentUser={
+                                      event.userId === currentUserId
+                                    }
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </ScrollArea>
         </div>
