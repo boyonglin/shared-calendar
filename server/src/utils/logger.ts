@@ -1,53 +1,14 @@
 /**
- * Structured logging utility using pino
+ * Structured logging utility for server
  *
- * Provides consistent, structured logging across the server with:
- * - JSON output in production for log aggregation
- * - Pretty-printed output in development for readability
- * - Request context (requestId, userId) propagation
- * - Performance timing helpers
+ * Re-exports logging from shared core to ensure consistency
+ * and provides server-specific request context logging.
  */
-import pino from "pino";
-import { env } from "../config/env.js";
+import type pino from "pino";
+import { sharedLogger, logServiceError } from "../../../shared/core/index.js";
 
-const isDevelopment = env.NODE_ENV !== "production";
-
-// Base logger configuration
-export const logger = pino({
-  level: isDevelopment ? "debug" : "info",
-  // Use pino-pretty in development for readable logs
-  transport: isDevelopment
-    ? {
-        target: "pino-pretty",
-        options: {
-          colorize: true,
-          translateTime: "SYS:standard",
-          ignore: "pid,hostname",
-        },
-      }
-    : undefined,
-  // Add base fields to all logs
-  base: {
-    env: env.NODE_ENV,
-  },
-  // Redact sensitive fields
-  redact: {
-    paths: [
-      "req.headers.authorization",
-      "req.headers.cookie",
-      "password",
-      "token",
-      "accessToken",
-      "refreshToken",
-      "apiKey",
-      "*.password",
-      "*.token",
-      "*.accessToken",
-      "*.refreshToken",
-    ],
-    censor: "[REDACTED]",
-  },
-});
+// Re-export the shared logger as the main logger
+export const logger = sharedLogger;
 
 /**
  * Create a child logger with request context
@@ -62,18 +23,8 @@ export function createRequestLogger(context: {
 }
 
 /**
- * Log levels explained:
- * - fatal: System is unusable, immediate action required
- * - error: Error condition that should be investigated
- * - warn: Warning condition, not an error but notable
- * - info: Informational messages (default in production)
- * - debug: Debug information (default in development)
- * - trace: Very detailed tracing information
- */
-
-/**
  * Structured error logging helper
- * Extracts useful error properties for structured logging
+ * Uses shared implementation for consistency
  */
 export function logError(
   log: pino.Logger,
@@ -81,16 +32,7 @@ export function logError(
   message: string,
   context?: Record<string, unknown>,
 ) {
-  const errorInfo =
-    error instanceof Error
-      ? {
-          errorName: error.name,
-          errorMessage: error.message,
-          stack: isDevelopment ? error.stack : undefined,
-        }
-      : { errorMessage: String(error) };
-
-  log.error({ ...errorInfo, ...context }, message);
+  logServiceError(log, error, message, context);
 }
 
 export default logger;

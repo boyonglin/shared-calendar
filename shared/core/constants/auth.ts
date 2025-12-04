@@ -30,6 +30,14 @@ export const OUTLOOK_AUTH_COOKIE_MAX_AGE_MS = 10 * ONE_MINUTE_MS;
  */
 export const COOKIE_SAME_SITE = "lax" as const;
 
+/**
+ * Cookie names used across the application
+ */
+export const COOKIE_NAMES = {
+  JWT_TOKEN: "token",
+  OUTLOOK_AUTH_STATE: "outlook_auth_state",
+} as const;
+
 // =============================================================================
 // Google OAuth
 // =============================================================================

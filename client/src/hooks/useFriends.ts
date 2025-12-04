@@ -4,8 +4,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { friendsApi, type FriendWithColor } from "@/services/api/friends";
 import type { CalendarEvent } from "@shared/types";
-import { calculateEventTimeRange, isAllDayEvent } from "@/utils/calendar";
-import { convertToViewerTimezone } from "@/utils/timezone";
+import { calculateEventTimeRange } from "@/utils/calendar";
+import { transformRawEvent } from "@/utils/eventTransform";
 
 export interface UseFriendsReturn {
   friends: FriendWithColor[];
@@ -112,16 +112,12 @@ export function useFriends({
         friendsApi
           .getFriendEvents(friend.id, timeMin, timeMax)
           .then((events) =>
-            events.map((e) => ({
-              id: e.id,
-              userId: friend.friendUserId!,
-              // Use timezone-aware conversion for friend events
-              // This ensures events are displayed in the viewer's local timezone
-              start: convertToViewerTimezone(e.start),
-              end: convertToViewerTimezone(e.end),
-              title: e.title || e.summary,
-              isAllDay: isAllDayEvent(e.start, e.end),
-            })),
+            events.map((e) =>
+              transformRawEvent(e, {
+                userId: friend.friendUserId!,
+                friendConnectionId: friend.id,
+              }),
+            ),
           )
           .catch((err) => {
             // Silently handle 404 errors (friend was deleted or connection removed)

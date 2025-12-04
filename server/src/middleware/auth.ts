@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
+import { COOKIE_NAMES } from "../../../shared/core/index.js";
 
 export interface AuthRequest extends Request {
   user?: {
@@ -14,7 +15,7 @@ export const authenticateUser = (
   res: Response,
   next: NextFunction,
 ): void => {
-  const token = req.cookies?.token;
+  const token = req.cookies?.[COOKIE_NAMES.JWT_TOKEN];
 
   if (!token) {
     res.status(401).json({ error: "No token provided" });

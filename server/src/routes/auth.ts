@@ -17,6 +17,7 @@ import {
   JWT_COOKIE_MAX_AGE_MS,
   OUTLOOK_AUTH_COOKIE_MAX_AGE_MS,
   COOKIE_SAME_SITE,
+  COOKIE_NAMES,
 } from "../../../shared/core/index.js";
 
 const router = express.Router();
@@ -52,7 +53,7 @@ router.get("/google/callback", async (req: Request, res: Response) => {
     );
 
     // Set JWT as HTTP-only cookie
-    res.cookie("token", token, {
+    res.cookie(COOKIE_NAMES.JWT_TOKEN, token, {
       httpOnly: true,
       secure: env.NODE_ENV === "production",
       sameSite: COOKIE_SAME_SITE,
@@ -180,7 +181,7 @@ router.get("/outlook", authenticateUser, (req: Request, res: Response) => {
     // Note: Using sameSite: "lax" instead of "strict" because the OAuth callback
     // is a cross-site navigation that requires the cookie to be sent.
     // The JWT-based state token provides additional CSRF protection.
-    res.cookie("outlook_auth_state", stateToken, {
+    res.cookie(COOKIE_NAMES.OUTLOOK_AUTH_STATE, stateToken, {
       httpOnly: true,
       secure: env.NODE_ENV === "production",
       sameSite: COOKIE_SAME_SITE,
@@ -198,10 +199,10 @@ router.get("/outlook", authenticateUser, (req: Request, res: Response) => {
 
 router.get("/outlook/callback", async (req: Request, res: Response) => {
   const { endUserAccountId } = req.query;
-  const stateToken = req.cookies?.outlook_auth_state;
+  const stateToken = req.cookies?.[COOKIE_NAMES.OUTLOOK_AUTH_STATE];
 
   // Clear the temporary cookie with matching options for reliable removal
-  res.clearCookie("outlook_auth_state", {
+  res.clearCookie(COOKIE_NAMES.OUTLOOK_AUTH_STATE, {
     httpOnly: true,
     secure: env.NODE_ENV === "production",
     sameSite: COOKIE_SAME_SITE,
@@ -273,7 +274,7 @@ router.get("/outlook/callback", async (req: Request, res: Response) => {
  */
 router.post("/logout", (_req: Request, res: Response) => {
   // Clear the JWT cookie
-  res.clearCookie("token", {
+  res.clearCookie(COOKIE_NAMES.JWT_TOKEN, {
     httpOnly: true,
     secure: env.NODE_ENV === "production",
     sameSite: COOKIE_SAME_SITE,
@@ -296,7 +297,7 @@ router.delete(
       await googleAuthService.revokeAccount(userId);
 
       // Clear the JWT cookie
-      res.clearCookie("token", {
+      res.clearCookie(COOKIE_NAMES.JWT_TOKEN, {
         httpOnly: true,
         secure: env.NODE_ENV === "production",
         sameSite: COOKIE_SAME_SITE,

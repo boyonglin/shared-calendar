@@ -9,24 +9,49 @@ import {
   ONE_WEEK_MS,
 } from "@shared/core/constants/index";
 
+// =============================================================================
+// Mock User IDs - Constants for consistent references
+// =============================================================================
+
+/**
+ * Mock user ID constants for demonstration users
+ * Use these constants instead of hardcoded strings for consistency
+ */
+export const MOCK_USER_IDS = {
+  SARAH: "mock-2",
+  MICHAEL: "mock-3",
+  EMMA: "mock-4",
+} as const;
+
+export type MockUserId = (typeof MOCK_USER_IDS)[keyof typeof MOCK_USER_IDS];
+
+/**
+ * Mock event ID prefix
+ */
+export const MOCK_EVENT_ID_PREFIX = "mock-" as const;
+
+// =============================================================================
+// Mock Users
+// =============================================================================
+
 /**
  * Mock users for demonstration
  */
 export const mockUsers: User[] = [
   {
-    id: "mock-2",
+    id: MOCK_USER_IDS.SARAH,
     name: "Sarah Johnson",
     email: "sarah@example.com",
     color: "#10b981",
   },
   {
-    id: "mock-3",
+    id: MOCK_USER_IDS.MICHAEL,
     name: "Michael Brown",
     email: "michael@example.com",
     color: "#f59e0b",
   },
   {
-    id: "mock-4",
+    id: MOCK_USER_IDS.EMMA,
     name: "Emma Davis",
     email: "emma@example.com",
     color: "#8b5cf6",
@@ -134,7 +159,7 @@ function generateMockEvents(): CalendarEvent[] {
         const allDayStart = getRelativeDate(dayOffset, 0, 0);
         const allDayEnd = getRelativeDate(dayOffset, 23, 59);
         events.push({
-          id: `mock-${eventId++}`,
+          id: `${MOCK_EVENT_ID_PREFIX}${eventId++}`,
           userId,
           start: allDayStart,
           end: allDayEnd,
@@ -143,7 +168,7 @@ function generateMockEvents(): CalendarEvent[] {
         });
       } else {
         events.push({
-          id: `mock-${eventId++}`,
+          id: `${MOCK_EVENT_ID_PREFIX}${eventId++}`,
           userId,
           start,
           end,
