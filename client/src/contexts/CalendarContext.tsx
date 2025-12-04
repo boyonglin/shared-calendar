@@ -12,10 +12,7 @@ import type { CalendarProvider } from "@/interfaces/CalendarProvider";
 import { MockCalendarProvider } from "@/services/MockCalendarProvider";
 import { UnifiedCalendarProvider } from "@/services/UnifiedCalendarProvider";
 import { useGoogleAuth } from "./GoogleAuthContext";
-import {
-  CALENDAR_FETCH_DAYS_BEFORE,
-  CALENDAR_FETCH_DAYS_AFTER,
-} from "@shared/core/constants/index";
+import { calculateEventTimeRange } from "@/utils/calendar";
 
 const AUTO_REFRESH_INTERVAL_MS = 60 * 1000;
 
@@ -121,27 +118,10 @@ export function CalendarProviderWrapper({
     setIsLoading(true);
     setLoadingProviders(new Set(["google", "icloud", "outlook"])); // Start with all providers loading
 
-    // Calculate date range based on weekStart prop or use default range
-    let start: Date;
-    let end: Date;
-
-    if (weekStart) {
-      // Fetch events for 5 weeks total: current week (w0), 2 weeks before (w-1, w-2?), and 2 weeks after
-      start = new Date(weekStart);
-      start.setDate(start.getDate() - CALENDAR_FETCH_DAYS_BEFORE);
-      start.setHours(0, 0, 0, 0); // Normalize to midnight
-
-      end = new Date(weekStart);
-      end.setDate(end.getDate() + CALENDAR_FETCH_DAYS_AFTER);
-      end.setHours(23, 59, 59, 999); // End of day
-    } else {
-      // Fallback to broad range if no weekStart provided
-      const now = new Date();
-      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      start.setHours(0, 0, 0, 0);
-      end = new Date(now.getFullYear(), now.getMonth() + 2, 0);
-      end.setHours(23, 59, 59, 999);
-    }
+    // Calculate date range using shared utility
+    const { timeMin, timeMax } = calculateEventTimeRange(weekStart);
+    const start = timeMin;
+    const end = timeMax;
 
     const fetchStart = start.getTime();
     const fetchEnd = end.getTime();

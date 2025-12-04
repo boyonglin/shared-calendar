@@ -2,6 +2,7 @@ import type { CalendarProvider } from "../interfaces/CalendarProvider";
 import type { CalendarEvent } from "@shared/types";
 import type { RawCalendarEvent } from "./api/calendar";
 import { calendarApi } from "./api/calendar";
+import { transformRawEvent } from "@/utils/eventTransform";
 
 /**
  * Unified provider that fetches events from all connected calendar accounts
@@ -17,33 +18,13 @@ export class UnifiedCalendarProvider implements CalendarProvider {
     return `${year}-${month}-${day}`;
   }
 
-  private transformEvent(event: RawCalendarEvent): CalendarEvent {
-    // Handle both Google Calendar format and iCloud format
-    const startObj = typeof event.start === "object" ? event.start : null;
-    const endObj = typeof event.end === "object" ? event.end : null;
-
-    const isAllDay = !!startObj?.date && !startObj?.dateTime;
-    const startStr = startObj?.dateTime || startObj?.date || event.start;
-    const endStr = endObj?.dateTime || endObj?.date || event.end;
-
-    return {
-      id: event.id,
-      userId: this.userId, // Normalize all events to the primary user ID
-      start:
-        typeof startStr === "string" ? new Date(startStr) : (startStr as Date),
-      end: typeof endStr === "string" ? new Date(endStr) : (endStr as Date),
-      title: event.summary || event.title || "(No title)",
-      isAllDay: isAllDay,
-    };
-  }
-
   async getEvents(start: Date, end: Date): Promise<CalendarEvent[]> {
     try {
       // Fetch events from all connected accounts with date filtering
       const events = await calendarApi.getAllEvents(this.userId, start, end);
 
       return events.map((event: RawCalendarEvent) =>
-        this.transformEvent(event),
+        transformRawEvent(event, { userId: this.userId }),
       );
     } catch (error) {
       console.error("Failed to fetch unified events:", error);
@@ -68,7 +49,7 @@ export class UnifiedCalendarProvider implements CalendarProvider {
       end,
       (rawEvents: RawCalendarEvent[], provider: string) => {
         const transformedEvents = rawEvents.map((event) =>
-          this.transformEvent(event),
+          transformRawEvent(event, { userId: this.userId }),
         );
         onEvents(transformedEvents, provider);
       },
@@ -99,24 +80,8 @@ export class UnifiedCalendarProvider implements CalendarProvider {
         isAllDay: event.isAllDay,
       });
 
-      const rawEvent = response;
-      const startObj =
-        typeof rawEvent.start === "object" ? rawEvent.start : null;
-      const endObj = typeof rawEvent.end === "object" ? rawEvent.end : null;
-      const startStr = startObj?.dateTime || startObj?.date || rawEvent.start;
-      const endStr = endObj?.dateTime || endObj?.date || rawEvent.end;
-
-      return {
-        id: rawEvent.id,
-        userId: this.userId,
-        start:
-          typeof startStr === "string"
-            ? new Date(startStr)
-            : (startStr as Date),
-        end: typeof endStr === "string" ? new Date(endStr) : (endStr as Date),
-        title: rawEvent.summary || rawEvent.title || "(No title)",
-        isAllDay: !!startObj?.date && !startObj?.dateTime,
-      };
+      // Use shared transformation for the created event
+      return transformRawEvent(response, { userId: this.userId });
     } catch (error) {
       console.error("Failed to create event:", error);
       throw error;
