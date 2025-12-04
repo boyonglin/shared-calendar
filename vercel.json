@@ -11,7 +11,7 @@
       "destination": "/api/index"
     },
     {
-      "source": "/:path((?!assets|api|sw\\.js|workbox|registerSW|manifest|robots|favicon).*)",
+      "source": "/:path((?!assets|api|sw\\.js|workbox|registerSW|manifest|robots|favicon|google.*\\.html).*)",
       "destination": "/index.html"
     }
   ],
