@@ -4,12 +4,9 @@
  * Uses Turso's async API for both development and production.
  */
 import { getDb } from "../db/index.js";
+import type { ConnectionStatus } from "../../types.js";
 
-export type ConnectionStatus =
-  | "pending"
-  | "accepted"
-  | "incoming"
-  | "requested";
+export type { ConnectionStatus };
 
 export interface UserConnection {
   id: number;

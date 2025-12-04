@@ -4,8 +4,9 @@
  * Uses Turso's async API for both development and production.
  */
 import { getDb } from "../db/index.js";
+import type { CalendarProvider } from "../../types.js";
 
-export type CalendarProvider = "google" | "icloud" | "outlook";
+export type { CalendarProvider };
 
 export interface CalendarAccount {
   user_id: string;
