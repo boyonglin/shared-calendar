@@ -1,4 +1,9 @@
 import { API_BASE_URL } from "../../config/api";
+import {
+  createApiErrorFromResponse,
+  NetworkError,
+  type ApiErrorResponse,
+} from "@/utils/errors";
 
 export interface SSEMessage<T = unknown> {
   type: "events" | "error" | "complete";
@@ -23,19 +28,26 @@ class ApiClient {
       "Content-Type": "application/json",
       ...options?.headers,
     };
-    const response = await fetch(url, {
-      ...options,
-      headers,
-      credentials: "include",
-    });
+
+    let response: globalThis.Response;
+    try {
+      response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: "include",
+      });
+    } catch (error) {
+      // Network error (offline, DNS failure, etc.)
+      throw new NetworkError(
+        error instanceof Error ? error.message : "Network error",
+      );
+    }
 
     if (!response.ok) {
-      const errorData = await response
+      const errorData: ApiErrorResponse = await response
         .json()
         .catch(() => ({ error: "Request failed" }));
-      throw new Error(
-        errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      );
+      throw createApiErrorFromResponse(response.status, errorData);
     }
 
     return response.json();
@@ -80,12 +92,15 @@ class ApiClient {
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          const errorData: ApiErrorResponse = await response
+            .json()
+            .catch(() => ({ error: "Stream failed" }));
+          throw createApiErrorFromResponse(response.status, errorData);
         }
 
         const reader = response.body?.getReader();
         if (!reader) {
-          throw new Error("No response body");
+          throw new NetworkError("No response body");
         }
 
         const decoder = new TextDecoder();
