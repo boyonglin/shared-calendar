@@ -72,6 +72,11 @@ const envSchema = z.object({
       },
     )
     .optional(),
+
+  // Gmail SMTP Configuration (for sending notification emails)
+  // Use Gmail App Password: https://support.google.com/accounts/answer/185833
+  GMAIL_USER: z.string().email("GMAIL_USER must be a valid email").optional(),
+  GMAIL_APP_PASSWORD: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

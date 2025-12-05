@@ -37,6 +37,7 @@ export {
   icloudAuthService,
   onecalAuthService,
   aiService,
+  emailService,
 } from "./services/index.js";
 
 // Constants

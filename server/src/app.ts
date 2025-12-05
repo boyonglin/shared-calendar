@@ -20,11 +20,24 @@ import logger from "./utils/logger.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 
 // Import shared core
-import { healthCheck } from "../../shared/core/index.js";
+import { healthCheck, emailService } from "../../shared/core/index.js";
 
 // Environment configuration
 const CLIENT_URL =
   process.env.CLIENT_URL || "https://shared-calendar-vibe.vercel.app";
+
+// Initialize email service if Gmail credentials are configured
+if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+  emailService.initialize({
+    user: process.env.GMAIL_USER,
+    appPassword: process.env.GMAIL_APP_PASSWORD,
+  });
+  logger.info("📧 Email service initialized with Gmail SMTP");
+} else {
+  logger.info(
+    "📧 Email service not configured (set GMAIL_USER and GMAIL_APP_PASSWORD to enable)",
+  );
+}
 
 const app = express();
 
