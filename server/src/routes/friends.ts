@@ -24,6 +24,7 @@ import {
   parseTimeRangeParams,
   isValidEmail,
   validateFriendId,
+  emailService,
 } from "../../../shared/core/index.js";
 
 const router = express.Router();
@@ -133,6 +134,32 @@ router.post(
           userId,
           normalizedEmail,
         );
+
+      // Send email notification to the friend if they have an account
+      // and the email service is configured
+      if (friendAccount && emailService.isConfigured()) {
+        const senderName = extractFriendName(
+          primaryUserAccount?.metadata,
+          primaryUserAccount?.external_email || "Someone",
+        );
+        const senderEmail = primaryUserAccount?.external_email || "";
+
+        // Await email to ensure it's sent before serverless function terminates
+        // See: https://vercel.com/kb/guide/serverless-functions-and-smtp
+        try {
+          await emailService.sendFriendRequestNotification(
+            normalizedEmail,
+            senderName,
+            senderEmail,
+          );
+        } catch (err) {
+          // Log but don't fail the request if email fails
+          console.error(
+            "Failed to send friend request email notification:",
+            err,
+          );
+        }
+      }
 
       res.status(201).json({
         success: true,
@@ -372,6 +399,41 @@ router.post(
           "requested",
           "accepted",
         );
+      }
+
+      // Send email notification to the requester that their request was accepted
+      if (request.friend_user_id && emailService.isConfigured()) {
+        // Get the accepter's info (current user)
+        const accepterAccount =
+          await calendarAccountRepository.findByUserId(userId);
+        // Get the requester's email
+        const requesterAccount = await calendarAccountRepository.findByUserId(
+          request.friend_user_id,
+        );
+
+        if (accepterAccount && requesterAccount?.external_email) {
+          const accepterName = extractFriendName(
+            accepterAccount.metadata,
+            accepterAccount.external_email || "Someone",
+          );
+          const accepterEmail = accepterAccount.external_email || "";
+
+          // Await email to ensure it's sent before serverless function terminates
+          // See: https://vercel.com/kb/guide/serverless-functions-and-smtp
+          try {
+            await emailService.sendFriendRequestAcceptedNotification(
+              requesterAccount.external_email,
+              accepterName,
+              accepterEmail,
+            );
+          } catch (err) {
+            // Log but don't fail the request if email fails
+            console.error(
+              "Failed to send friend accepted email notification:",
+              err,
+            );
+          }
+        }
       }
 
       res.json({ success: true, message: "Friend request accepted!" });
