@@ -11,6 +11,9 @@
  */
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
+import { createServiceLogger } from "../utils/logger.js";
+
+const logger = createServiceLogger("email");
 
 // Email configuration interface
 interface EmailConfig {
@@ -33,30 +36,32 @@ interface EmailResult {
   error?: string;
 }
 
-// Requested gif - for friend request notifications
-const REQUESTED_GIFS = [
-  "https://media0.giphy.com/media/JIX9t2j0ZTN9S/giphy.gif", // Cat Working
-  "https://media1.giphy.com/media/HYpZKsyLOn1ks/giphy.gif", // Cat Hello
-];
-
-// Accepted gif - for friend request accepted notifications
-const ACCEPTED_GIFS = [
-  "https://media4.giphy.com/media/yoJC2GnSClbPOkV0eA/giphy.gif", // Excited Happy Birthday
-  "https://media3.giphy.com/media/ZJPSFNLmADueHvzoZ8/giphy.gif", // Party Raccoon
-];
-
-/**
- * Get a random gif URL for friend request emails
- */
-function getRandomRequestedGif(): string {
-  return REQUESTED_GIFS[Math.floor(Math.random() * REQUESTED_GIFS.length)];
+// Email template content
+interface EmailTemplateContent {
+  heading: string;
+  personName: string;
+  personEmail: string;
+  bodyText: string;
+  gifUrl: string;
 }
 
+// GIF collections for different notification types
+const NOTIFICATION_GIFS = {
+  friendRequest: [
+    "https://media0.giphy.com/media/JIX9t2j0ZTN9S/giphy.gif", // Cat Working
+    "https://media1.giphy.com/media/HYpZKsyLOn1ks/giphy.gif", // Cat Hello
+  ],
+  friendAccepted: [
+    "https://media4.giphy.com/media/yoJC2GnSClbPOkV0eA/giphy.gif", // Excited Happy Birthday
+    "https://media3.giphy.com/media/ZJPSFNLmADueHvzoZ8/giphy.gif", // Party Raccoon
+  ],
+} as const;
+
 /**
- * Get a random gif URL for accepted emails
+ * Get a random gif URL from a collection
  */
-function getRandomAcceptedGif(): string {
-  return ACCEPTED_GIFS[Math.floor(Math.random() * ACCEPTED_GIFS.length)];
+function getRandomGif(collection: readonly string[]): string {
+  return collection[Math.floor(Math.random() * collection.length)];
 }
 
 /**
@@ -73,11 +78,47 @@ function escapeHtml(str: string): string {
 }
 
 /**
- * Sanitize string for use in email subject to prevent SMTP header injection
+ * Sanitize string for plain text and subject lines
  * Removes newline characters that could inject additional headers
  */
-function sanitizeForSubject(str: string): string {
+function sanitizeText(str: string): string {
   return str.replace(/[\r\n]/g, " ").trim();
+}
+
+/**
+ * Build HTML email from template content
+ */
+function buildEmailHtml(content: EmailTemplateContent): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; max-width: 500px; margin: 0 auto; padding: 40px 20px; background: #fafafa;">
+  <div style="background: #fff; padding: 40px; border-radius: 4px;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td style="vertical-align: top;">
+          <h1 style="font-size: 22px; font-weight: normal; margin: 0 0 8px 0; line-height: 1.3;">${content.heading}</h1>
+          <p style="color: #666; font-size: 12px; margin: 0 0 24px 0; text-transform: uppercase; letter-spacing: 1px;">Shared Calendar</p>
+        </td>
+        <td style="vertical-align: top; text-align: right; width: 120px;">
+          <img src="${content.gifUrl}" alt="" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px;">
+        </td>
+      </tr>
+    </table>
+    <p style="font-size: 16px; line-height: 1.6; margin: 24px 0 16px 0;">
+      <strong>${content.personName}</strong> (${content.personEmail}) ${content.bodyText}
+    </p>
+    <p style="font-size: 14px; line-height: 1.6; color: #555; margin: 0;">
+      You can now see each other's calendar availability.
+    </p>
+  </div>
+</body>
+</html>
+  `.trim();
 }
 
 /**
@@ -106,6 +147,8 @@ class EmailService {
         pass: config.appPassword,
       },
     });
+
+    logger.info("Email service initialized with Gmail SMTP");
   }
 
   /**
@@ -116,13 +159,21 @@ class EmailService {
   }
 
   /**
+   * Validate email format
+   */
+  private isValidEmail(email: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
+
+  /**
    * Send an email
    * @param options - Email options (to, subject, text, html)
    * @returns Promise with result of the operation
    */
   async sendEmail(options: SendEmailOptions): Promise<EmailResult> {
     if (!this.transporter || !this.config) {
-      console.warn(
+      logger.warn(
         "Email service not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD environment variables.",
       );
       return {
@@ -131,9 +182,16 @@ class EmailService {
       };
     }
 
+    // Validate recipient email
+    if (!this.isValidEmail(options.to)) {
+      logger.warn({ to: options.to }, "Invalid recipient email address");
+      return {
+        success: false,
+        error: "Invalid recipient email address",
+      };
+    }
+
     try {
-      // IMPORTANT: Always await in serverless functions
-      // This ensures the email is sent before the function terminates
       const info = await this.transporter.sendMail({
         from: `"Shared Calendar" <${this.config.user}>`,
         to: options.to,
@@ -142,7 +200,7 @@ class EmailService {
         html: options.html,
       });
 
-      console.log("Email sent successfully:", info.messageId);
+      logger.info({ messageId: info.messageId }, "Email sent successfully");
       return {
         success: true,
         messageId: info.messageId,
@@ -150,7 +208,7 @@ class EmailService {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
-      console.error("Failed to send email:", errorMessage);
+      logger.error({ error: errorMessage }, "Failed to send email");
       return {
         success: false,
         error: errorMessage,
@@ -166,56 +224,30 @@ class EmailService {
     senderName: string,
     senderEmail: string,
   ): Promise<EmailResult> {
-    // Escape user-provided data to prevent XSS
-    const safeSenderName = escapeHtml(senderName);
-    const safeSenderEmail = escapeHtml(senderEmail);
+    // Sanitize user-provided data
+    const safeSenderName = escapeHtml(sanitizeText(senderName));
+    const safeSenderEmail = escapeHtml(sanitizeText(senderEmail));
 
-    const subject = `${sanitizeForSubject(senderName)} wants to connect on Shared Calendar`;
-    const gifUrl = getRandomRequestedGif();
+    const subject = `${sanitizeText(senderName)} wants to connect on Shared Calendar`;
+    const gifUrl = getRandomGif(NOTIFICATION_GIFS.friendRequest);
 
     const text = `
 New Friend Request
 
-${senderName} (${senderEmail}) wants to connect with you on Shared Calendar.
+${sanitizeText(senderName)} (${sanitizeText(senderEmail)}) wants to connect with you on Shared Calendar.
 
 Log in to accept or decline.
 
 - Shared Calendar Team
     `.trim();
 
-    const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; max-width: 500px; margin: 0 auto; padding: 40px 20px; background: #fafafa;">
-  <div style="background: #fff; padding: 40px; border-radius: 4px;">
-    <table width="100%" cellpadding="0" cellspacing="0" border="0">
-      <tr>
-        <td style="vertical-align: top;">
-          <h1 style="font-size: 22px; font-weight: normal; margin: 0 0 8px 0; line-height: 1.3;">New friend request</h1>
-          <p style="color: #666; font-size: 12px; margin: 0 0 24px 0; text-transform: uppercase; letter-spacing: 1px;">Shared Calendar</p>
-        </td>
-        <td style="vertical-align: top; text-align: right; width: 120px;">
-          <img src="${gifUrl}" alt="" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px;">
-        </td>
-      </tr>
-    </table>
-    <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">
-      <strong>${safeSenderName}</strong> (${safeSenderEmail}) wants to connect with you.
-    </p>
-    <p style="font-size: 14px; line-height: 1.6; color: #555; margin: 0 0 24px 0;">
-      Once connected, you'll see each other's calendar availability.
-    </p>
-    <p style="font-size: 13px; color: #888; margin: 0;">
-      Log in to your account to respond.
-    </p>
-  </div>
-</body>
-</html>
-    `.trim();
+    const html = buildEmailHtml({
+      heading: "New friend request",
+      personName: safeSenderName,
+      personEmail: safeSenderEmail,
+      bodyText: "wants to connect with you.",
+      gifUrl,
+    });
 
     return this.sendEmail({
       to: recipientEmail,
@@ -233,53 +265,30 @@ Log in to accept or decline.
     accepterName: string,
     accepterEmail: string,
   ): Promise<EmailResult> {
-    // Escape user-provided data to prevent XSS
-    const safeAccepterName = escapeHtml(accepterName);
-    const safeAccepterEmail = escapeHtml(accepterEmail);
+    // Sanitize user-provided data
+    const safeAccepterName = escapeHtml(sanitizeText(accepterName));
+    const safeAccepterEmail = escapeHtml(sanitizeText(accepterEmail));
 
-    const subject = `${sanitizeForSubject(accepterName)} accepted your friend request`;
-    const gifUrl = getRandomAcceptedGif();
+    const subject = `${sanitizeText(accepterName)} accepted your friend request`;
+    const gifUrl = getRandomGif(NOTIFICATION_GIFS.friendAccepted);
 
     const text = `
 Friend Request Accepted!
 
-${accepterName} (${accepterEmail}) accepted your friend request on Shared Calendar.
+${sanitizeText(accepterName)} (${sanitizeText(accepterEmail)}) accepted your friend request on Shared Calendar.
 
 You can now see each other's calendar availability.
 
 - Shared Calendar Team
     `.trim();
 
-    const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; max-width: 500px; margin: 0 auto; padding: 40px 20px; background: #fafafa;">
-  <div style="background: #fff; padding: 40px; border-radius: 4px;">
-    <table width="100%" cellpadding="0" cellspacing="0" border="0">
-      <tr>
-        <td style="vertical-align: top;">
-          <h1 style="font-size: 22px; font-weight: normal; margin: 0 0 8px 0; line-height: 1.3;">You're now connected! 🎉</h1>
-          <p style="color: #666; font-size: 12px; margin: 0 0 24px 0; text-transform: uppercase; letter-spacing: 1px;">Shared Calendar</p>
-        </td>
-        <td style="vertical-align: top; text-align: right; width: 120px;">
-          <img src="${gifUrl}" alt="" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px;">
-        </td>
-      </tr>
-    </table>
-    <p style="font-size: 16px; line-height: 1.6; margin: 0 0 16px 0;">
-      <strong>${safeAccepterName}</strong> (${safeAccepterEmail}) accepted your request.
-    </p>
-    <p style="font-size: 14px; line-height: 1.6; color: #555; margin: 0;">
-      You can now see each other's calendar availability and coordinate schedules.
-    </p>
-  </div>
-</body>
-</html>
-    `.trim();
+    const html = buildEmailHtml({
+      heading: "You're now connected!",
+      personName: safeAccepterName,
+      personEmail: safeAccepterEmail,
+      bodyText: "accepted your request.",
+      gifUrl,
+    });
 
     return this.sendEmail({
       to: recipientEmail,
@@ -300,10 +309,10 @@ You can now see each other's calendar availability.
 
     try {
       await this.transporter.verify();
-      console.log("Email service connection verified");
+      logger.info("Email service connection verified");
       return true;
     } catch (error) {
-      console.error("Email service verification failed:", error);
+      logger.error({ error }, "Email service verification failed");
       return false;
     }
   }

@@ -32,9 +32,9 @@ if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
     user: process.env.GMAIL_USER,
     appPassword: process.env.GMAIL_APP_PASSWORD,
   });
-  console.log("📧 Email service initialized with Gmail SMTP");
+  logger.info("📧 Email service initialized with Gmail SMTP");
 } else {
-  console.log(
+  logger.info(
     "📧 Email service not configured (set GMAIL_USER and GMAIL_APP_PASSWORD to enable)",
   );
 }
