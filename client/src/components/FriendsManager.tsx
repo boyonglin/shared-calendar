@@ -311,7 +311,12 @@ export function FriendsManager({
 
         <Tabs
           value={activeTab}
-          onValueChange={(v) => setActiveTab(v as TabValue)}
+          onValueChange={(v) => {
+            setActiveTab(v as TabValue);
+            // Clear messages when switching tabs
+            setSuccessMessage(null);
+            setError(null);
+          }}
           className="w-full"
         >
           <TabsList className="grid w-full grid-cols-3">
