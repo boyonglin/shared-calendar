@@ -73,6 +73,14 @@ function escapeHtml(str: string): string {
 }
 
 /**
+ * Sanitize string for use in email subject to prevent SMTP header injection
+ * Removes newline characters that could inject additional headers
+ */
+function sanitizeForSubject(str: string): string {
+  return str.replace(/[\r\n]/g, " ").trim();
+}
+
+/**
  * Email Service Class
  * Handles sending emails via Gmail SMTP using nodemailer
  */
@@ -162,7 +170,7 @@ class EmailService {
     const safeSenderName = escapeHtml(senderName);
     const safeSenderEmail = escapeHtml(senderEmail);
 
-    const subject = `${senderName} wants to connect on Shared Calendar`;
+    const subject = `${sanitizeForSubject(senderName)} wants to connect on Shared Calendar`;
     const gifUrl = getRandomRequestedGif();
 
     const text = `
@@ -229,7 +237,7 @@ Log in to accept or decline.
     const safeAccepterName = escapeHtml(accepterName);
     const safeAccepterEmail = escapeHtml(accepterEmail);
 
-    const subject = `${accepterName} accepted your friend request`;
+    const subject = `${sanitizeForSubject(accepterName)} accepted your friend request`;
     const gifUrl = getRandomAcceptedGif();
 
     const text = `
