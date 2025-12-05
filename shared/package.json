@@ -14,9 +14,12 @@
   ],
   "author": "",
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "nodemailer": "^6.9.16"
+  },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/nodemailer": "^6.4.17",
     "@types/uuid": "^10.0.0"
   }
 }
