@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { body, param, validationResult } from "express-validator";
+import { body, param, validationResult, type Meta } from "express-validator";
 
 // Import shared validation utilities to avoid duplication
 // All core validation functions are defined once in shared/core
@@ -57,8 +57,8 @@ export const validateCreateEvent = [
   body("end")
     .isISO8601({ strict: false })
     .withMessage("End time must be a valid ISO 8601 date")
-    .custom((end, { req }) => {
-      const start = req.body.start;
+    .custom((end: string, { req }: Meta) => {
+      const start = (req as Request).body.start;
       if (!start) return true;
       const startDate = new Date(start);
       const endDate = new Date(end);
@@ -84,8 +84,8 @@ export const validateDraftInvitation = [
   body("end")
     .isISO8601({ strict: false })
     .withMessage("End time must be a valid ISO 8601 date")
-    .custom((end, { req }) => {
-      const start = req.body.start;
+    .custom((end: string, { req }: Meta) => {
+      const start = (req as Request).body.start;
       if (!start) return true;
       const startDate = new Date(start);
       const endDate = new Date(end);
@@ -104,7 +104,7 @@ export const validateDraftInvitation = [
     .optional()
     .isArray()
     .withMessage("Attendees must be an array")
-    .custom((attendees) => {
+    .custom((attendees: string[]) => {
       if (attendees && attendees.length > 50) {
         throw new Error("Attendees must be an array with at most 50 items");
       }
