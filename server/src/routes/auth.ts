@@ -22,6 +22,34 @@ import {
 
 const router = express.Router();
 
+/**
+ * Validate that a redirect URL is safe (matches allowed CLIENT_URL)
+ * Prevents open redirect vulnerabilities
+ */
+function isValidRedirectUrl(url: string): boolean {
+  try {
+    const redirectUrl = new URL(url);
+    const allowedUrl = new URL(env.CLIENT_URL);
+    return redirectUrl.origin === allowedUrl.origin;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Build a safe redirect URL using the allowed CLIENT_URL origin
+ */
+function buildSafeRedirectUrl(path: string, params?: Record<string, string>): string {
+  const url = new URL(env.CLIENT_URL);
+  url.pathname = path || url.pathname;
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      url.searchParams.set(key, value);
+    });
+  }
+  return url.toString();
+}
+
 // Interface for Outlook OAuth state token payload
 interface OutlookStatePayload {
   userId: string;
@@ -67,10 +95,10 @@ router.get("/google/callback", async (req: Request, res: Response) => {
       provider: "google",
     });
 
-    res.redirect(`${env.CLIENT_URL}?auth=success&code=${authCode}`);
+    res.redirect(buildSafeRedirectUrl("/", { auth: "success", code: authCode }));
   } catch (error) {
     logError(logger, error, "Google auth callback error");
-    res.redirect(`${env.CLIENT_URL}?auth=error`);
+    res.redirect(buildSafeRedirectUrl("/", { auth: "error" }));
   }
 });
 
@@ -255,7 +283,7 @@ router.get("/outlook/callback", async (req: Request, res: Response) => {
     // Redirect back to client with success - provider=outlook tells client
     // NOT to treat this as a login, just as a connection
     res.redirect(
-      `${env.CLIENT_URL}?auth=success&provider=outlook&code=${authCode}`,
+      buildSafeRedirectUrl("/", { auth: "success", provider: "outlook", code: authCode }),
     );
   } catch (error) {
     logError(logger, error, "Outlook callback error");
