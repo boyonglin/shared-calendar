@@ -1,0 +1,46 @@
+name: security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for Gitleaks to scan git history
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - run: npm ci
+
+      # 1) Dependency audit - check for known vulnerabilities
+      - name: npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true # Don't fail the build, but report
+
+      # 2) OSV-Scanner - broader vulnerability database
+      - name: OSV-Scanner
+        run: |
+          npm i -g @google/osv-scanner
+          osv-scanner scan --lockfile=package-lock.json
+        continue-on-error: true
+
+      # 3) Secrets detection - prevent leaked credentials
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 4) SAST - Static Application Security Testing
+      - name: Semgrep
+        run: |
+          pip install semgrep
+          semgrep scan --config=auto --error
+        continue-on-error: true
