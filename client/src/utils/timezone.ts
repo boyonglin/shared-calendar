@@ -36,7 +36,7 @@ export function parseToLocalTime(dateString: string): Date {
 
   // Validate the date
   if (isNaN(date.getTime())) {
-    console.warn(`Invalid date string: ${dateString}`);
+    console.warn("Invalid date string: %s", dateString);
     return new Date();
   }
 

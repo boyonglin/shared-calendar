@@ -124,7 +124,8 @@ export function useFriends({
             // Only log non-404 errors as they indicate actual issues
             if (err instanceof Error && !err.message.includes("Not found")) {
               console.error(
-                `Error fetching events for friend ${friend.id}:`,
+                "Error fetching events for friend %s:",
+                friend.id,
                 err,
               );
             }
