@@ -43,7 +43,6 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
-    "@swc/core-linux-x64-gnu": "^1.15.3",
     "form-data": "^4.0.1"
   }
 }
