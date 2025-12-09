@@ -9,9 +9,11 @@ function ScrollArea({
   className,
   children,
   type = "hover",
+  viewportRef,
   ...props
 }: React.ComponentProps<typeof ScrollAreaPrimitive.Root> & {
   type?: "auto" | "always" | "scroll" | "hover";
+  viewportRef?: React.Ref<HTMLDivElement>;
 }) {
   return (
     <ScrollAreaPrimitive.Root
@@ -21,6 +23,7 @@ function ScrollArea({
       {...props}
     >
       <ScrollAreaPrimitive.Viewport
+        ref={viewportRef}
         data-slot="scroll-area-viewport"
         className="h-full min-h-[inherit] max-h-[inherit] w-full rounded-[inherit]"
       >

@@ -142,6 +142,7 @@ export function CalendarView({
   // Current time indicator state
   const [currentTime, setCurrentTime] = useState(new Date());
   const scrollTargetRef = useRef<HTMLDivElement>(null);
+  const scrollAreaViewportRef = useRef<HTMLDivElement>(null);
   const hasScrolledToCurrentTime = useRef(false);
 
   useEffect(() => {
@@ -154,13 +155,25 @@ export function CalendarView({
 
   // Scroll to current time (or default time) on initial mount
   useEffect(() => {
-    if (scrollTargetRef.current && !hasScrolledToCurrentTime.current) {
+    if (
+      scrollTargetRef.current &&
+      scrollAreaViewportRef.current &&
+      !hasScrolledToCurrentTime.current
+    ) {
       // Small delay to ensure the layout is complete
       const timeoutId = window.setTimeout(() => {
-        scrollTargetRef.current?.scrollIntoView({
-          behavior: "auto",
-          block: "center",
-        });
+        const viewport = scrollAreaViewportRef.current;
+        const target = scrollTargetRef.current;
+        if (viewport && target) {
+          // Calculate the scroll position to center the target within the viewport
+          const targetOffsetTop = target.offsetTop;
+          const viewportHeight = viewport.clientHeight;
+          const targetHeight = target.clientHeight;
+          // Scroll so the target is roughly centered in the viewport
+          const scrollTop =
+            targetOffsetTop - viewportHeight / 2 + targetHeight / 2;
+          viewport.scrollTop = Math.max(0, scrollTop);
+        }
         hasScrolledToCurrentTime.current = true;
       }, 100);
       return () => window.clearTimeout(timeoutId);
@@ -254,7 +267,10 @@ export function CalendarView({
           </div>
 
           {/* Scrollable calendar container with max height */}
-          <ScrollArea className="max-h-[60vh]">
+          <ScrollArea
+            className="max-h-[60vh]"
+            viewportRef={scrollAreaViewportRef}
+          >
             {/* All-day row */}
             <div className="border-l border-r sm:border-b border-gray-200 dark:border-gray-600">
               {/* Time indicator row for mobile */}
