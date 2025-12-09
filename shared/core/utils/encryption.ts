@@ -33,31 +33,36 @@ function getEncryptionKey(): Buffer {
 }
 
 /**
- * Encrypt a string using AES-256-CBC
+ * Encrypt a string using AES-256-GCM
+ * GCM mode provides both confidentiality and authenticity
  */
 export function encrypt(text: string): string {
   const iv = crypto.randomBytes(ENCRYPTION_IV_LENGTH);
-  const cipher = crypto.createCipheriv("aes-256-cbc", getEncryptionKey(), iv);
+  const cipher = crypto.createCipheriv("aes-256-gcm", getEncryptionKey(), iv);
   let encrypted = cipher.update(text, "utf8");
   encrypted = Buffer.concat([encrypted, cipher.final()]);
-  return iv.toString("hex") + ":" + encrypted.toString("hex");
+  const authTag = cipher.getAuthTag();
+  return iv.toString("hex") + ":" + encrypted.toString("hex") + ":" + authTag.toString("hex");
 }
 
 /**
- * Decrypt a string encrypted with AES-256-CBC
+ * Decrypt a string encrypted with AES-256-GCM
+ * GCM mode provides both confidentiality and authenticity
  */
 export function decrypt(text: string): string {
   const textParts = text.split(":");
-  if (textParts.length < 2) {
+  if (textParts.length < 3) {
     throw new Error("Invalid encrypted data format");
   }
-  const iv = Buffer.from(textParts.shift()!, "hex");
-  const encryptedText = Buffer.from(textParts.join(":"), "hex");
+  const iv = Buffer.from(textParts[0], "hex");
+  const encryptedText = Buffer.from(textParts[1], "hex");
+  const authTag = Buffer.from(textParts[2], "hex");
   const decipher = crypto.createDecipheriv(
-    "aes-256-cbc",
+    "aes-256-gcm",
     getEncryptionKey(),
     iv,
   );
+  decipher.setAuthTag(authTag);
   let decrypted = decipher.update(encryptedText);
   decrypted = Buffer.concat([decrypted, decipher.final()]);
   return decrypted.toString();
