@@ -2,7 +2,7 @@
 authors = ["Bo-Yong <poerevan9@gmail.com>"]
 channels = ["conda-forge"]
 name = "shared-calendar"
-platforms = ["linux-64"]
+platforms = ["linux-64", "win-64"]
 version = "0.1.0"
 
 [tasks]
