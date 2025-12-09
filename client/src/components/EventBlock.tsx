@@ -18,12 +18,15 @@ interface EventBlockProps {
   event: CalendarEvent;
   userColor: string;
   isCurrentUser: boolean;
+  /** Whether this event has friend attendees (mutual event) */
+  isMutual?: boolean;
 }
 
 export function EventBlock({
   event,
   userColor,
   isCurrentUser,
+  isMutual = false,
 }: EventBlockProps) {
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
@@ -33,7 +36,12 @@ export function EventBlock({
   const instanceId = useId();
   // Track if a long press was triggered to prevent click event propagation
   const wasLongPress = useRef(false);
-  const displayText = isCurrentUser && event.title ? event.title : "Busy";
+  // For mutual events, show the title regardless of who owns the event
+  // For non-mutual events, only show title for current user's events
+  const displayText =
+    (isMutual || isCurrentUser) && event.title ? event.title : "Busy";
+  // Bold the text for mutual events (events where both current user and friend are participants)
+  const isBoldText = isMutual;
 
   // Clean up timers on unmount
   useEffect(() => {
@@ -219,7 +227,11 @@ export function EventBlock({
         onClick={handleClick}
         onContextMenu={handleContextMenu}
       >
-        <span className="hidden sm:inline truncate">{displayText}</span>
+        <span
+          className={`hidden sm:inline truncate ${isBoldText ? "font-bold" : ""}`}
+        >
+          {displayText}
+        </span>
       </div>
       {tooltip}
     </>

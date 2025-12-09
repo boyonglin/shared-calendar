@@ -5,6 +5,9 @@
 /** Calendar view: days in a week */
 export const DAYS_IN_WEEK = 7;
 
+/** Default hour to scroll to when current time is not visible (9 AM) */
+export const DEFAULT_SCROLL_HOUR = 9;
+
 /** Calendar fetch: days before current week start (2 weeks) */
 export const CALENDAR_FETCH_DAYS_BEFORE = 14;
 

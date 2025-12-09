@@ -43,6 +43,11 @@ interface EmailTemplateContent {
   personEmail: string;
   bodyText: string;
   gifUrl: string;
+  footerText?: string;
+  ctaButton?: {
+    text: string;
+    url: string;
+  };
 }
 
 // GIF collections for different notification types
@@ -54,6 +59,10 @@ const NOTIFICATION_GIFS = {
   friendAccepted: [
     "https://media4.giphy.com/media/yoJC2GnSClbPOkV0eA/giphy.gif", // Excited Happy Birthday
     "https://media3.giphy.com/media/ZJPSFNLmADueHvzoZ8/giphy.gif", // Party Raccoon
+  ],
+  inviteToJoin: [
+    "https://media2.giphy.com/media/dejnMJxTg72pY9ConE/giphy.gif", // Good Morning Hello
+    "https://media1.giphy.com/media/fHr6SanEdFx8LBF4Dv/giphy.gif", // Best Friends Love
   ],
 } as const;
 
@@ -89,6 +98,13 @@ function sanitizeText(str: string): string {
  * Build HTML email from template content
  */
 function buildEmailHtml(content: EmailTemplateContent): string {
+  const footerText =
+    content.footerText ?? "You can now see each other's calendar availability.";
+
+  const ctaHtml = content.ctaButton
+    ? `<a href="${escapeHtml(content.ctaButton.url)}" style="display: inline-block; background: #1a1a1a; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-size: 16px; margin-top: 16px;">${escapeHtml(content.ctaButton.text)}</a>`
+    : "";
+
   return `
 <!DOCTYPE html>
 <html>
@@ -113,8 +129,9 @@ function buildEmailHtml(content: EmailTemplateContent): string {
       <strong>${content.personName}</strong> (${content.personEmail}) ${content.bodyText}
     </p>
     <p style="font-size: 14px; line-height: 1.6; color: #555; margin: 0;">
-      You can now see each other's calendar availability.
+      ${escapeHtml(footerText)}
     </p>
+    ${ctaHtml}
   </div>
 </body>
 </html>
@@ -247,6 +264,7 @@ Log in to accept or decline.
       personEmail: safeSenderEmail,
       bodyText: "wants to connect with you.",
       gifUrl,
+      footerText: "Log in to accept or decline this request.",
     });
 
     return this.sendEmail({
@@ -288,6 +306,57 @@ You can now see each other's calendar availability.
       personEmail: safeAccepterEmail,
       bodyText: "accepted your request.",
       gifUrl,
+    });
+
+    return this.sendEmail({
+      to: recipientEmail,
+      subject,
+      text,
+      html,
+    });
+  }
+
+  /**
+   * Send invitation email to someone who hasn't signed up yet
+   */
+  async sendInviteToJoin(
+    recipientEmail: string,
+    inviterName: string,
+    inviterEmail: string,
+    appUrl: string = "https://shared-calendar-vibe.vercel.app",
+  ): Promise<EmailResult> {
+    // Sanitize user-provided data
+    const safeInviterName = escapeHtml(sanitizeText(inviterName));
+    const safeInviterEmail = escapeHtml(sanitizeText(inviterEmail));
+    const sanitizedAppUrl = sanitizeText(appUrl);
+
+    const subject = `${sanitizeText(inviterName)} invited you to Shared Calendar`;
+    const gifUrl = getRandomGif(NOTIFICATION_GIFS.inviteToJoin);
+
+    const text = `
+You've been invited!
+
+${sanitizeText(inviterName)} (${sanitizeText(inviterEmail)}) wants to share their calendar with you on Shared Calendar.
+
+Join now to see each other's availability and schedule meetings effortlessly.
+
+Sign up here: ${appUrl}
+
+- Shared Calendar Team
+    `.trim();
+
+    const html = buildEmailHtml({
+      heading: "You're invited!",
+      personName: safeInviterName,
+      personEmail: safeInviterEmail,
+      bodyText: "wants to share their calendar with you.",
+      gifUrl,
+      footerText:
+        "Join to see each other's availability and schedule meetings effortlessly.",
+      ctaButton: {
+        text: "Join Now",
+        url: sanitizedAppUrl,
+      },
     });
 
     return this.sendEmail({

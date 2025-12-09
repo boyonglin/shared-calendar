@@ -135,9 +135,8 @@ router.post(
           normalizedEmail,
         );
 
-      // Send email notification to the friend if they have an account
-      // and the email service is configured
-      if (friendAccount && emailService.isConfigured()) {
+      // Send email notification if email service is configured
+      if (emailService.isConfigured()) {
         const senderName = extractFriendName(
           primaryUserAccount?.metadata,
           primaryUserAccount?.external_email || "Someone",
@@ -147,17 +146,24 @@ router.post(
         // Await email to ensure it's sent before serverless function terminates
         // See: https://vercel.com/kb/guide/serverless-functions-and-smtp
         try {
-          await emailService.sendFriendRequestNotification(
-            normalizedEmail,
-            senderName,
-            senderEmail,
-          );
+          if (friendAccount) {
+            // Friend has an account - send friend request notification
+            await emailService.sendFriendRequestNotification(
+              normalizedEmail,
+              senderName,
+              senderEmail,
+            );
+          } else {
+            // Friend doesn't have an account - send invitation to join
+            await emailService.sendInviteToJoin(
+              normalizedEmail,
+              senderName,
+              senderEmail,
+            );
+          }
         } catch (err) {
           // Log but don't fail the request if email fails
-          console.error(
-            "Failed to send friend request email notification:",
-            err,
-          );
+          console.error("Failed to send email notification:", err);
         }
       }
 
