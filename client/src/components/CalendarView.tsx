@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { EventBlock } from "./EventBlock";
 import { ScrollArea } from "./ui/scroll-area";
 import { DAYS_IN_WEEK } from "@shared/core/constants/index";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useEventFiltering } from "@/hooks/useEventFiltering";
 
 interface CalendarViewProps {
@@ -138,6 +138,8 @@ export function CalendarView({
 
   // Current time indicator state
   const [currentTime, setCurrentTime] = useState(new Date());
+  const scrollTargetRef = useRef<HTMLDivElement>(null);
+  const hasScrolledToCurrentTime = useRef(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -145,6 +147,21 @@ export function CalendarView({
     }, 60000); // Update every minute
 
     return () => window.clearInterval(timer);
+  }, []);
+
+  // Scroll to current time (or default time) on initial mount
+  useEffect(() => {
+    if (scrollTargetRef.current && !hasScrolledToCurrentTime.current) {
+      // Small delay to ensure the layout is complete
+      const timeoutId = window.setTimeout(() => {
+        scrollTargetRef.current?.scrollIntoView({
+          behavior: "auto",
+          block: "center",
+        });
+        hasScrolledToCurrentTime.current = true;
+      }, 100);
+      return () => window.clearTimeout(timeoutId);
+    }
   }, []);
 
   // Calculate current time slot (rounded to 30-minute intervals)
@@ -165,6 +182,14 @@ export function CalendarView({
   const isTodayInWeek = weekDays.some((day) => isToday(day));
   const todayIndex = weekDays.findIndex((day) => isToday(day));
   const currentTimeSlot = getCurrentTimeSlot();
+
+  // Default scroll target hour (9 AM) when current time is not visible
+  const defaultScrollHour = 9;
+  const shouldUseDefaultScroll = !isTodayInWeek || currentTimeSlot === null;
+  const defaultScrollTarget =
+    defaultScrollHour >= validStartHour && defaultScrollHour <= validEndHour
+      ? { hour: defaultScrollHour, minute: 0 }
+      : null;
 
   return (
     <Card className="dark:bg-gray-800 dark:border-gray-700">
@@ -286,8 +311,20 @@ export function CalendarView({
                   currentTimeSlot.hour === hour &&
                   currentTimeSlot.minute === minute;
 
+                // Determine if this slot should be the scroll target
+                const isScrollTarget =
+                  isCurrentTimeSlot ||
+                  (shouldUseDefaultScroll &&
+                    defaultScrollTarget !== null &&
+                    defaultScrollTarget.hour === hour &&
+                    defaultScrollTarget.minute === minute);
+
                 return (
-                  <div key={`${hour}-${minute}`} className="relative">
+                  <div
+                    key={`${hour}-${minute}`}
+                    className="relative"
+                    ref={isScrollTarget ? scrollTargetRef : undefined}
+                  >
                     {/* Current time indicator - at junction between slots (hidden on mobile when on the hour) */}
                     {isCurrentTimeSlot && !(currentTimeSlot?.minute === 0) && (
                       <div className="absolute -top-0.5 left-0 right-0 z-10 pointer-events-none grid grid-cols-7 sm:grid-cols-8 gap-px">
