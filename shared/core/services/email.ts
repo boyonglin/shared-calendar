@@ -43,9 +43,8 @@ interface EmailTemplateContent {
   personEmail: string;
   bodyText: string;
   gifUrl: string;
-  footerText?: string; // Optional custom footer text
+  footerText?: string;
   ctaButton?: {
-    // Optional call-to-action button
     text: string;
     url: string;
   };
@@ -329,7 +328,7 @@ You can now see each other's calendar availability.
     // Sanitize user-provided data
     const safeInviterName = escapeHtml(sanitizeText(inviterName));
     const safeInviterEmail = escapeHtml(sanitizeText(inviterEmail));
-    const safeAppUrl = escapeHtml(sanitizeText(appUrl));
+    const sanitizedAppUrl = sanitizeText(appUrl);
 
     const subject = `${sanitizeText(inviterName)} invited you to Shared Calendar`;
     const gifUrl = getRandomGif(NOTIFICATION_GIFS.inviteToJoin);
@@ -356,7 +355,7 @@ Sign up here: ${appUrl}
         "Join to see each other's availability and schedule meetings effortlessly.",
       ctaButton: {
         text: "Join Now",
-        url: safeAppUrl,
+        url: sanitizedAppUrl,
       },
     });
 
