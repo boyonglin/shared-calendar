@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import express from "express";
 import jwt from "jsonwebtoken";
+import { URL } from "node:url";
 import { validateICloudCredentials } from "../middleware/validation.js";
 import { authenticateUser } from "../middleware/auth.js";
 import type { AuthRequest } from "../middleware/auth.js";
@@ -26,7 +27,7 @@ const router = express.Router();
  * Validate that a redirect URL is safe (matches allowed CLIENT_URL)
  * Prevents open redirect vulnerabilities
  */
-function isValidRedirectUrl(url: string): boolean {
+function _isValidRedirectUrl(url: string): boolean {
   try {
     const redirectUrl = new URL(url);
     const allowedUrl = new URL(env.CLIENT_URL);
@@ -39,7 +40,10 @@ function isValidRedirectUrl(url: string): boolean {
 /**
  * Build a safe redirect URL using the allowed CLIENT_URL origin
  */
-function buildSafeRedirectUrl(path: string, params?: Record<string, string>): string {
+function buildSafeRedirectUrl(
+  path: string,
+  params?: Record<string, string>,
+): string {
   const url = new URL(env.CLIENT_URL);
   url.pathname = path || url.pathname;
   if (params) {
@@ -95,7 +99,9 @@ router.get("/google/callback", async (req: Request, res: Response) => {
       provider: "google",
     });
 
-    res.redirect(buildSafeRedirectUrl("/", { auth: "success", code: authCode }));
+    res.redirect(
+      buildSafeRedirectUrl("/", { auth: "success", code: authCode }),
+    );
   } catch (error) {
     logError(logger, error, "Google auth callback error");
     res.redirect(buildSafeRedirectUrl("/", { auth: "error" }));
@@ -283,7 +289,11 @@ router.get("/outlook/callback", async (req: Request, res: Response) => {
     // Redirect back to client with success - provider=outlook tells client
     // NOT to treat this as a login, just as a connection
     res.redirect(
-      buildSafeRedirectUrl("/", { auth: "success", provider: "outlook", code: authCode }),
+      buildSafeRedirectUrl("/", {
+        auth: "success",
+        provider: "outlook",
+        code: authCode,
+      }),
     );
   } catch (error) {
     logError(logger, error, "Outlook callback error");

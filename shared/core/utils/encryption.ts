@@ -42,7 +42,13 @@ export function encrypt(text: string): string {
   let encrypted = cipher.update(text, "utf8");
   encrypted = Buffer.concat([encrypted, cipher.final()]);
   const authTag = cipher.getAuthTag();
-  return iv.toString("hex") + ":" + encrypted.toString("hex") + ":" + authTag.toString("hex");
+  return (
+    iv.toString("hex") +
+    ":" +
+    encrypted.toString("hex") +
+    ":" +
+    authTag.toString("hex")
+  );
 }
 
 /**
