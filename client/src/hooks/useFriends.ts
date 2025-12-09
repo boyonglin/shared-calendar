@@ -31,9 +31,6 @@ interface UseFriendsOptions {
   autoSyncPending?: boolean;
 }
 
-/**
- * Hook for managing friends and their calendar events
- */
 export function useFriends({
   isAuthenticated,
   weekStart,

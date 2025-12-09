@@ -6,11 +6,10 @@ import type { User, CalendarEvent } from "@shared/types";
 import { ONE_WEEK_MS } from "@shared/core/constants/index";
 
 // =============================================================================
-// Mock User IDs - Constants for consistent references
+// Mock User IDs
 // =============================================================================
 
 /**
- * Mock user ID constants for demonstration users
  * Use these constants instead of hardcoded strings for consistency
  */
 export const MOCK_USER_IDS = {
@@ -30,9 +29,6 @@ export const MOCK_EVENT_ID_PREFIX = "mock-" as const;
 // Mock Users
 // =============================================================================
 
-/**
- * Mock users for demonstration
- */
 export const mockUsers: User[] = [
   {
     id: MOCK_USER_IDS.SARAH,
@@ -55,10 +51,8 @@ export const mockUsers: User[] = [
 ];
 
 /**
- * Helper function to get a date relative to today
+ * Get a date relative to today
  * @param dayOffset - Number of days from today (negative for past, positive for future)
- * @param hour - Hour of the day (0-23)
- * @param minute - Minute (0-59)
  */
 function getRelativeDate(
   dayOffset: number,
@@ -84,7 +78,7 @@ function seededRandom(seed: number): () => number {
 
 /**
  * Generate mock events dynamically based on current date
- * Events are limited to the current week only (Sunday to Saturday)
+ * Events are limited to the current week only (Monday to Sunday)
  */
 function generateMockEvents(): CalendarEvent[] {
   const events: CalendarEvent[] = [];
@@ -94,10 +88,12 @@ function generateMockEvents(): CalendarEvent[] {
   const today = new Date();
   const weekSeed = Math.floor(today.getTime() / ONE_WEEK_MS);
 
-  // Calculate current week boundaries (Sunday to Saturday)
+  // Calculate current week boundaries (Monday to Sunday - ISO week)
   const currentDayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
-  const weekStartOffset = -currentDayOfWeek; // Days to go back to Sunday
-  const weekEndOffset = 6 - currentDayOfWeek; // Days to go forward to Saturday
+  // Convert to ISO day (Monday = 0, Sunday = 6)
+  const isoDayOfWeek = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
+  const weekStartOffset = -isoDayOfWeek; // Days to go back to Monday
+  const weekEndOffset = 6 - isoDayOfWeek; // Days to go forward to Sunday
   const random = seededRandom(weekSeed);
 
   // Event templates with titles and durations
@@ -119,7 +115,7 @@ function generateMockEvents(): CalendarEvent[] {
 
   let eventId = 1;
 
-  // Generate events only for current week (Sunday to Saturday)
+  // Generate events only for current week (Monday to Sunday)
   for (
     let dayOffset = weekStartOffset;
     dayOffset <= weekEndOffset;
@@ -183,6 +179,5 @@ function generateMockEvents(): CalendarEvent[] {
 
 /**
  * Mock events generated dynamically relative to today
- * Events are limited to the current week only (Sunday to Saturday)
  */
 export const mockEvents: CalendarEvent[] = generateMockEvents();

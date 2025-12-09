@@ -43,10 +43,6 @@ function friendsToUsers(friends: FriendWithColor[]): User[] {
     }));
 }
 
-/**
- * Hook that aggregates calendar data from multiple sources
- * Handles the logic of combining user data with friends or falling back to mock data
- */
 export function useCalendarAggregation({
   currentUser,
   userEvents,

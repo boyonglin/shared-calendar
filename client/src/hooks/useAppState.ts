@@ -33,11 +33,6 @@ export interface UseAppStateReturn {
 
 const DEFAULT_SELECTED_USERS = ["1", "2", "3", "4"];
 
-/**
- * Manages application-level UI state including:
- * - User selection for calendar filtering
- * - Modal open/close states
- */
 export function useAppState({
   currentUser,
   initialSelectedUsers = DEFAULT_SELECTED_USERS,

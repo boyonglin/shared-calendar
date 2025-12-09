@@ -61,9 +61,6 @@ function isCurrentUserAttendee(
   );
 }
 
-/**
- * Hook for filtering and deduplicating calendar events
- */
 export function useEventFiltering({
   events,
   currentUserId,

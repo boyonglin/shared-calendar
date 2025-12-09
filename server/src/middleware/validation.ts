@@ -1,8 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { body, param, validationResult, type Meta } from "express-validator";
 
-// Import shared validation utilities to avoid duplication
-// All core validation functions are defined once in shared/core
 export { isValidEmail } from "../../../shared/core/index.js";
 
 // Validation middleware to check for errors
