@@ -29,6 +29,8 @@ export interface CalendarEvent {
   provider?: CalendarProvider;
   /** For friend events, the connection ID */
   friendConnectionId?: number;
+  /** List of attendee emails for this event */
+  attendees?: string[];
 }
 
 export interface TimeSlot {

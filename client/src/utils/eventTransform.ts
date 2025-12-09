@@ -22,6 +22,7 @@ export interface TransformableEvent {
   title?: string;
   start?: RawEventDateTime;
   end?: RawEventDateTime;
+  attendees?: Array<{ email?: string }>;
 }
 
 /**
@@ -94,6 +95,13 @@ export function transformRawEvent(
     title: event.summary || event.title || "(No title)",
     isAllDay,
   };
+
+  // Add attendees if present (extract emails from attendee objects)
+  if (event.attendees && event.attendees.length > 0) {
+    calendarEvent.attendees = event.attendees
+      .map((a) => a.email)
+      .filter((email): email is string => !!email);
+  }
 
   // Add friendConnectionId if this is a friend's event
   if (friendConnectionId !== undefined) {

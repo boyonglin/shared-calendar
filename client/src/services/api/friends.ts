@@ -28,6 +28,7 @@ export interface FriendEvent {
   start?: { dateTime?: string; date?: string } | string;
   end?: { dateTime?: string; date?: string } | string;
   friendConnectionId: number;
+  attendees?: Array<{ email?: string }>;
 }
 
 export interface FriendEventsResponse {

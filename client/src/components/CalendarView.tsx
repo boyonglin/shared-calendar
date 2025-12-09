@@ -6,6 +6,7 @@ import { EventBlock } from "./EventBlock";
 import { ScrollArea } from "./ui/scroll-area";
 import { DAYS_IN_WEEK } from "@shared/core/constants/index";
 import { useState, useEffect } from "react";
+import { useEventFiltering } from "@/hooks/useEventFiltering";
 
 interface CalendarViewProps {
   users: User[];
@@ -28,6 +29,13 @@ export function CalendarView({
   startHour = 6,
   endHour = 22,
 }: CalendarViewProps) {
+  // Filter and deduplicate events, identify mutual events
+  const { filteredEvents, mutualEventIds } = useEventFiltering({
+    events,
+    currentUserId,
+    users,
+  });
+
   // Validate hour range
   const validStartHour = Math.max(0, Math.min(23, startHour));
   const validEndHour = Math.max(validStartHour, Math.min(23, endHour));
@@ -80,11 +88,13 @@ export function CalendarView({
   };
 
   const getEventsInSlot = (date: Date, hour: number, minute: number) => {
-    return events.filter((event) => isEventInSlot(event, date, hour, minute));
+    return filteredEvents.filter((event) =>
+      isEventInSlot(event, date, hour, minute),
+    );
   };
 
   const getAllDayEventsForDate = (date: Date) => {
-    return events.filter((event) => {
+    return filteredEvents.filter((event) => {
       if (!event.isAllDay) return false;
 
       // For multi-day all-day events, check if the date falls within the event range
@@ -256,6 +266,7 @@ export function CalendarView({
                               event={event}
                               userColor={getUserColor(event.userId)}
                               isCurrentUser={event.userId === currentUserId}
+                              isMutual={mutualEventIds.has(event.id)}
                             />
                           ))}
                         </div>
@@ -414,6 +425,7 @@ export function CalendarView({
                                     isCurrentUser={
                                       event.userId === currentUserId
                                     }
+                                    isMutual={mutualEventIds.has(event.id)}
                                   />
                                 ))}
                               </div>
