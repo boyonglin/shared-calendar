@@ -4,7 +4,10 @@ import { Button } from "./ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { EventBlock } from "./EventBlock";
 import { ScrollArea } from "./ui/scroll-area";
-import { DAYS_IN_WEEK } from "@shared/core/constants/index";
+import {
+  DAYS_IN_WEEK,
+  DEFAULT_SCROLL_HOUR,
+} from "@shared/core/constants/index";
 import { useState, useEffect, useRef } from "react";
 import { useEventFiltering } from "@/hooks/useEventFiltering";
 
@@ -183,12 +186,11 @@ export function CalendarView({
   const todayIndex = weekDays.findIndex((day) => isToday(day));
   const currentTimeSlot = getCurrentTimeSlot();
 
-  // Default scroll target hour (9 AM) when current time is not visible
-  const defaultScrollHour = 9;
+  // Use DEFAULT_SCROLL_HOUR when current time is not visible in this week
   const shouldUseDefaultScroll = !isTodayInWeek || currentTimeSlot === null;
   const defaultScrollTarget =
-    defaultScrollHour >= validStartHour && defaultScrollHour <= validEndHour
-      ? { hour: defaultScrollHour, minute: 0 }
+    DEFAULT_SCROLL_HOUR >= validStartHour && DEFAULT_SCROLL_HOUR <= validEndHour
+      ? { hour: DEFAULT_SCROLL_HOUR, minute: 0 }
       : null;
 
   return (
