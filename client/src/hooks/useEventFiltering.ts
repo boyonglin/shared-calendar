@@ -82,11 +82,17 @@ export function useEventFiltering({
 
     // First pass: process current user's events
     // - Track their IDs for deduplication
-    // - Identify mutual events (events with friend attendees)
+    // - Identify mutual events (events where both current user AND friend are participants)
     for (const event of events) {
       if (event.userId === currentUserId) {
         seenEventIds.add(event.id);
+        // Event is mutual if any friend is an attendee
         if (hasFriendAttendee(event, friendEmails)) {
+          mutualIds.add(event.id);
+        }
+      } else {
+        // For friend's events, check if current user is an attendee (mutual event)
+        if (isCurrentUserAttendee(event, currentUserEmail)) {
           mutualIds.add(event.id);
         }
       }
