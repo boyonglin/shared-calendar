@@ -103,7 +103,7 @@ function buildEmailHtml(content: EmailTemplateContent): string {
     content.footerText ?? "You can now see each other's calendar availability.";
 
   const ctaHtml = content.ctaButton
-    ? `<a href="${content.ctaButton.url}" style="display: inline-block; background: #1a1a1a; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-size: 16px; margin-top: 16px;">${content.ctaButton.text}</a>`
+    ? `<a href="${escapeHtml(content.ctaButton.url)}" style="display: inline-block; background: #1a1a1a; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-size: 16px; margin-top: 16px;">${escapeHtml(content.ctaButton.text)}</a>`
     : "";
 
   return `
@@ -130,7 +130,7 @@ function buildEmailHtml(content: EmailTemplateContent): string {
       <strong>${content.personName}</strong> (${content.personEmail}) ${content.bodyText}
     </p>
     <p style="font-size: 14px; line-height: 1.6; color: #555; margin: 0;">
-      ${footerText}
+      ${escapeHtml(footerText)}
     </p>
     ${ctaHtml}
   </div>
