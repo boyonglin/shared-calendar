@@ -191,7 +191,7 @@ function AppContent({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h1 className="text-gray-900 dark:text-white">
-                Calendar Sharing
+                Shared Calendar Vibe
               </h1>
               <p className="mt-1 text-gray-600 dark:text-gray-400">
                 View and share availability with your team
