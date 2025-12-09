@@ -14,7 +14,7 @@ import { UnifiedCalendarProvider } from "@/services/UnifiedCalendarProvider";
 import { useGoogleAuth } from "./GoogleAuthContext";
 import { calculateEventTimeRange } from "@/utils/calendar";
 
-const AUTO_REFRESH_INTERVAL_MS = 60 * 1000;
+const AUTO_REFRESH_INTERVAL_MS = 30 * 1000;
 
 // Generate a temporary ID for optimistic updates
 const generateTempEventId = () =>
