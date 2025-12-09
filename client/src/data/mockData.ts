@@ -3,11 +3,7 @@
  * Used when the user has no friends connected yet
  */
 import type { User, CalendarEvent } from "@shared/types";
-import {
-  CALENDAR_FETCH_DAYS_BEFORE,
-  CALENDAR_FETCH_DAYS_AFTER,
-  ONE_WEEK_MS,
-} from "@shared/core/constants/index";
+import { ONE_WEEK_MS } from "@shared/core/constants/index";
 
 // =============================================================================
 // Mock User IDs - Constants for consistent references
@@ -88,8 +84,7 @@ function seededRandom(seed: number): () => number {
 
 /**
  * Generate mock events dynamically based on current date
- * Events span 36 days total: 14 days before today through 21 days after (~5 weeks asymmetric)
- * Range mirrors CalendarContext fetch window for consistency
+ * Events are limited to the current week only (Sunday to Saturday)
  */
 function generateMockEvents(): CalendarEvent[] {
   const events: CalendarEvent[] = [];
@@ -98,6 +93,11 @@ function generateMockEvents(): CalendarEvent[] {
   // Use week of year as seed for consistency within a session
   const today = new Date();
   const weekSeed = Math.floor(today.getTime() / ONE_WEEK_MS);
+
+  // Calculate current week boundaries (Sunday to Saturday)
+  const currentDayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
+  const weekStartOffset = -currentDayOfWeek; // Days to go back to Sunday
+  const weekEndOffset = 6 - currentDayOfWeek; // Days to go forward to Saturday
   const random = seededRandom(weekSeed);
 
   // Event templates with titles and durations
@@ -119,10 +119,10 @@ function generateMockEvents(): CalendarEvent[] {
 
   let eventId = 1;
 
-  // Mirror CalendarContext range so mock + real providers stay in sync
+  // Generate events only for current week (Sunday to Saturday)
   for (
-    let dayOffset = -CALENDAR_FETCH_DAYS_BEFORE;
-    dayOffset <= CALENDAR_FETCH_DAYS_AFTER;
+    let dayOffset = weekStartOffset;
+    dayOffset <= weekEndOffset;
     dayOffset++
   ) {
     const checkDate = new Date();
@@ -183,6 +183,6 @@ function generateMockEvents(): CalendarEvent[] {
 
 /**
  * Mock events generated dynamically relative to today
- * Covers 36 days: 14 days before through 21 days after (asymmetric ~5 week window)
+ * Events are limited to the current week only (Sunday to Saturday)
  */
 export const mockEvents: CalendarEvent[] = generateMockEvents();
