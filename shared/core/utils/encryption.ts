@@ -1,7 +1,7 @@
 /**
  * Shared Encryption Utilities
  *
- * AES-256-CBC encryption for sensitive data like iCloud passwords.
+ * AES-256-GCM encryption for sensitive data like iCloud passwords.
  */
 import crypto from "crypto";
 

@@ -552,7 +552,7 @@ export function CalendarView({
           </div>
           <div className="border-t pt-4 sm:border-t-0 sm:pt-0 text-sm border-gray-200 text-gray-600 dark:border-gray-600 dark:text-gray-400">
             <p>• Click any free slot to send an invite</p>
-            <p>• Long press or hovering to see event name</p>
+            <p>• Long press or hover to see event name</p>
             <p>• Bold names = Shared event</p>
           </div>
         </div>
