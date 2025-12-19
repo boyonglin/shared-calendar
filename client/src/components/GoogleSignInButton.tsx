@@ -22,6 +22,7 @@ export function GoogleSignInButton({ onSignIn }: GoogleSignInButtonProps) {
         width={GOOGLE_ICON_SIZE}
         height={GOOGLE_ICON_SIZE}
         viewBox={`0 0 ${GOOGLE_ICON_VIEWBOX_SIZE} ${GOOGLE_ICON_VIEWBOX_SIZE}`}
+        aria-hidden="true"
       >
         <path
           fill="#EA4335"

@@ -252,6 +252,7 @@ export function CalendarView({
               variant="outline"
               size="sm"
               onClick={() => onWeekChange("prev")}
+              aria-label="Previous week"
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
@@ -259,6 +260,7 @@ export function CalendarView({
               variant="outline"
               size="sm"
               onClick={() => onWeekChange("next")}
+              aria-label="Next week"
             >
               <ChevronRight className="w-4 h-4" />
             </Button>
@@ -384,6 +386,7 @@ export function CalendarView({
                                 className="w-full h-1"
                                 viewBox="0 0 100 4"
                                 preserveAspectRatio="xMidYMid slice"
+                                aria-hidden="true"
                               >
                                 <path
                                   d="M0,2 Q2.5,0 5,2 T10,2 T15,2 T20,2 T25,2 T30,2 T35,2 T40,2 T45,2 T50,2 T55,2 T60,2 T65,2 T70,2 T75,2 T80,2 T85,2 T90,2 T95,2 T100,2"
@@ -412,6 +415,7 @@ export function CalendarView({
                                 className="w-full h-1"
                                 viewBox="0 0 100 4"
                                 preserveAspectRatio="xMidYMid slice"
+                                aria-hidden="true"
                               >
                                 <path
                                   d="M0,2 Q2.5,0 5,2 T10,2 T15,2 T20,2 T25,2 T30,2 T35,2 T40,2 T45,2 T50,2 T55,2 T60,2 T65,2 T70,2 T75,2 T80,2 T85,2 T90,2 T95,2 T100,2"
@@ -435,6 +439,7 @@ export function CalendarView({
                               className="flex-1 h-1"
                               viewBox="0 0 100 4"
                               preserveAspectRatio="none"
+                              aria-hidden="true"
                             >
                               <path
                                 d="M0,2 Q2.5,0 5,2 T10,2 T15,2 T20,2 T25,2 T30,2 T35,2 T40,2 T45,2 T50,2 T55,2 T60,2 T65,2 T70,2 T75,2 T80,2 T85,2 T90,2 T95,2 T100,2"
@@ -452,6 +457,7 @@ export function CalendarView({
                               className="flex-1 h-1"
                               viewBox="0 0 100 4"
                               preserveAspectRatio="none"
+                              aria-hidden="true"
                             >
                               <path
                                 d="M0,2 Q2.5,0 5,2 T10,2 T15,2 T20,2 T25,2 T30,2 T35,2 T40,2 T45,2 T50,2 T55,2 T60,2 T65,2 T70,2 T75,2 T80,2 T85,2 T90,2 T95,2 T100,2"

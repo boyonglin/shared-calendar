@@ -353,6 +353,7 @@ export function FriendsManager({
                 placeholder="Search friends by name or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Search friends"
               />
 
               {/* Friends List */}
