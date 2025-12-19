@@ -4,7 +4,13 @@ import { CalendarView } from "@/components/CalendarView";
 import { UserList } from "@/components/UserList";
 import { InviteDialog } from "@/components/InviteDialog";
 import { ICloudConnectModal } from "@/components/ICloudConnectModal";
-import { SettingsModal } from "@/components/SettingsModal";
+import {
+  SettingsModal,
+  CALENDAR_START_HOUR_KEY,
+  CALENDAR_END_HOUR_KEY,
+  DEFAULT_START_HOUR,
+  DEFAULT_END_HOUR,
+} from "@/components/SettingsModal";
 import { FriendsManager } from "@/components/FriendsManager";
 import { UserProfileDropdown } from "@/components/UserProfileDropdown";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
@@ -41,11 +47,17 @@ function AppContent({
   setWeekStart,
   isDarkMode,
   toggleDarkMode,
+  calendarStartHour,
+  calendarEndHour,
+  onCalendarHoursChange,
 }: {
   weekStart: Date;
   setWeekStart: (date: Date) => void;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
+  calendarStartHour: number;
+  calendarEndHour: number;
+  onCalendarHoursChange: (startHour: number, endHour: number) => void;
 }) {
   const { user, signIn, signOut, revokeAccount, isRevoking } = useGoogleAuth();
   const {
@@ -258,6 +270,8 @@ function AppContent({
                 weekStart={weekStart}
                 onTimeSlotSelect={handleTimeSlotSelect}
                 onWeekChange={handleWeekChange}
+                startHour={calendarStartHour}
+                endHour={calendarEndHour}
               />
             </div>
           </div>
@@ -285,6 +299,9 @@ function AppContent({
         onClose={() => closeModal("settings")}
         isRevoking={isRevoking}
         onRevokeAccount={revokeAccount}
+        calendarStartHour={calendarStartHour}
+        calendarEndHour={calendarEndHour}
+        onCalendarHoursChange={onCalendarHoursChange}
       />
 
       <FriendsManager
@@ -340,6 +357,21 @@ export default function App() {
     return false;
   });
 
+  const [calendarStartHour, setCalendarStartHour] = useState(() => {
+    const saved = localStorage.getItem(CALENDAR_START_HOUR_KEY);
+    return saved !== null ? parseInt(saved, 10) : DEFAULT_START_HOUR;
+  });
+
+  const [calendarEndHour, setCalendarEndHour] = useState(() => {
+    const saved = localStorage.getItem(CALENDAR_END_HOUR_KEY);
+    return saved !== null ? parseInt(saved, 10) : DEFAULT_END_HOUR;
+  });
+
+  const handleCalendarHoursChange = (startHour: number, endHour: number) => {
+    setCalendarStartHour(startHour);
+    setCalendarEndHour(endHour);
+  };
+
   // Handle browser navigation
   useEffect(() => {
     const handlePopState = () => {
@@ -376,6 +408,9 @@ export default function App() {
           setWeekStart={setCurrentWeekStart}
           isDarkMode={isDarkMode}
           toggleDarkMode={toggleDarkMode}
+          calendarStartHour={calendarStartHour}
+          calendarEndHour={calendarEndHour}
+          onCalendarHoursChange={handleCalendarHoursChange}
         />
         <Analytics />
       </CalendarProviderWrapper>

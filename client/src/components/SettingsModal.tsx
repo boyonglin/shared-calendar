@@ -19,6 +19,13 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import {
   ExternalLink,
   Eye,
   EyeOff,
@@ -31,6 +38,10 @@ import { closeAllTooltips } from "./EventBlock";
 
 const GEMINI_API_KEY_STORAGE_KEY = "gemini_api_key";
 const GEMINI_API_KEY_VALID_KEY = "gemini_api_key_valid";
+export const CALENDAR_START_HOUR_KEY = "calendar_start_hour";
+export const CALENDAR_END_HOUR_KEY = "calendar_end_hour";
+export const DEFAULT_START_HOUR = 6;
+export const DEFAULT_END_HOUR = 22;
 
 /**
  * Validate API key by making a simple request to Gemini API.
@@ -67,6 +78,9 @@ interface SettingsModalProps {
   onClose: () => void;
   isRevoking?: boolean;
   onRevokeAccount?: () => Promise<void>;
+  calendarStartHour?: number;
+  calendarEndHour?: number;
+  onCalendarHoursChange?: (startHour: number, endHour: number) => void;
 }
 
 export function getGeminiApiKey(): string | null {
@@ -78,6 +92,9 @@ export function SettingsModal({
   onClose,
   isRevoking,
   onRevokeAccount,
+  calendarStartHour = DEFAULT_START_HOUR,
+  calendarEndHour = DEFAULT_END_HOUR,
+  onCalendarHoursChange,
 }: SettingsModalProps) {
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
@@ -88,6 +105,8 @@ export function SettingsModal({
     const stored = localStorage.getItem(GEMINI_API_KEY_VALID_KEY);
     return stored === null ? null : stored === "true";
   });
+  const [localStartHour, setLocalStartHour] = useState(calendarStartHour);
+  const [localEndHour, setLocalEndHour] = useState(calendarEndHour);
 
   // Read stored key on each render to get current state
   const storedKey = localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY);
@@ -129,6 +148,8 @@ export function SettingsModal({
       setShowApiKey(false);
       setRemoved(false);
       setShowRevokeDialog(false);
+      setLocalStartHour(calendarStartHour);
+      setLocalEndHour(calendarEndHour);
       onClose();
     } else {
       // Reset state when opening
@@ -136,10 +157,39 @@ export function SettingsModal({
       setShowApiKey(false);
       setRemoved(false);
       setShowRevokeDialog(false);
+      setLocalStartHour(calendarStartHour);
+      setLocalEndHour(calendarEndHour);
       // Re-read validation status from storage
       const stored = localStorage.getItem(GEMINI_API_KEY_VALID_KEY);
       setIsKeyValid(stored === null ? null : stored === "true");
     }
+  };
+
+  const handleStartHourChange = (value: string) => {
+    const hour = parseInt(value, 10);
+    if (!isNaN(hour) && hour >= 0 && hour <= 23) {
+      setLocalStartHour(hour);
+      if (hour > localEndHour) {
+        setLocalEndHour(hour);
+      }
+    }
+  };
+
+  const handleEndHourChange = (value: string) => {
+    const hour = parseInt(value, 10);
+    if (!isNaN(hour) && hour >= 0 && hour <= 23) {
+      setLocalEndHour(hour);
+      if (hour < localStartHour) {
+        setLocalStartHour(hour);
+      }
+    }
+  };
+
+  const handleSaveCalendarHours = () => {
+    localStorage.setItem(CALENDAR_START_HOUR_KEY, String(localStartHour));
+    localStorage.setItem(CALENDAR_END_HOUR_KEY, String(localEndHour));
+    onCalendarHoursChange?.(localStartHour, localEndHour);
+    toast.success("Calendar hours saved");
   };
 
   const handleSave = async () => {
@@ -192,12 +242,77 @@ export function SettingsModal({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Calendar Display Hours */}
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 dark:bg-gray-800">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              Calendar Display Hours
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
+              Set the time range displayed in your calendar view.
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <label
+                  htmlFor="start-hour"
+                  className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                >
+                  Start Time
+                </label>
+                <Select
+                  value={String(localStartHour)}
+                  onValueChange={handleStartHourChange}
+                >
+                  <SelectTrigger id="start-hour" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-48">
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <SelectItem key={i} value={String(i)}>
+                        {i.toString().padStart(2, "0")}:00
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex-1">
+                <label
+                  htmlFor="end-hour"
+                  className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                >
+                  End Time
+                </label>
+                <Select
+                  value={String(localEndHour)}
+                  onValueChange={handleEndHourChange}
+                >
+                  <SelectTrigger id="end-hour" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-48">
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <SelectItem key={i} value={String(i)}>
+                        {i.toString().padStart(2, "0")}:00
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {(localStartHour !== calendarStartHour ||
+              localEndHour !== calendarEndHour) && (
+              <Button onClick={handleSaveCalendarHours} className="w-full mt-3">
+                Save Calendar Hours
+              </Button>
+            )}
+          </div>
+
+          {/* Gemini API Key */}
           <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 dark:bg-gray-800">
             <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
               Gemini API Key
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
-              Draft invitations faster with AI—just add your key, stored locally
+              Draft invitations faster with AI—just add your key, stored safely
               in your browser.
             </p>
 
