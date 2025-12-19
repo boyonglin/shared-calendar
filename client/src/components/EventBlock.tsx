@@ -213,7 +213,7 @@ export function EventBlock({
     <>
       <div
         ref={blockRef}
-        className="rounded text-white text-sm relative overflow-visible flex items-center justify-center w-full h-8 sm:w-auto sm:h-auto sm:p-2 touch-manipulation select-none"
+        className="rounded text-white text-sm relative overflow-visible flex items-center justify-center w-full min-h-8 sm:w-auto sm:h-auto p-1 sm:p-2 touch-manipulation select-none"
         style={{
           backgroundColor: userColor,
           opacity: 0.9,
@@ -227,6 +227,15 @@ export function EventBlock({
         onClick={handleClick}
         onContextMenu={handleContextMenu}
       >
+        {/* Mobile: smaller text, centered, limit to 2 lines with ellipsis - only show if not "Busy" */}
+        {displayText !== "Busy" && (
+          <span
+            className={`sm:hidden text-[10px] leading-tight text-center line-clamp-2 overflow-hidden ${isBoldText ? "font-bold" : ""}`}
+          >
+            {displayText}
+          </span>
+        )}
+        {/* Desktop: truncate single line */}
         <span
           className={`hidden sm:inline truncate ${isBoldText ? "font-bold" : ""}`}
         >
