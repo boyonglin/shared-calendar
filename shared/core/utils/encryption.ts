@@ -4,7 +4,9 @@
  * AES-256-CBC encryption for sensitive data like iCloud passwords.
  */
 import crypto from "crypto";
-import { ENCRYPTION_IV_LENGTH } from "../constants/index.js";
+
+/** IV length for AES-256-GCM encryption */
+const ENCRYPTION_IV_LENGTH = 16;
 
 /**
  * Get the encryption key from environment

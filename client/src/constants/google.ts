@@ -1,14 +1,14 @@
-// Time constants (in milliseconds)
-export const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000; // 5 minutes
-export const TOKEN_EXPIRY_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days (match JWT cookie expiry)
+import { ONE_MINUTE_MS, JWT_COOKIE_MAX_AGE_MS } from "@shared/core/constants";
+
+// Token expiry buffer (5 minutes before actual expiry)
+export const TOKEN_EXPIRY_BUFFER_MS = 5 * ONE_MINUTE_MS;
+
+// Token expiry duration (matches JWT cookie max age)
+export const TOKEN_EXPIRY_DURATION_MS = JWT_COOKIE_MAX_AGE_MS;
 
 // Google Sign-in button icon dimensions
 export const GOOGLE_ICON_SIZE = 18;
 export const GOOGLE_ICON_VIEWBOX_SIZE = 48;
 
-// LocalStorage keys
-export const STORAGE_KEYS = {
-  USER: "google_user",
-  TOKEN_EXPIRY: "google_token_expiry",
-  CALENDAR_EVENTS: "google_calendar_events",
-} as const;
+// Re-export storage keys for backward compatibility
+export { STORAGE_KEYS } from "./storage";

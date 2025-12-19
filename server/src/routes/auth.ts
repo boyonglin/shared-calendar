@@ -17,6 +17,7 @@ import {
   exchangeAuthCode,
   JWT_COOKIE_MAX_AGE_MS,
   OUTLOOK_AUTH_COOKIE_MAX_AGE_MS,
+  GOOGLE_AUTH_COOKIE_MAX_AGE_MS,
   COOKIE_SAME_SITE,
   COOKIE_NAMES,
 } from "../../../shared/core/index.js";
@@ -77,7 +78,7 @@ router.get("/google", (req: Request, res: Response) => {
     httpOnly: true,
     secure: env.NODE_ENV === "production",
     sameSite: COOKIE_SAME_SITE,
-    maxAge: 10 * 60 * 1000, // 10 minutes
+    maxAge: GOOGLE_AUTH_COOKIE_MAX_AGE_MS,
   });
 
   const url = googleAuthService.getAuthUrl(stateToken);
