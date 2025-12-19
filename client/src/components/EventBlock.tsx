@@ -31,6 +31,7 @@ export function EventBlock({
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const longPressTimer = useRef<number | null>(null);
+  const hoverTimer = useRef<number | null>(null);
   const hideTooltipTimer = useRef<number | null>(null);
   const blockRef = useRef<HTMLDivElement>(null);
   const instanceId = useId();
@@ -48,6 +49,9 @@ export function EventBlock({
     return () => {
       if (longPressTimer.current) {
         window.clearTimeout(longPressTimer.current);
+      }
+      if (hoverTimer.current) {
+        window.clearTimeout(hoverTimer.current);
       }
       if (hideTooltipTimer.current) {
         window.clearTimeout(hideTooltipTimer.current);
@@ -188,11 +192,45 @@ export function EventBlock({
     e.preventDefault();
   }, []);
 
+  // Desktop hover handlers
+  const handleMouseEnter = useCallback(() => {
+    // Clear any existing hide timer
+    if (hideTooltipTimer.current) {
+      window.clearTimeout(hideTooltipTimer.current);
+      hideTooltipTimer.current = null;
+    }
+
+    // Start hover timer for 500ms delay
+    hoverTimer.current = window.setTimeout(() => {
+      // Dispatch event to close other tooltips before showing this one
+      document.dispatchEvent(
+        new globalThis.CustomEvent(CLOSE_TOOLTIPS_EVENT, {
+          detail: { sourceId: instanceId },
+        }),
+      );
+      updateTooltipPosition();
+      setShowTooltip(true);
+    }, 500); // 500ms hover delay
+  }, [updateTooltipPosition, instanceId]);
+
+  const handleMouseLeave = useCallback(() => {
+    // Clear hover timer if mouse leaves before tooltip shows
+    if (hoverTimer.current) {
+      window.clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+    setShowTooltip(false);
+    if (hideTooltipTimer.current) {
+      window.clearTimeout(hideTooltipTimer.current);
+      hideTooltipTimer.current = null;
+    }
+  }, []);
+
   // Tooltip component rendered via portal to avoid z-index issues
   const tooltip = showTooltip
     ? createPortal(
         <div
-          className={`sm:hidden fixed z-[9999] px-3 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-xl pointer-events-none text-center ${isBoldText ? "font-bold" : ""}`}
+          className={`fixed z-[9999] px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm rounded-lg shadow-xl pointer-events-none text-center border border-gray-200 dark:border-gray-500 ${isBoldText ? "font-bold" : ""}`}
           style={{
             top: tooltipPosition.top,
             left: tooltipPosition.left,
@@ -203,7 +241,13 @@ export function EventBlock({
           }}
         >
           {displayText}
-          <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-gray-900"></div>
+          {/* Arrow border (outer) */}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-gray-200 dark:border-t-gray-400"></div>
+          {/* Arrow fill (inner) */}
+          <div
+            className="absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent border-t-white dark:border-t-gray-700"
+            style={{ marginTop: "-1px" }}
+          ></div>
         </div>,
         document.body,
       )
@@ -220,12 +264,13 @@ export function EventBlock({
           WebkitTouchCallout: "none",
           WebkitUserSelect: "none",
         }}
-        title={isCurrentUser && event.title ? event.title : undefined}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onTouchMove={handleTouchMove}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
       >
         {/* Mobile: smaller text, centered, limit to 2 lines with ellipsis - only show if not "Busy" */}
         {displayText !== "Busy" && (

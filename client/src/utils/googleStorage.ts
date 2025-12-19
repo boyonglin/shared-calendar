@@ -48,7 +48,6 @@ export function saveUserSession(user: GoogleUser): void {
  */
 export function clearStoredSession(): void {
   localStorage.removeItem(STORAGE_KEYS.USER);
-  localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
   localStorage.removeItem(STORAGE_KEYS.TOKEN_EXPIRY);
   localStorage.removeItem(STORAGE_KEYS.CALENDAR_EVENTS);
 }

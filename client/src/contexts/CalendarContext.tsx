@@ -13,12 +13,10 @@ import { MockCalendarProvider } from "@/services/MockCalendarProvider";
 import { UnifiedCalendarProvider } from "@/services/UnifiedCalendarProvider";
 import { useGoogleAuth } from "./GoogleAuthContext";
 import { calculateEventTimeRange } from "@/utils/calendar";
+import { generateTempEventId } from "@/utils/idGenerator";
+import { ONE_SECOND_MS } from "@shared/core/constants";
 
-const AUTO_REFRESH_INTERVAL_MS = 30 * 1000;
-
-// Generate a temporary ID for optimistic updates
-const generateTempEventId = () =>
-  `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const AUTO_REFRESH_INTERVAL_MS = 30 * ONE_SECOND_MS;
 
 export interface CalendarContextType {
   events: CalendarEvent[];

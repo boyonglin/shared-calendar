@@ -27,23 +27,8 @@ import {
   type IncomingRequest,
 } from "@/services/api/friends";
 import { closeAllTooltips } from "./EventBlock";
-
-// Generate a temporary ID for optimistic updates
-const generateTempId = () => -Date.now();
-
-// Default colors for new friends (matches server-side color assignment)
-const FRIEND_COLORS = [
-  "#10b981",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ec4899",
-  "#06b6d4",
-  "#84cc16",
-  "#f97316",
-  "#6366f1",
-  "#14b8a6",
-  "#a855f7",
-];
+import { FRIEND_COLORS } from "@shared/core/constants";
+import { generateTempId } from "@/utils/idGenerator";
 
 /**
  * Reusable avatar component for displaying user initials

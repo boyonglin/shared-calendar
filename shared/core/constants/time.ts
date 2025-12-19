@@ -16,3 +16,6 @@ export const ONE_DAY_MS = 24 * ONE_HOUR_MS;
 
 /** 1 week in milliseconds */
 export const ONE_WEEK_MS = 7 * ONE_DAY_MS;
+
+/** Graceful shutdown timeout (10 seconds) */
+export const GRACEFUL_SHUTDOWN_TIMEOUT_MS = 10 * ONE_SECOND_MS;
