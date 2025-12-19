@@ -12,6 +12,7 @@
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
 import { createServiceLogger } from "../utils/logger.js";
+import { isValidEmail } from "../utils/validation.js";
 
 const logger = createServiceLogger("email");
 
@@ -176,14 +177,6 @@ class EmailService {
   }
 
   /**
-   * Validate email format
-   */
-  private isValidEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }
-
-  /**
    * Send an email
    * @param options - Email options (to, subject, text, html)
    * @returns Promise with result of the operation
@@ -200,7 +193,7 @@ class EmailService {
     }
 
     // Validate recipient email
-    if (!this.isValidEmail(options.to)) {
+    if (!isValidEmail(options.to)) {
       logger.warn({ to: options.to }, "Invalid recipient email address");
       return {
         success: false,

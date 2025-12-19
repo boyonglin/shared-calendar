@@ -9,7 +9,7 @@ import dotenv from "dotenv";
 // Load environment variables from root .env
 dotenv.config({ path: "../.env" });
 
-import { app } from "../server/src/app.js";
+import { app, logger } from "../server/src/app.js";
 import { ensureDbInitialized } from "../shared/core/index.js";
 
 const PORT = process.env.PORT || 3001;
@@ -17,14 +17,16 @@ const PORT = process.env.PORT || 3001;
 // Initialize database
 ensureDbInitialized()
   .then(() => {
-    console.log("Database initialized");
+    logger.info("Database connection established");
   })
-  .catch(console.error);
+  .catch((err) => {
+    logger.error({ err }, "Failed to initialize database");
+  });
 
 // Start the server
 app.listen(PORT, () => {
-  console.log(`🚀 API dev server running at http://localhost:${PORT}`);
-  console.log(`📍 Test endpoints:`);
-  console.log(`   GET  http://localhost:${PORT}/api`);
-  console.log(`   GET  http://localhost:${PORT}/api/health`);
+  logger.info({ port: PORT }, "🚀 API dev server started");
+  logger.info("📍 Test endpoints:");
+  logger.info(`   GET  http://localhost:${PORT}/api`);
+  logger.info(`   GET  http://localhost:${PORT}/api/health`);
 });

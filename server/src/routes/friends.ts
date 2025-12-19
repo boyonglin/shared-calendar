@@ -5,7 +5,7 @@ import type { Response, NextFunction } from "express";
 import express from "express";
 import { authenticateUser } from "../middleware/auth.js";
 import type { AuthRequest } from "../middleware/auth.js";
-import { createRequestLogger, logError } from "../utils/logger.js";
+import logger, { createRequestLogger, logError } from "../utils/logger.js";
 import {
   BadRequestError,
   NotFoundError,
@@ -163,7 +163,7 @@ router.post(
           }
         } catch (err) {
           // Log but don't fail the request if email fails
-          console.error("Failed to send email notification:", err);
+          logError(logger, err, "Failed to send email notification");
         }
       }
 
@@ -434,9 +434,10 @@ router.post(
             );
           } catch (err) {
             // Log but don't fail the request if email fails
-            console.error(
-              "Failed to send friend accepted email notification:",
+            logError(
+              logger,
               err,
+              "Failed to send friend accepted email notification",
             );
           }
         }

@@ -1,16 +1,18 @@
 import { apiClient, type SSEMessage } from "@/services/api/client";
 
-export interface ICloudStatus {
+/**
+ * Calendar account connection status
+ * Unified interface for all calendar providers (iCloud, Outlook, etc.)
+ */
+export interface CalendarAccountStatus {
   connected: boolean;
   email?: string;
   userId?: string;
 }
 
-export interface OutlookStatus {
-  connected: boolean;
-  email?: string;
-  userId?: string;
-}
+// Type aliases for backward compatibility and semantic clarity
+export type ICloudStatus = CalendarAccountStatus;
+export type OutlookStatus = CalendarAccountStatus;
 
 export interface RawCalendarEvent {
   id: string;
@@ -19,8 +21,7 @@ export interface RawCalendarEvent {
   title?: string;
   start?: { dateTime?: string; date?: string } | string;
   end?: { dateTime?: string; date?: string } | string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export const calendarApi = {
