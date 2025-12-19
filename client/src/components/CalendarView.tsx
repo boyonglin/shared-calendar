@@ -4,6 +4,8 @@ import { Button } from "./ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { EventBlock } from "./EventBlock";
 import { ScrollArea } from "./ui/scroll-area";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { MD3DatePicker } from "./ui/md3-date-picker";
 import {
   DAYS_IN_WEEK,
   DEFAULT_SCROLL_HOUR,
@@ -18,6 +20,7 @@ interface CalendarViewProps {
   weekStart: Date;
   onTimeSlotSelect: (slot: TimeSlot) => void;
   onWeekChange: (direction: "prev" | "next" | "today") => void;
+  onWeekSelect?: (date: Date) => void;
   startHour?: number;
   endHour?: number;
 }
@@ -29,9 +32,13 @@ export function CalendarView({
   weekStart,
   onTimeSlotSelect,
   onWeekChange,
+  onWeekSelect,
   startHour = 6,
   endHour = 22,
 }: CalendarViewProps) {
+  // State for week selector popover
+  const [isWeekSelectorOpen, setIsWeekSelectorOpen] = useState(false);
+
   // Filter and deduplicate events, identify mutual events
   const { filteredEvents, mutualEventIds } = useEventFiltering({
     events,
@@ -210,9 +217,29 @@ export function CalendarView({
     <Card className="dark:bg-gray-800 dark:border-gray-700">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <span className="text-gray-900 dark:text-white">
-            {formatWeekRange()}
-          </span>
+          <Popover
+            open={isWeekSelectorOpen}
+            onOpenChange={setIsWeekSelectorOpen}
+          >
+            <PopoverTrigger asChild>
+              <button className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 font-medium px-2 py-1 rounded-md transition-colors">
+                {formatWeekRange()}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-auto p-0 border-0 shadow-none bg-transparent"
+              align="start"
+              sideOffset={8}
+            >
+              <MD3DatePicker
+                selected={weekStart}
+                onSelect={(date) => {
+                  onWeekSelect?.(date);
+                  setIsWeekSelectorOpen(false);
+                }}
+              />
+            </PopoverContent>
+          </Popover>
           <div className="flex gap-2">
             <Button
               variant="outline"

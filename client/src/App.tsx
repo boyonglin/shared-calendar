@@ -196,6 +196,10 @@ function AppContent({
     }
   };
 
+  const handleWeekSelect = (date: Date) => {
+    setWeekStart(startOfWeek(date, { weekStartsOn: 1 }));
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       <header className="border-b bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700">
@@ -270,6 +274,7 @@ function AppContent({
                 weekStart={weekStart}
                 onTimeSlotSelect={handleTimeSlotSelect}
                 onWeekChange={handleWeekChange}
+                onWeekSelect={handleWeekSelect}
                 startHour={calendarStartHour}
                 endHour={calendarEndHour}
               />
