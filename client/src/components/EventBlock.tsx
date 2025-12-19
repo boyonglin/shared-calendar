@@ -192,7 +192,7 @@ export function EventBlock({
   const tooltip = showTooltip
     ? createPortal(
         <div
-          className="sm:hidden fixed z-[9999] px-3 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-xl pointer-events-none text-center"
+          className={`sm:hidden fixed z-[9999] px-3 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-xl pointer-events-none text-center ${isBoldText ? "font-bold" : ""}`}
           style={{
             top: tooltipPosition.top,
             left: tooltipPosition.left,

@@ -522,6 +522,7 @@ export function CalendarView({
             <p className="sm:hidden">• Long press to see event name</p>
             <p>• Colored blocks = Busy</p>
             <p>• Empty slots = Free</p>
+            <p>• Bold titles = Shared event</p>
           </div>
         </div>
       </CardContent>
