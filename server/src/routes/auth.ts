@@ -62,15 +62,72 @@ interface OutlookStatePayload {
 }
 
 router.get("/google", (req: Request, res: Response) => {
-  const url = googleAuthService.getAuthUrl();
+  // Generate a signed JWT state token for CSRF protection
+  // This approach works across multiple server instances and survives restarts
+  // since validation only requires the JWT_SECRET, no server-side storage needed
+  const stateToken = jwt.sign({ type: "google_oauth" }, env.JWT_SECRET, {
+    expiresIn: "10m", // 10 minutes - just for the auth flow
+  });
+
+  // Store the signed state token in a secure cookie
+  // Note: Using sameSite: "lax" because the OAuth callback
+  // is a cross-site navigation that requires the cookie to be sent.
+  // The JWT-based state token provides additional CSRF protection.
+  res.cookie(COOKIE_NAMES.GOOGLE_AUTH_STATE, stateToken, {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: COOKIE_SAME_SITE,
+    maxAge: 10 * 60 * 1000, // 10 minutes
+  });
+
+  const url = googleAuthService.getAuthUrl(stateToken);
   res.redirect(url);
 });
 
 router.get("/google/callback", async (req: Request, res: Response) => {
-  const { code } = req.query;
+  const { code, state } = req.query;
+  const stateToken = req.cookies?.[COOKIE_NAMES.GOOGLE_AUTH_STATE];
+
+  // Clear the temporary cookie with matching options for reliable removal
+  res.clearCookie(COOKIE_NAMES.GOOGLE_AUTH_STATE, {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: COOKIE_SAME_SITE,
+  });
 
   if (!code || typeof code !== "string") {
     res.status(400).send("Missing code");
+    return;
+  }
+
+  // Validate state parameter to prevent CSRF attacks
+  if (!state || typeof state !== "string" || !stateToken) {
+    logError(
+      logger,
+      new Error("Missing state parameter or cookie"),
+      "Google auth CSRF validation failed",
+    );
+    res.redirect(buildSafeRedirectUrl("/", { auth: "error", reason: "csrf" }));
+    return;
+  }
+
+  // Verify the state token matches and is valid
+  if (state !== stateToken) {
+    logError(
+      logger,
+      new Error("State mismatch"),
+      "Google auth CSRF validation failed",
+    );
+    res.redirect(buildSafeRedirectUrl("/", { auth: "error", reason: "csrf" }));
+    return;
+  }
+
+  try {
+    // Verify the JWT state token is valid (not expired, properly signed)
+    jwt.verify(stateToken, env.JWT_SECRET);
+  } catch (error) {
+    logError(logger, error, "Google auth state token verification failed");
+    res.redirect(buildSafeRedirectUrl("/", { auth: "error", reason: "csrf" }));
     return;
   }
 

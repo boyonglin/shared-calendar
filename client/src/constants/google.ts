@@ -9,7 +9,6 @@ export const GOOGLE_ICON_VIEWBOX_SIZE = 48;
 // LocalStorage keys
 export const STORAGE_KEYS = {
   USER: "google_user",
-  ACCESS_TOKEN: "google_access_token",
   TOKEN_EXPIRY: "google_token_expiry",
   CALENDAR_EVENTS: "google_calendar_events",
 } as const;
