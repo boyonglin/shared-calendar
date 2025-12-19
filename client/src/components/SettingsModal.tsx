@@ -35,13 +35,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { closeAllTooltips } from "./EventBlock";
+import { STORAGE_KEYS, CALENDAR_DEFAULTS } from "@/constants/storage";
 
-const GEMINI_API_KEY_STORAGE_KEY = "gemini_api_key";
-const GEMINI_API_KEY_VALID_KEY = "gemini_api_key_valid";
-export const CALENDAR_START_HOUR_KEY = "calendar_start_hour";
-export const CALENDAR_END_HOUR_KEY = "calendar_end_hour";
-export const DEFAULT_START_HOUR = 6;
-export const DEFAULT_END_HOUR = 22;
+// Re-export for backward compatibility
+export const CALENDAR_START_HOUR_KEY = STORAGE_KEYS.CALENDAR_START_HOUR;
+export const CALENDAR_END_HOUR_KEY = STORAGE_KEYS.CALENDAR_END_HOUR;
+export const DEFAULT_START_HOUR = CALENDAR_DEFAULTS.START_HOUR;
+export const DEFAULT_END_HOUR = CALENDAR_DEFAULTS.END_HOUR;
 
 /**
  * Validate API key by making a simple request to Gemini API.
@@ -84,7 +84,7 @@ interface SettingsModalProps {
 }
 
 export function getGeminiApiKey(): string | null {
-  return localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY);
+  return localStorage.getItem(STORAGE_KEYS.GEMINI_API_KEY);
 }
 
 export function SettingsModal({
@@ -102,14 +102,14 @@ export function SettingsModal({
   const [showRevokeDialog, setShowRevokeDialog] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [isKeyValid, setIsKeyValid] = useState<boolean | null>(() => {
-    const stored = localStorage.getItem(GEMINI_API_KEY_VALID_KEY);
+    const stored = localStorage.getItem(STORAGE_KEYS.GEMINI_API_KEY_VALID);
     return stored === null ? null : stored === "true";
   });
   const [localStartHour, setLocalStartHour] = useState(calendarStartHour);
   const [localEndHour, setLocalEndHour] = useState(calendarEndHour);
 
   // Read stored key on each render to get current state
-  const storedKey = localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY);
+  const storedKey = localStorage.getItem(STORAGE_KEYS.GEMINI_API_KEY);
 
   // Close all tooltips when modal opens
   useEffect(() => {
@@ -130,7 +130,10 @@ export function SettingsModal({
         (valid) => {
           if (!abortController.signal.aborted) {
             setIsKeyValid(valid);
-            localStorage.setItem(GEMINI_API_KEY_VALID_KEY, String(valid));
+            localStorage.setItem(
+              STORAGE_KEYS.GEMINI_API_KEY_VALID,
+              String(valid),
+            );
           }
         },
       );
@@ -160,7 +163,7 @@ export function SettingsModal({
       setLocalStartHour(calendarStartHour);
       setLocalEndHour(calendarEndHour);
       // Re-read validation status from storage
-      const stored = localStorage.getItem(GEMINI_API_KEY_VALID_KEY);
+      const stored = localStorage.getItem(STORAGE_KEYS.GEMINI_API_KEY_VALID);
       setIsKeyValid(stored === null ? null : stored === "true");
     }
   };
@@ -186,8 +189,11 @@ export function SettingsModal({
   };
 
   const handleSaveCalendarHours = () => {
-    localStorage.setItem(CALENDAR_START_HOUR_KEY, String(localStartHour));
-    localStorage.setItem(CALENDAR_END_HOUR_KEY, String(localEndHour));
+    localStorage.setItem(
+      STORAGE_KEYS.CALENDAR_START_HOUR,
+      String(localStartHour),
+    );
+    localStorage.setItem(STORAGE_KEYS.CALENDAR_END_HOUR, String(localEndHour));
     onCalendarHoursChange?.(localStartHour, localEndHour);
     toast.success("Calendar hours saved");
   };
@@ -204,8 +210,8 @@ export function SettingsModal({
     const isValid = await validateGeminiApiKey(keyToSave);
     setIsValidating(false);
 
-    localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, keyToSave);
-    localStorage.setItem(GEMINI_API_KEY_VALID_KEY, String(isValid));
+    localStorage.setItem(STORAGE_KEYS.GEMINI_API_KEY, keyToSave);
+    localStorage.setItem(STORAGE_KEYS.GEMINI_API_KEY_VALID, String(isValid));
     setIsKeyValid(isValid);
     setRemoved(false);
     setApiKey("");
@@ -218,8 +224,8 @@ export function SettingsModal({
   };
 
   const handleRemove = () => {
-    localStorage.removeItem(GEMINI_API_KEY_STORAGE_KEY);
-    localStorage.removeItem(GEMINI_API_KEY_VALID_KEY);
+    localStorage.removeItem(STORAGE_KEYS.GEMINI_API_KEY);
+    localStorage.removeItem(STORAGE_KEYS.GEMINI_API_KEY_VALID);
     setApiKey("");
     setRemoved(true);
     setIsKeyValid(null);

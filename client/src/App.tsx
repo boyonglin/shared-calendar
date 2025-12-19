@@ -4,13 +4,7 @@ import { CalendarView } from "@/components/CalendarView";
 import { UserList } from "@/components/UserList";
 import { InviteDialog } from "@/components/InviteDialog";
 import { ICloudConnectModal } from "@/components/ICloudConnectModal";
-import {
-  SettingsModal,
-  CALENDAR_START_HOUR_KEY,
-  CALENDAR_END_HOUR_KEY,
-  DEFAULT_START_HOUR,
-  DEFAULT_END_HOUR,
-} from "@/components/SettingsModal";
+import { SettingsModal } from "@/components/SettingsModal";
 import { FriendsManager } from "@/components/FriendsManager";
 import { UserProfileDropdown } from "@/components/UserProfileDropdown";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
@@ -19,6 +13,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Moon, Sun } from "lucide-react";
+import { STORAGE_KEYS, CALENDAR_DEFAULTS } from "@/constants/storage";
 import {
   addDays,
   addMinutes,
@@ -353,7 +348,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(() => {
     // Check localStorage or system preference
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("darkMode");
+      const saved = localStorage.getItem(STORAGE_KEYS.DARK_MODE);
       if (saved !== null) {
         return JSON.parse(saved);
       }
@@ -363,13 +358,13 @@ export default function App() {
   });
 
   const [calendarStartHour, setCalendarStartHour] = useState(() => {
-    const saved = localStorage.getItem(CALENDAR_START_HOUR_KEY);
-    return saved !== null ? parseInt(saved, 10) : DEFAULT_START_HOUR;
+    const saved = localStorage.getItem(STORAGE_KEYS.CALENDAR_START_HOUR);
+    return saved !== null ? parseInt(saved, 10) : CALENDAR_DEFAULTS.START_HOUR;
   });
 
   const [calendarEndHour, setCalendarEndHour] = useState(() => {
-    const saved = localStorage.getItem(CALENDAR_END_HOUR_KEY);
-    return saved !== null ? parseInt(saved, 10) : DEFAULT_END_HOUR;
+    const saved = localStorage.getItem(STORAGE_KEYS.CALENDAR_END_HOUR);
+    return saved !== null ? parseInt(saved, 10) : CALENDAR_DEFAULTS.END_HOUR;
   });
 
   const handleCalendarHoursChange = (startHour: number, endHour: number) => {
@@ -393,7 +388,7 @@ export default function App() {
     } else {
       document.documentElement.classList.remove("dark");
     }
-    localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
+    localStorage.setItem(STORAGE_KEYS.DARK_MODE, JSON.stringify(isDarkMode));
   }, [isDarkMode]);
 
   const toggleDarkMode = () => {
