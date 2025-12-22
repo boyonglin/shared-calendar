@@ -16,6 +16,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "./ui/alert-dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "./ui/accordion";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import {
@@ -247,190 +253,224 @@ export function SettingsModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <Accordion
+          type="single"
+          collapsible
+          className="w-full"
+          defaultValue="calendar-hours"
+        >
           {/* Calendar Display Hours */}
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 dark:bg-gray-800">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Calendar Display Hours
-            </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
-              Set the time range displayed in your calendar view.
-            </p>
-            <div className="flex items-center gap-3">
-              <div className="flex-1">
-                <label
-                  htmlFor="start-hour"
-                  className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
-                >
-                  Start Time
-                </label>
-                <Select
-                  value={String(localStartHour)}
-                  onValueChange={handleStartHourChange}
-                >
-                  <SelectTrigger id="start-hour" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-48">
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <SelectItem key={i} value={String(i)}>
-                        {i.toString().padStart(2, "0")}:00
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <AccordionItem
+            value="calendar-hours"
+            className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 mb-2 dark:bg-gray-800"
+          >
+            <AccordionTrigger className="hover:no-underline">
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Calendar Display Hours
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Set the time range displayed in your calendar view.
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <label
+                    htmlFor="start-hour"
+                    className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                  >
+                    Start Time
+                  </label>
+                  <Select
+                    value={String(localStartHour)}
+                    onValueChange={handleStartHourChange}
+                  >
+                    <SelectTrigger id="start-hour" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-48">
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <SelectItem key={i} value={String(i)}>
+                          {i.toString().padStart(2, "0")}:00
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1">
+                  <label
+                    htmlFor="end-hour"
+                    className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+                  >
+                    End Time
+                  </label>
+                  <Select
+                    value={String(localEndHour)}
+                    onValueChange={handleEndHourChange}
+                  >
+                    <SelectTrigger id="end-hour" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-48">
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <SelectItem key={i} value={String(i)}>
+                          {i.toString().padStart(2, "0")}:00
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="flex-1">
-                <label
-                  htmlFor="end-hour"
-                  className="block text-xs text-gray-500 dark:text-gray-400 mb-1"
+              {(localStartHour !== calendarStartHour ||
+                localEndHour !== calendarEndHour) && (
+                <Button
+                  onClick={handleSaveCalendarHours}
+                  className="w-full mt-3"
                 >
-                  End Time
-                </label>
-                <Select
-                  value={String(localEndHour)}
-                  onValueChange={handleEndHourChange}
-                >
-                  <SelectTrigger id="end-hour" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-48">
-                    {Array.from({ length: 24 }, (_, i) => (
-                      <SelectItem key={i} value={String(i)}>
-                        {i.toString().padStart(2, "0")}:00
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            {(localStartHour !== calendarStartHour ||
-              localEndHour !== calendarEndHour) && (
-              <Button onClick={handleSaveCalendarHours} className="w-full mt-3">
-                Save Calendar Hours
-              </Button>
-            )}
-          </div>
+                  Save Calendar Hours
+                </Button>
+              )}
+            </AccordionContent>
+          </AccordionItem>
 
           {/* Gemini API Key */}
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 dark:bg-gray-800">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Gemini API Key
-            </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
-              Draft invitations faster with AI—just add your key, stored safely
-              in your browser.
-            </p>
+          <AccordionItem
+            value="gemini-api"
+            className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 mb-2 dark:bg-gray-800"
+          >
+            <AccordionTrigger className="hover:no-underline">
+              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                Gemini API Key
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                Draft invitations faster with AI—just add your key, stored
+                safely in your browser.
+              </p>
 
-            <div className="space-y-2">
-              <div className="relative">
-                <Input
-                  id="gemini-api-key"
-                  type={showApiKey ? "text" : "password"}
-                  placeholder={
-                    effectiveHasExistingKey
-                      ? "Enter new key to replace"
-                      : "Enter your Gemini API key"
-                  }
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  className="pr-10"
-                />
-                {apiKey && (
-                  <button
-                    type="button"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    aria-label={showApiKey ? "Hide API key" : "Show API key"}
-                  >
-                    {showApiKey ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                )}
-              </div>
-              {effectiveHasExistingKey && effectiveStoredKey && (
-                <div className="flex items-center justify-between">
-                  <p
-                    className={`text-xs flex items-center gap-1 ${isKeyValid === false ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`}
-                  >
-                    {isValidating ? (
-                      "Validating..."
-                    ) : isKeyValid === false ? (
-                      <>
-                        <span>
-                          <AlertTriangle
-                            className="w-3 h-3"
-                            aria-label="API key appears to be invalid"
-                          />
-                        </span>
-                        API key configured: {maskApiKey(effectiveStoredKey)}
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-3 h-3" />
-                        API key configured: {maskApiKey(effectiveStoredKey)}
-                      </>
-                    )}
-                  </p>
+              <div className="space-y-2">
+                <div className="relative">
+                  <Input
+                    id="gemini-api-key"
+                    type={showApiKey ? "text" : "password"}
+                    placeholder={
+                      effectiveHasExistingKey
+                        ? "Enter new key to replace"
+                        : "Enter your Gemini API key"
+                    }
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    className="pr-10"
+                  />
+                  {apiKey && (
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      aria-label={showApiKey ? "Hide API key" : "Show API key"}
+                    >
+                      {showApiKey ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  )}
                 </div>
-              )}
-              {!effectiveHasExistingKey && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Don&apos;t have an API key?{" "}
-                  <a
-                    href="https://aistudio.google.com/app/apikey"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
-                  >
-                    Get one from Google AI Studio
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </p>
-              )}
-              <div className="flex flex-row gap-2 pt-2">
-                {effectiveHasExistingKey && (
-                  <Button
-                    type="button"
-                    onClick={handleRemove}
-                    className="flex-1 bg-red-600/70 dark:bg-red-700/60 text-white/90 hover:bg-red-600 hover:text-white dark:hover:bg-red-600"
-                  >
-                    Remove
-                  </Button>
+                {effectiveHasExistingKey && effectiveStoredKey && (
+                  <div className="flex items-center justify-between">
+                    <p
+                      className={`text-xs flex items-center gap-1 ${isKeyValid === false ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"}`}
+                    >
+                      {isValidating ? (
+                        "Validating..."
+                      ) : isKeyValid === false ? (
+                        <>
+                          <span>
+                            <AlertTriangle
+                              className="w-3 h-3"
+                              aria-label="API key appears to be invalid"
+                            />
+                          </span>
+                          API key configured: {maskApiKey(effectiveStoredKey)}
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-3 h-3" />
+                          API key configured: {maskApiKey(effectiveStoredKey)}
+                        </>
+                      )}
+                    </p>
+                  </div>
                 )}
-                <Button
-                  onClick={handleSave}
-                  disabled={!apiKey.trim() || isValidating}
-                  className="flex-1"
-                >
-                  {isValidating ? "Validating..." : "Save"}
-                </Button>
+                {!effectiveHasExistingKey && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Don&apos;t have an API key?{" "}
+                    <a
+                      href="https://aistudio.google.com/app/apikey"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+                    >
+                      Get one from Google AI Studio
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </p>
+                )}
+                {(effectiveHasExistingKey || apiKey.trim()) && (
+                  <div className="flex flex-row gap-2 pt-2">
+                    {effectiveHasExistingKey && (
+                      <Button
+                        type="button"
+                        onClick={handleRemove}
+                        className="flex-1 bg-red-600/70 dark:bg-red-700/60 text-white/90 hover:bg-red-600 hover:text-white dark:hover:bg-red-600"
+                      >
+                        Remove
+                      </Button>
+                    )}
+                    {apiKey.trim() && (
+                      <Button
+                        onClick={handleSave}
+                        disabled={isValidating}
+                        className="flex-1"
+                      >
+                        {isValidating ? "Validating..." : "Save"}
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
-        </div>
+            </AccordionContent>
+          </AccordionItem>
 
-        {onRevokeAccount && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-            <h3 className="text-sm font-medium text-red-700 dark:text-red-400">
-              Danger Zone
-            </h3>
-            <p className="text-xs text-red-600 dark:text-red-400 mt-1 mb-3">
-              Permanently delete your account and all associated data.
-            </p>
-            <Button
-              onClick={() => setShowRevokeDialog(true)}
-              disabled={isRevoking}
-              className="w-full bg-red-600/70 dark:bg-red-700/60 text-white/90 hover:bg-red-600 hover:text-white dark:hover:bg-red-600"
+          {/* Delete Account */}
+          {onRevokeAccount && (
+            <AccordionItem
+              value="danger-zone"
+              className="border border-red-600/70 dark:border-red-700/60 rounded-lg px-3 dark:bg-gray-800"
             >
-              <Trash2 className="w-4 h-4 mr-2" />
-              {isRevoking ? "Deleting..." : "Delete account"}
-            </Button>
-          </div>
-        )}
+              <AccordionTrigger className="hover:no-underline">
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Delete Account
+                </span>
+              </AccordionTrigger>
+              <AccordionContent>
+                <p className="text-xs text-red-600 dark:text-red-400 mb-3">
+                  Permanently delete your account and all associated data.
+                </p>
+                <Button
+                  onClick={() => setShowRevokeDialog(true)}
+                  disabled={isRevoking}
+                  className="w-full bg-red-600/70 dark:bg-red-700/60 text-white/90 hover:bg-red-600 hover:text-white dark:hover:bg-red-600"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {isRevoking ? "Deleting..." : "Delete account"}
+                </Button>
+              </AccordionContent>
+            </AccordionItem>
+          )}
+        </Accordion>
       </DialogContent>
 
       <AlertDialog open={showRevokeDialog} onOpenChange={setShowRevokeDialog}>
