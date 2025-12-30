@@ -80,14 +80,16 @@ function AppContent({
     friendEvents,
     incomingRequestCount,
     setIncomingRequestCount,
+    hasInitiallyLoaded: hasFriendsInitiallyLoaded,
     refetch: refetchFriends,
   } = useFriends({ isAuthenticated: !!user, weekStart });
 
-  const { allUsers, allEvents } = useCalendarAggregation({
+  const { allUsers, allEvents, isFriendsLoading } = useCalendarAggregation({
     currentUser,
     userEvents: calendarEvents,
     friends,
     friendEvents,
+    hasFriendsInitiallyLoaded,
     mockUsers,
     mockEvents,
   });
@@ -256,6 +258,7 @@ function AppContent({
                 onManageFriends={() => openModal("friends")}
                 isLoggedIn={!!user}
                 incomingRequestCount={incomingRequestCount}
+                isFriendsLoading={isFriendsLoading}
               />
             </div>
 
