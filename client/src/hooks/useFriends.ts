@@ -7,7 +7,11 @@ import type { CalendarEvent } from "@shared/types";
 import { calculateEventTimeRange } from "@/utils/calendar";
 import { transformRawEvent } from "@/utils/eventTransform";
 
-/** Number of friends to fetch events for in each batch */
+/**
+ * Number of friends to fetch events for in each batch.
+ * A small batch size (3) balances reducing network requests while keeping
+ * individual requests fast and avoiding server overload.
+ */
 const BATCH_SIZE = 3;
 
 export interface UseFriendsReturn {
@@ -51,6 +55,8 @@ export function useFriends({
   const [error, setError] = useState<string | null>(null);
   // Track the current refresh operation to prevent race conditions
   const refreshIdRef = useRef(0);
+  // Ref to track initial load state without causing callback recreation
+  const hasInitiallyLoadedRef = useRef(false);
 
   /**
    * Sync pending friend connections (check if pending friends have signed up)
@@ -101,7 +107,7 @@ export function useFriends({
     setIsLoading(true);
     setError(null);
     // Track if this is the first load (don't clear events on subsequent refreshes to avoid flash)
-    const isInitialLoad = !hasInitiallyLoaded;
+    const isInitialLoad = !hasInitiallyLoadedRef.current;
 
     try {
       // Phase 1: Fetch friends list first (fast operation)
@@ -119,6 +125,7 @@ export function useFriends({
       setFriends(response.friends);
       // Mark initial load complete after friends list arrives
       // This allows UI to show friends immediately
+      hasInitiallyLoadedRef.current = true;
       setHasInitiallyLoaded(true);
 
       // Calculate time range for events
@@ -143,8 +150,8 @@ export function useFriends({
       }
 
       // Process batches and update events progressively
-      let isFirstBatch = true;
-      for (const batch of batches) {
+      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        const batch = batches[batchIndex];
         // Check if this request is still valid before processing each batch
         if (refreshIdRef.current !== currentRefreshId) return;
 
@@ -164,8 +171,7 @@ export function useFriends({
               // Only log non-404 errors as they indicate actual issues
               if (err instanceof Error && !err.message.includes("Not found")) {
                 console.error(
-                  "Error fetching events for friend %s:",
-                  friend.id,
+                  `Error fetching events for friend ${friend.id}:`,
                   err,
                 );
               }
@@ -181,12 +187,10 @@ export function useFriends({
 
         // Progressively add events as each batch completes
         // For non-initial loads, replace all events on first batch to clear stale data
-        if (!isInitialLoad && isFirstBatch) {
+        if (!isInitialLoad && batchIndex === 0) {
           setFriendEvents(batchEvents);
-          isFirstBatch = false;
         } else {
           setFriendEvents((prev) => [...prev, ...batchEvents]);
-          isFirstBatch = false;
         }
       }
 
@@ -202,17 +206,15 @@ export function useFriends({
       setError(message);
       console.error("Error fetching friends:", err);
       // Still mark as loaded even on error so UI doesn't stay in loading state forever
+      hasInitiallyLoadedRef.current = true;
       setHasInitiallyLoaded(true);
     } finally {
-      setIsLoading(false);
+      // Only clear loading state if this is still the latest refresh operation
+      if (refreshIdRef.current === currentRefreshId) {
+        setIsLoading(false);
+      }
     }
-  }, [
-    isAuthenticated,
-    weekStart,
-    autoSyncPending,
-    syncPendingConnections,
-    hasInitiallyLoaded,
-  ]);
+  }, [isAuthenticated, weekStart, autoSyncPending, syncPendingConnections]);
 
   // Clear data when user logs out
   useEffect(() => {
@@ -222,6 +224,7 @@ export function useFriends({
       setIncomingRequestCount(0);
       setError(null);
       // Reset initial load state when logged out so next login shows loading state
+      hasInitiallyLoadedRef.current = false;
       setHasInitiallyLoaded(false);
     }
   }, [isAuthenticated]);

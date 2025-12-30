@@ -16,9 +16,9 @@ export interface UseCalendarAggregationOptions {
   friendEvents: CalendarEvent[];
   /** Whether friends have been initially loaded (prevents mock data flash) */
   hasFriendsInitiallyLoaded?: boolean;
-  /** Mock users for demo (used when no friends and not authenticated) */
+  /** Mock users for demo (shown when not authenticated, or authenticated with no friends) */
   mockUsers?: User[];
-  /** Mock events for demo (used when no friends and not authenticated) */
+  /** Mock events for demo (shown when not authenticated, or authenticated with no friends) */
   mockEvents?: CalendarEvent[];
 }
 

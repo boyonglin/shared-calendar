@@ -21,7 +21,11 @@ interface UserListProps {
  */
 function UserRowSkeleton() {
   return (
-    <div className="flex items-center gap-3">
+    <div
+      className="flex items-center gap-3"
+      role="status"
+      aria-label="Loading friend"
+    >
       <div className="h-4 w-4 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
       <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
       <div className="flex-1 space-y-1.5">
