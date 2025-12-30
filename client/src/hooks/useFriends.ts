@@ -1,11 +1,14 @@
 /**
  * Hook for managing friend connections and their calendar events
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { friendsApi, type FriendWithColor } from "@/services/api/friends";
 import type { CalendarEvent } from "@shared/types";
 import { calculateEventTimeRange } from "@/utils/calendar";
 import { transformRawEvent } from "@/utils/eventTransform";
+
+/** Number of friends to fetch events for in each batch */
+const BATCH_SIZE = 3;
 
 export interface UseFriendsReturn {
   friends: FriendWithColor[];
@@ -15,7 +18,7 @@ export interface UseFriendsReturn {
   setIncomingRequestCount: React.Dispatch<React.SetStateAction<number>>;
   /** Whether friends data is currently being fetched */
   isLoading: boolean;
-  /** Whether the initial load has completed (prevents showing mock data during first fetch) */
+  /** Whether the initial load has completed (allows showing appropriate data or loading state) */
   hasInitiallyLoaded: boolean;
   error: string | null;
   /** Alias for refreshFriends - used by FriendsManager */
@@ -46,6 +49,8 @@ export function useFriends({
   // Track whether we've completed the initial load - prevents showing mock data
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Track the current refresh operation to prevent race conditions
+  const refreshIdRef = useRef(0);
 
   /**
    * Sync pending friend connections (check if pending friends have signed up)
@@ -90,10 +95,13 @@ export function useFriends({
       return;
     }
 
+    // Increment refresh ID to invalidate any in-flight requests
+    const currentRefreshId = ++refreshIdRef.current;
+
     setIsLoading(true);
     setError(null);
-    // Clear existing friend events before fetching new ones
-    setFriendEvents([]);
+    // Track if this is the first load (don't clear events on subsequent refreshes to avoid flash)
+    const isInitialLoad = !hasInitiallyLoaded;
 
     try {
       // Phase 1: Fetch friends list first (fast operation)
@@ -104,6 +112,10 @@ export function useFriends({
 
       // Fetch friends list immediately
       const response = await friendsApi.getFriends();
+
+      // Check if this request is still valid (no newer refresh started)
+      if (refreshIdRef.current !== currentRefreshId) return;
+
       setFriends(response.friends);
       // Mark initial load complete after friends list arrives
       // This allows UI to show friends immediately
@@ -117,9 +129,13 @@ export function useFriends({
         (f) => f.status === "accepted" && f.friendUserId,
       );
 
+      // Clear events only after friends list is loaded (prevents flash during refresh)
+      if (isInitialLoad) {
+        setFriendEvents([]);
+      }
+
       // Phase 2: Progressive event loading
       // Fetch events in small batches to reduce network congestion
-      const BATCH_SIZE = 3; // Fetch 3 friends' events at a time
       const batches: (typeof acceptedFriends)[] = [];
 
       for (let i = 0; i < acceptedFriends.length; i += BATCH_SIZE) {
@@ -127,7 +143,11 @@ export function useFriends({
       }
 
       // Process batches and update events progressively
+      let isFirstBatch = true;
       for (const batch of batches) {
+        // Check if this request is still valid before processing each batch
+        if (refreshIdRef.current !== currentRefreshId) return;
+
         const eventPromises = batch.map((friend) =>
           friendsApi
             .getFriendEvents(friend.id, timeMin, timeMax)
@@ -156,12 +176,26 @@ export function useFriends({
         const batchResults = await Promise.all(eventPromises);
         const batchEvents = batchResults.flat();
 
+        // Check again after async operation
+        if (refreshIdRef.current !== currentRefreshId) return;
+
         // Progressively add events as each batch completes
-        setFriendEvents((prev) => [...prev, ...batchEvents]);
+        // For non-initial loads, replace all events on first batch to clear stale data
+        if (!isInitialLoad && isFirstBatch) {
+          setFriendEvents(batchEvents);
+          isFirstBatch = false;
+        } else {
+          setFriendEvents((prev) => [...prev, ...batchEvents]);
+          isFirstBatch = false;
+        }
       }
 
-      // Wait for sync to complete (if it's still running)
-      await syncPromise;
+      // Wait for sync to complete (if it's still running), but don't fail the whole refresh on sync errors
+      try {
+        await syncPromise;
+      } catch (syncError) {
+        console.error("Error syncing pending connections:", syncError);
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to fetch friends";
@@ -172,7 +206,13 @@ export function useFriends({
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, weekStart, autoSyncPending, syncPendingConnections]);
+  }, [
+    isAuthenticated,
+    weekStart,
+    autoSyncPending,
+    syncPendingConnections,
+    hasInitiallyLoaded,
+  ]);
 
   // Clear data when user logs out
   useEffect(() => {

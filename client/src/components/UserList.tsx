@@ -145,7 +145,6 @@ export function UserList({
           <>
             <UserRowSkeleton />
             <UserRowSkeleton />
-            <UserRowSkeleton />
           </>
         )}
 
