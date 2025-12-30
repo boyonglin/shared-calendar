@@ -14,9 +14,11 @@ export interface UseCalendarAggregationOptions {
   friends: FriendWithColor[];
   /** Events from friends' calendars */
   friendEvents: CalendarEvent[];
-  /** Mock users for demo (used when no friends) */
+  /** Whether friends have been initially loaded (prevents mock data flash) */
+  hasFriendsInitiallyLoaded?: boolean;
+  /** Mock users for demo (shown when not authenticated, or authenticated with no friends) */
   mockUsers?: User[];
-  /** Mock events for demo (used when no friends) */
+  /** Mock events for demo (shown when not authenticated, or authenticated with no friends) */
   mockEvents?: CalendarEvent[];
 }
 
@@ -27,6 +29,8 @@ export interface UseCalendarAggregationReturn {
   allEvents: CalendarEvent[];
   /** Whether using mock data */
   isUsingMockData: boolean;
+  /** Whether friends data is still loading */
+  isFriendsLoading: boolean;
 }
 
 /**
@@ -48,6 +52,7 @@ export function useCalendarAggregation({
   userEvents,
   friends,
   friendEvents,
+  hasFriendsInitiallyLoaded = true,
   mockUsers = [],
   mockEvents = [],
 }: UseCalendarAggregationOptions): UseCalendarAggregationReturn {
@@ -55,28 +60,68 @@ export function useCalendarAggregation({
   const friendUsers = useMemo(() => friendsToUsers(friends), [friends]);
 
   // Determine if we have real friend data or should use mock data
+  // Only show mock data when:
+  // 1. User is not authenticated (no currentUser), OR
+  // 2. User is authenticated AND friends have finished loading AND no friends exist
   const hasFriends = friendUsers.length > 0;
+
+  // When authenticated, only show mock data after initial load completes with no friends
+  const shouldShowMockData = useMemo(() => {
+    if (!currentUser) {
+      // Not logged in - show mock data
+      return true;
+    }
+    if (!hasFriendsInitiallyLoaded) {
+      // Still loading - don't show mock data (show loading state instead)
+      return false;
+    }
+    // Loaded but no friends - show mock data
+    return !hasFriends;
+  }, [currentUser, hasFriendsInitiallyLoaded, hasFriends]);
 
   // Aggregate all users
   const allUsers = useMemo(() => {
     if (currentUser) {
+      if (!hasFriendsInitiallyLoaded) {
+        // During initial load, only show current user
+        return [currentUser];
+      }
       return hasFriends
         ? [currentUser, ...friendUsers]
         : [currentUser, ...mockUsers];
     }
     return hasFriends ? friendUsers : mockUsers;
-  }, [currentUser, hasFriends, friendUsers, mockUsers]);
+  }, [
+    currentUser,
+    hasFriendsInitiallyLoaded,
+    hasFriends,
+    friendUsers,
+    mockUsers,
+  ]);
 
   // Aggregate all events
   const allEvents = useMemo(() => {
-    return hasFriends
-      ? [...userEvents, ...friendEvents]
-      : [...userEvents, ...mockEvents];
-  }, [hasFriends, userEvents, friendEvents, mockEvents]);
+    if (currentUser && !hasFriendsInitiallyLoaded) {
+      // During initial load, only show user's own events
+      return userEvents;
+    }
+    return shouldShowMockData
+      ? [...userEvents, ...mockEvents]
+      : [...userEvents, ...friendEvents];
+  }, [
+    currentUser,
+    hasFriendsInitiallyLoaded,
+    shouldShowMockData,
+    userEvents,
+    friendEvents,
+    mockEvents,
+  ]);
 
   return {
     allUsers,
     allEvents,
-    isUsingMockData: !hasFriends,
+    isUsingMockData: shouldShowMockData,
+    // Show loading state when authenticated but haven't completed initial load
+    isFriendsLoading: currentUser ? !hasFriendsInitiallyLoaded : false,
   };
 }

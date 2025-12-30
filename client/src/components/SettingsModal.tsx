@@ -450,8 +450,8 @@ export function SettingsModal({
               value="danger-zone"
               className="border border-red-600/70 dark:border-red-700/60 rounded-lg px-3 dark:bg-gray-800"
             >
-              <AccordionTrigger className="hover:no-underline">
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              <AccordionTrigger className="hover:no-underline [&>svg]:text-red-600 dark:[&>svg]:text-red-400">
+                <span className="text-sm font-medium text-red-600 dark:text-red-400">
                   Delete Account
                 </span>
               </AccordionTrigger>
